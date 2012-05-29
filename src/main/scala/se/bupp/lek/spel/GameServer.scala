@@ -9,6 +9,7 @@ import com.jme3.math.{Quaternion, Vector3f}
 import com.jme3.export.{JmeExporter, JmeImporter, Savable}
 import com.jme3.app.SimpleApplication
 import com.jme3.system.JmeContext
+import collection.JavaConversions
 
 
 /**
@@ -46,7 +47,7 @@ class GameServer extends SimpleApplication {
               lock.synchronized {
                players.find( p => p.playerId == request.playerId).foreach {
                  x => {
-                   println("Rec " + request.translation + " " + request.rotation)
+                   //println("Rec " + request.translation + " " + request.rotation)
                    x.position = x.position.add(request.translation)
                    x.direction = request.rotation.mult(x.direction)
 
@@ -87,6 +88,8 @@ class GameServer extends SimpleApplication {
 
         lock.synchronized {
           gameWorld.players = new java.util.ArrayList[PlayerGO](players)
+          gameWorld.projectiles = new java.util.ArrayList[ProjectileGO]()
+          gameWorld.timeStamp = System.currentTimeMillis()
         }
         //println("" + players.size)
         server.sendToAllUDP(gameWorld)
@@ -99,14 +102,27 @@ class GameServer extends SimpleApplication {
 
 object GameServer {
 
-  class AbstractGameObject {
-    var id:Int = _
+  class ObjectOrientation {
     var position:Vector3f = _
     var direction:Quaternion = _
+
+    def orientation = this
+    def orientation_=(o:ObjectOrientation) : Unit = {
+      position = o.position
+      direction = o.direction
+    }
   }
+  class AbstractGameObject extends ObjectOrientation {
+    var clientId:Int = _
+  }
+
+  type OwnedGameObjectId = (Int,Int)
 
   class AbstractOwnedGameObject extends AbstractGameObject {
     var playerId:Int = _
+    def id:OwnedGameObjectId = (clientId,playerId)
+    def id_=(goid:OwnedGameObjectId) = { clientId = goid._1 ; playerId = goid._2 }
+
 
   }
 
@@ -115,17 +131,32 @@ object GameServer {
 
     override def read(reader:JmeImporter) {}
     override def write(writer:JmeExporter) {}
+
+    def this(pgo:ProjectileGO) = {
+      this()
+      id = pgo.id
+      orientation = pgo
+    }
   }
   class PlayerGO() extends AbstractOwnedGameObject with Savable {
+
+    def this(pgo:PlayerGO) = {
+      this()
+      id = pgo.id
+      orientation = pgo
+    }
 
     //override def getClassTag = classOf[PlayerGO]
     override def read(reader:JmeImporter) {}
     override def write(writer:JmeExporter) {}
   }
 
+  import JavaConversions.asScalaBuffer
   class ServerGameWorld {
+    var timeStamp:Long = _
     var players:java.util.ArrayList[PlayerGO] = _
     var projectiles:java.util.ArrayList[ProjectileGO] = _
+    def all = players.toList ++ projectiles.toList
   }
 
   class PlayerJoinRequest {

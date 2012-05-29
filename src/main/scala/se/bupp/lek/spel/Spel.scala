@@ -203,15 +203,19 @@ class Spel extends SimpleApplication {
   }
 
 
-  def syncGameWorld(gw:ServerGameWorld) {
+  def syncGameWorld(all:List[_ <: AbstractGameObject]) {
 
     import scala.collection.JavaConversions.asScalaBuffer
     val enemyNodes = rootNode.getChild("Enemies").asInstanceOf[Node].getChildren
     val enemyMap = enemyNodes.map( e => (e.getUserData[PlayerGO]("PlayerGO"),e) ).toMap
 
-    gw.players.foreach { p =>
+    var i=0
+    all.foreach {
+      case p:ProjectileGO =>
+
+      case p:PlayerGO =>
         if(p.playerId == playerIdOpt.get) {
-          println("Getting server state" + p.position + " " + p.direction)
+          //println("Getting server state" + p.position + " " + p.direction)
 
           player.setLocalTranslation(p.position)
           player.setLocalRotation(p.direction)
@@ -220,6 +224,7 @@ class Spel extends SimpleApplication {
 
           enemyOpt match {
             case Some((enemyPd, spatial)) =>
+              //println("updated " + p.position)
               //println("updating existing " + enemyPd.position)
               spatial.setUserData("PlayerGO",enemyPd)
               spatial.setLocalTranslation(p.position)
@@ -227,7 +232,9 @@ class Spel extends SimpleApplication {
             case None => materializeEnemy(p)
           }
         }
+      case _ =>
     }
+
   }
 
   def materializeEnemy(pd:PlayerGO) {
