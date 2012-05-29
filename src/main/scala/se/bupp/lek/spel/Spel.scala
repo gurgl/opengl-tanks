@@ -18,6 +18,7 @@ import com.esotericsoftware.kryonet.{Connection, Listener, Client}
 import management.ManagementFactory
 import se.bupp.lek.spel.GameServer._
 import collection.immutable.Queue
+import MathUtil._
 
 
 /**
@@ -29,6 +30,11 @@ import collection.immutable.Queue
  */
 
 
+object MathUtil {
+  val noRotation = Quaternion.ZERO.fromAngleNormalAxis(0f,Vector3f.UNIT_XYZ)
+
+}
+
 
 
 class Spel extends SimpleApplication {
@@ -38,43 +44,19 @@ class Spel extends SimpleApplication {
   //val speed = 1.0f
   val rotSpeed = 2.0f
 
-  var lastAcc = 0f
-  var currentSpeed = 0f
-  val MAX_SPEED = 1.0f
-  val ACC = 0.1f
+  var playerIdOpt:Option[Int] = None
 
-
-  val GW_UPDATES_SIZE = 4
-
-  var lastSentUpdate = 0L
-  
   //var enemies:Spatial = _
   var projectileHandler : ProjectileHandler = _
   var mat_default : Material = _
 
-  var gameClient:Client = _
-  var playerIdOpt:Option[Int] = None
-
-  var gameWorldUpdates:Queue[GameServer.ServerGameWorld] = Queue()
-  var hasUnProcessedWorldUpdate = false
-
-  val noRotation = Quaternion.ZERO.fromAngleNormalAxis(0f,Vector3f.UNIT_XYZ)
   val noPlayerInput = Pair(Vector3f.ZERO, noRotation)
   var playerInput:(Vector3f,Quaternion) = noPlayerInput
-  
-  var accTranslation = Vector3f.ZERO
-  var accRotation = noRotation
-
 
 
   val actionListener = new AnalogListener() with ActionListener {
 
     def onAction(name:String, value:Boolean, tpf:Float) {
-      if (name.equals("Forward")) {
-        if(value == false) {
-         lastAcc = 0
-        }
-      }
 
       if (name.equals("Fire")) {
         if(value == true) {
@@ -181,46 +163,33 @@ class Spel extends SimpleApplication {
     setShowSettings(false)
 
     stateManager.detach( stateManager.getState(classOf[FlyCamAppState]))
+    stateManager.attach(new NetworkState)
 
 
-    materializePlayer() 
-    projectileHandler = new ProjectileHandler(mat_default)
-    projectileHandler.init()
+    materializePlayer()
 
     materializeLevel()
 
+    materializeStats()
+
     var enemyNodes = new Node("Enemies")
     rootNode.attachChild(enemyNodes)
-
-    // Display a line of text with a default font
-    materializeStats()
 
     // You must add a light to make the model visible
     val sun = new DirectionalLight();
     sun.setDirection(new Vector3f(-0.1f, -0.7f, -1.0f));
     rootNode.addLight(sun);
 
-    setupInput() 
-    
-    //inputManager.addMapping("Rotate", new KeyTrigger(KeyInput.KEY_SPACE));
+    projectileHandler = new ProjectileHandler(mat_default)
+    projectileHandler.init()
 
-    initClient()
+    setupInput()
   }
 
-
-
   override def simpleUpdate(tpf: Float) {
-    if(playerIdOpt.isEmpty) return
-    //ninja.rotate(0, 2 * tpf, 0);
 
     //player.move(playerInput._1)
     //player.rotate(playerInput._2)
-
-    if(hasUnProcessedWorldUpdate) {
-      syncGameWorld(gameWorldUpdates.last)
-      hasUnProcessedWorldUpdate = false
-    }
-
 
     projectileHandler.update(rootNode, tpf)
 
@@ -230,45 +199,29 @@ class Spel extends SimpleApplication {
     getCamera.setFrame(pos,rot)
 
 
-    accTranslation = accTranslation.add(playerInput._1)
-    accRotation = playerInput._2.mult(accRotation)
-
-    if(System.currentTimeMillis() - lastSentUpdate > 1000/15 ) {
-      val request: PlayerActionRequest = new PlayerActionRequest
-      player.ensuring(player.getLocalTranslation != null && player.getLocalRotation != null)
-
-      request.playerId = playerIdOpt.get
-      request.translation = accTranslation
-      request.rotation = accRotation
-      gameClient.sendUDP(request)
-      lastSentUpdate = System.currentTimeMillis()
-      accTranslation = Vector3f.ZERO
-      accRotation = noRotation
-
-    }
     playerInput = noPlayerInput
-
   }
+
 
   def syncGameWorld(gw:ServerGameWorld) {
 
     import scala.collection.JavaConversions.asScalaBuffer
     val enemyNodes = rootNode.getChild("Enemies").asInstanceOf[Node].getChildren
-    val enemyMap = enemyNodes.map( e => (e.getUserData[PlayerDetails]("PlayerDetails"),e) ).toMap
+    val enemyMap = enemyNodes.map( e => (e.getUserData[PlayerGO]("PlayerGO"),e) ).toMap
 
     gw.players.foreach { p =>
         if(p.playerId == playerIdOpt.get) {
           println("Getting server state" + p.position + " " + p.direction)
-          
+
           player.setLocalTranslation(p.position)
           player.setLocalRotation(p.direction)
         } else {
           val enemyOpt = enemyMap.find { case (pd, spatial ) => pd.playerId == p.playerId }
 
           enemyOpt match {
-            case Some((enemyPd, spatial)) => 
+            case Some((enemyPd, spatial)) =>
               //println("updating existing " + enemyPd.position)
-              spatial.setUserData("PlayerDetails",enemyPd)
+              spatial.setUserData("PlayerGO",enemyPd)
               spatial.setLocalTranslation(p.position)
               spatial.setLocalRotation(p.direction)
             case None => materializeEnemy(p)
@@ -277,12 +230,12 @@ class Spel extends SimpleApplication {
     }
   }
 
-  def materializeEnemy(pd:PlayerDetails) {
+  def materializeEnemy(pd:PlayerGO) {
     val enemy = assetManager.loadModel(new ModelKey("Models/Teapot/Teapot.obj"))
     enemy.setMaterial(mat_default)
 
     println("Materialize enemy " + pd.position + " " + pd.direction)
-    enemy.setUserData("PlayerDetails",pd)
+    enemy.setUserData("PlayerGO",pd)
     enemy.setLocalTranslation(pd.position)
     enemy.setLocalRotation(pd.direction)
 
@@ -298,43 +251,7 @@ class Spel extends SimpleApplication {
 
   }
 
-  def initClient() {
-    gameClient = new Client();
 
-    val kryo = gameClient.getKryo();
-
-    GameServer.getNetworkMessages.foreach( kryo.register(_))
-    
-    gameClient.addListener(new Listener() {
-       override def received (connection:Connection , obj:Object ) {
-          obj match {
-            case response:ServerGameWorld=>
-              if(playerIdOpt.isDefined) {
-                gameWorldUpdates = 
-                  Option(gameWorldUpdates).map(
-                    x => if(x.size >= GW_UPDATES_SIZE) {x.dequeue._2} else {x}
-                  ).head.enqueue(response)
-                hasUnProcessedWorldUpdate = true
-              } else {
-                println("Getting world wo player received")
-              }
-
-            case response:PlayerJoinResponse =>
-              println("join resp received")
-              playerIdOpt = Some(response.playerId)
-
-            case _ =>
-          }
-       }
-    });
-
-    gameClient.start();
-    gameClient.connect(5000, "localhost", 54555, 54777);
-
-    val playerJoinRequest = new PlayerJoinRequest()
-    playerJoinRequest.clientLabel = ManagementFactory.getRuntimeMXBean().getName()
-    gameClient.sendTCP(playerJoinRequest);
-  }
 }
 
 object Spel {

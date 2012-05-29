@@ -4,7 +4,7 @@ import com.esotericsoftware.kryonet.{Connection, Listener, Server}
 import collection.mutable.ArrayBuffer
 import scala.Predef._
 import management.ManagementFactory
-import se.bupp.lek.spel.GameServer.{ServerGameWorld, PlayerDetails, PlayerJoinResponse}
+import se.bupp.lek.spel.GameServer.{ServerGameWorld, PlayerGO, PlayerJoinResponse}
 import com.jme3.math.{Quaternion, Vector3f}
 import com.jme3.export.{JmeExporter, JmeImporter, Savable}
 import com.jme3.app.SimpleApplication
@@ -23,7 +23,7 @@ class GameServer extends SimpleApplication {
 
   import GameServer._
   var connectionSequence = 0
-  var players = new ArrayBuffer[PlayerDetails]()
+  var players = new ArrayBuffer[PlayerGO]()
 
   var lock : AnyRef = new Object()
 
@@ -64,7 +64,7 @@ class GameServer extends SimpleApplication {
                 resp.playerId = connectionSequence
 
                 players += {
-                  val pd = new PlayerDetails
+                  val pd = new PlayerGO
                   pd.playerId = connectionSequence
                   pd.position = Vector3f.ZERO
                   pd.direction = Quaternion.DIRECTION_Z
@@ -86,7 +86,7 @@ class GameServer extends SimpleApplication {
         import scala.collection.JavaConversions.seqAsJavaList
 
         lock.synchronized {
-          gameWorld.players = new java.util.ArrayList[PlayerDetails](players)
+          gameWorld.players = new java.util.ArrayList[PlayerGO](players)
         }
         //println("" + players.size)
         server.sendToAllUDP(gameWorld)
@@ -99,18 +99,33 @@ class GameServer extends SimpleApplication {
 
 object GameServer {
 
-  class PlayerDetails() extends Savable {
-    var playerId:Int = _
+  class AbstractGameObject {
+    var id:Int = _
     var position:Vector3f = _
     var direction:Quaternion = _
+  }
 
-    //override def getClassTag = classOf[PlayerDetails]
+  class AbstractOwnedGameObject extends AbstractGameObject {
+    var playerId:Int = _
+
+  }
+
+
+  class ProjectileGO() extends AbstractOwnedGameObject with Savable {
+
+    override def read(reader:JmeImporter) {}
+    override def write(writer:JmeExporter) {}
+  }
+  class PlayerGO() extends AbstractOwnedGameObject with Savable {
+
+    //override def getClassTag = classOf[PlayerGO]
     override def read(reader:JmeImporter) {}
     override def write(writer:JmeExporter) {}
   }
 
   class ServerGameWorld {
-    var players:java.util.ArrayList[PlayerDetails] = _
+    var players:java.util.ArrayList[PlayerGO] = _
+    var projectiles:java.util.ArrayList[ProjectileGO] = _
   }
 
   class PlayerJoinRequest {
@@ -138,8 +153,8 @@ object GameServer {
     classOf[GameWorldResponse],
     classOf[Vector3f],
     classOf[Quaternion],
-    classOf[PlayerDetails],
-    classOf[java.util.ArrayList[PlayerDetails]],
+    classOf[PlayerGO],
+    classOf[java.util.ArrayList[PlayerGO]],
     classOf[ServerGameWorld]
   )
 
