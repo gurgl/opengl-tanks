@@ -42,12 +42,13 @@ class GameServer extends SimpleApplication {
           obj match {
             case request:PlayerActionRequest =>
              //println(request.playerId + " " + request.position);
-              request.ensuring(request.position != null && request.direction != null)
+              request.ensuring(request.translation != null && request.rotation != null)
               lock.synchronized {
                players.find( p => p.playerId == request.playerId).foreach {
                  x => {
-                   x.position = request.position
-                   x.direction = request.direction
+                   println("Rec " + request.translation + " " + request.rotation)
+                   x.position = x.position.add(request.translation)
+                   x.direction = request.rotation.mult(x.direction)
 
                  }.ensuring(x.position != null && x.direction != null)
                }
@@ -123,8 +124,8 @@ object GameServer {
   class PlayerActionRequest() {
     var text:String = _
     var playerId:Int = _
-    var position:Vector3f = _
-    var direction:Quaternion = _
+    var translation:Vector3f = _
+    var rotation:Quaternion = _
 
   }
   class GameWorldResponse() {

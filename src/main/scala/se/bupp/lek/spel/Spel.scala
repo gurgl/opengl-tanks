@@ -17,6 +17,8 @@ import com.jme3.bounding.{BoundingSphere, BoundingBox}
 import com.esotericsoftware.kryonet.{Connection, Listener, Client}
 import management.ManagementFactory
 import se.bupp.lek.spel.GameServer._
+import collection.immutable.Queue
+
 
 /**
  * Created by IntelliJ IDEA.
@@ -27,9 +29,7 @@ import se.bupp.lek.spel.GameServer._
  */
 
 
-object Math3D {
 
-}
 
 class Spel extends SimpleApplication {
 
@@ -43,7 +43,8 @@ class Spel extends SimpleApplication {
   val MAX_SPEED = 1.0f
   val ACC = 0.1f
 
-  
+
+  val GW_UPDATES_SIZE = 4
 
   var lastSentUpdate = 0L
   
@@ -54,11 +55,18 @@ class Spel extends SimpleApplication {
   var gameClient:Client = _
   var playerIdOpt:Option[Int] = None
 
-  var lastGameWorldUpdate:Option[GameServer.ServerGameWorld] = None
+  var gameWorldUpdates:Queue[GameServer.ServerGameWorld] = Queue()
+  var hasUnProcessedWorldUpdate = false
 
-  val noPlayerInput = Pair(Vector3f.ZERO, Quaternion.ZERO.fromAngleNormalAxis(0f,Vector3f.UNIT_XYZ))
+  val noRotation = Quaternion.ZERO.fromAngleNormalAxis(0f,Vector3f.UNIT_XYZ)
+  val noPlayerInput = Pair(Vector3f.ZERO, noRotation)
   var playerInput:(Vector3f,Quaternion) = noPlayerInput
   
+  var accTranslation = Vector3f.ZERO
+  var accRotation = noRotation
+
+
+
   val actionListener = new AnalogListener() with ActionListener {
 
     def onAction(name:String, value:Boolean, tpf:Float) {
@@ -205,14 +213,14 @@ class Spel extends SimpleApplication {
     if(playerIdOpt.isEmpty) return
     //ninja.rotate(0, 2 * tpf, 0);
 
-    player.move(playerInput._1)
-    player.rotate(playerInput._2)
+    //player.move(playerInput._1)
+    //player.rotate(playerInput._2)
 
-    playerInput = noPlayerInput
+    if(hasUnProcessedWorldUpdate) {
+      syncGameWorld(gameWorldUpdates.last)
+      hasUnProcessedWorldUpdate = false
+    }
 
-
-    lastGameWorldUpdate.foreach( gw => syncGameWorld(gw))
-    lastGameWorldUpdate = None
 
     projectileHandler.update(rootNode, tpf)
 
@@ -221,18 +229,27 @@ class Spel extends SimpleApplication {
     val (pos,rot) = getCamPosition
     getCamera.setFrame(pos,rot)
 
+
+    accTranslation = accTranslation.add(playerInput._1)
+    accRotation = playerInput._2.mult(accRotation)
+
     if(System.currentTimeMillis() - lastSentUpdate > 1000/15 ) {
       val request: PlayerActionRequest = new PlayerActionRequest
       player.ensuring(player.getLocalTranslation != null && player.getLocalRotation != null)
+
       request.playerId = playerIdOpt.get
-      request.position = player.getLocalTranslation
-      request.direction = player.getLocalRotation
+      request.translation = accTranslation
+      request.rotation = accRotation
       gameClient.sendUDP(request)
       lastSentUpdate = System.currentTimeMillis()
+      accTranslation = Vector3f.ZERO
+      accRotation = noRotation
+
     }
-    
+    playerInput = noPlayerInput
+
   }
-  
+
   def syncGameWorld(gw:ServerGameWorld) {
 
     import scala.collection.JavaConversions.asScalaBuffer
@@ -240,7 +257,12 @@ class Spel extends SimpleApplication {
     val enemyMap = enemyNodes.map( e => (e.getUserData[PlayerDetails]("PlayerDetails"),e) ).toMap
 
     gw.players.foreach { p =>
-        if(p.playerId != playerIdOpt.get) {
+        if(p.playerId == playerIdOpt.get) {
+          println("Getting server state" + p.position + " " + p.direction)
+          
+          player.setLocalTranslation(p.position)
+          player.setLocalRotation(p.direction)
+        } else {
           val enemyOpt = enemyMap.find { case (pd, spatial ) => pd.playerId == p.playerId }
 
           enemyOpt match {
@@ -288,7 +310,11 @@ class Spel extends SimpleApplication {
           obj match {
             case response:ServerGameWorld=>
               if(playerIdOpt.isDefined) {
-                lastGameWorldUpdate = Some(response)
+                gameWorldUpdates = 
+                  Option(gameWorldUpdates).map(
+                    x => if(x.size >= GW_UPDATES_SIZE) {x.dequeue._2} else {x}
+                  ).head.enqueue(response)
+                hasUnProcessedWorldUpdate = true
               } else {
                 println("Getting world wo player received")
               }
