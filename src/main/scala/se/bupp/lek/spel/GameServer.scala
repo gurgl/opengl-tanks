@@ -7,6 +7,8 @@ import management.ManagementFactory
 import se.bupp.lek.spel.GameServer.{ServerGameWorld, PlayerDetails, PlayerJoinResponse}
 import com.jme3.math.{Quaternion, Vector3f}
 import com.jme3.export.{JmeExporter, JmeImporter, Savable}
+import com.jme3.app.SimpleApplication
+import com.jme3.system.JmeContext
 
 
 /**
@@ -17,57 +19,15 @@ import com.jme3.export.{JmeExporter, JmeImporter, Savable}
  * To change this template use File | Settings | File Templates.
  */
 
-object GameServer {
+class GameServer extends SimpleApplication {
 
+  import GameServer._
   var connectionSequence = 0
   var players = new ArrayBuffer[PlayerDetails]()
 
-  val getNetworkMessages = List[Class[_ <: AnyRef]](
-    classOf[PlayerJoinRequest],
-    classOf[PlayerJoinResponse],
-    classOf[PlayerActionRequest],
-    classOf[GameWorldResponse],
-    classOf[Vector3f],
-    classOf[Quaternion],
-    classOf[PlayerDetails],
-    classOf[java.util.ArrayList[PlayerDetails]],
-    classOf[ServerGameWorld]
-  )
-
-  class PlayerDetails() extends Savable {
-    var playerId:Int = _
-    var position:Vector3f = _
-    var direction:Quaternion = _
-
-    //override def getClassTag = classOf[PlayerDetails]
-    override def read(reader:JmeImporter) {}
-    override def write(writer:JmeExporter) {}
-  }
-
-  class ServerGameWorld {
-    var players:java.util.ArrayList[PlayerDetails] = _
-  }
-  class PlayerJoinRequest {
-    var clientLabel:String = _
-  }
-  class PlayerJoinResponse {
-      var playerId:Int = _
-    }
-
-  class PlayerActionRequest() {
-    var text:String = _
-    var playerId:Int = _
-    var position:Vector3f = _
-    var direction:Quaternion = _
-
-  }
-  class GameWorldResponse() {
-    var text:String = _
-  }
-
   var lock : AnyRef = new Object()
 
-  def main(args:Array[String]) {
+  override def simpleInitApp() {
 
     val server = new Server();
     server.start();
@@ -133,6 +93,57 @@ object GameServer {
         case e:InterruptedException => 
       }
     }
+  }
+}
+
+object GameServer {
+
+  class PlayerDetails() extends Savable {
+    var playerId:Int = _
+    var position:Vector3f = _
+    var direction:Quaternion = _
+
+    //override def getClassTag = classOf[PlayerDetails]
+    override def read(reader:JmeImporter) {}
+    override def write(writer:JmeExporter) {}
+  }
+
+  class ServerGameWorld {
+    var players:java.util.ArrayList[PlayerDetails] = _
+  }
+
+  class PlayerJoinRequest {
+    var clientLabel:String = _
+  }
+
+  class PlayerJoinResponse {
+    var playerId:Int = _
+  }
+
+  class PlayerActionRequest() {
+    var text:String = _
+    var playerId:Int = _
+    var position:Vector3f = _
+    var direction:Quaternion = _
+
+  }
+  class GameWorldResponse() {
+    var text:String = _
+  }
+  val getNetworkMessages = List[Class[_ <: AnyRef]](
+    classOf[PlayerJoinRequest],
+    classOf[PlayerJoinResponse],
+    classOf[PlayerActionRequest],
+    classOf[GameWorldResponse],
+    classOf[Vector3f],
+    classOf[Quaternion],
+    classOf[PlayerDetails],
+    classOf[java.util.ArrayList[PlayerDetails]],
+    classOf[ServerGameWorld]
+  )
+
+  def main(args:Array[String]) {
+    new GameServer().start(JmeContext.Type.Headless)
   }
 }
 

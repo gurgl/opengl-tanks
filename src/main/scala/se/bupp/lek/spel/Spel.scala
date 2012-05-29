@@ -126,6 +126,8 @@ class Spel extends SimpleApplication {
   override def simpleInitApp() {
 
     setPauseOnLostFocus(false)
+    setShowSettings(false)
+
 
     stateManager.detach( stateManager.getState(classOf[FlyCamAppState]))
     //import collection.JavaConversions.
@@ -297,6 +299,8 @@ class Spel extends SimpleApplication {
 object Spel {
 
   def main(arguments: Array[String]): Unit = {
-    new Spel().start()
+    val spel = new Spel()
+    spel.setShowSettings(false)
+    spel.start()
   }
 }
