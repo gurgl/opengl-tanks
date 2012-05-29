@@ -26,6 +26,11 @@ import se.bupp.lek.spel.GameServer._
  * To change this template use File | Settings | File Templates.
  */
 
+
+object Math3D {
+
+}
+
 class Spel extends SimpleApplication {
 
   var player:Spatial = _
@@ -39,7 +44,8 @@ class Spel extends SimpleApplication {
   val ACC = 0.1f
 
   
-  
+
+  var lastSentUpdate = 0L
   
   //var enemies:Spatial = _
   var projectileHandler : ProjectileHandler = _
@@ -50,6 +56,9 @@ class Spel extends SimpleApplication {
 
   var lastGameWorldUpdate:Option[GameServer.ServerGameWorld] = None
 
+  val noPlayerInput = Pair(Vector3f.ZERO, Quaternion.ZERO.fromAngleNormalAxis(0f,Vector3f.UNIT_XYZ))
+  var playerInput:(Vector3f,Quaternion) = noPlayerInput
+  
   val actionListener = new AnalogListener() with ActionListener {
 
     def onAction(name:String, value:Boolean, tpf:Float) {
@@ -68,45 +77,33 @@ class Spel extends SimpleApplication {
     }
 
     def onAnalog(name:String, value:Float, tpf:Float) {
-      if (name.equals("Left")) {
-        val v = player.getLocalTranslation();
-        //teapot.setLocalTranslation(v.x + speed * tpf, v.y, v.z);
-        player.rotate(0, rotSpeed * tpf, 0);
-      }
 
+      name match {
+        case "Left" =>
 
-      if (name.equals("Right")) {
+          playerInput = (playerInput._1, new Quaternion().fromAngleNormalAxis(rotSpeed * tpf,Vector3f.UNIT_Y))
 
-        val v = player.getLocalTranslation();
-        //teapot.setLocalTranslation(v.x - speed * tpf, v.y, v.z);
-        player.rotate(0, -rotSpeed * tpf, 0);
-        //teapot.setLocalTranslation(v.x,v.y + speed * tpf, v.z);
-      }
+        case "Right" =>
+          //player.rotate(0, -rotSpeed * tpf, 0);
+          //val rot = new Quaternion(0f, math.sin(angle/2d).toFloat, 0f, math.cos(angle/2d).toFloat)
 
-      if (name.equals("Forward")) {
+          playerInput= (playerInput._1, new Quaternion().fromAngleNormalAxis(-rotSpeed * tpf,Vector3f.UNIT_Y))
 
-        val v = player.getLocalRotation.toRotationMatrix;
-        val t = player.getLocalTranslation();
-        player.setLocalTranslation(t.add(v.getColumn(0).mult(speed*tpf)));
+        case "Forward" =>
 
+          val v = player.getLocalRotation.toRotationMatrix;
+          playerInput= (v.getColumn(0).mult(speed*tpf), playerInput._2)
 
+        case "Back" =>
 
-      }
-
-      if (name.equals("Back")) {
-
-        val v = player.getLocalRotation.toRotationMatrix;
-        val t = player.getLocalTranslation();
-        player.setLocalTranslation(t.add(v.getColumn(0).mult(-speed*tpf)));
+          val v = player.getLocalRotation.toRotationMatrix;
+          playerInput= (v.getColumn(0).mult(-speed*tpf), playerInput._2)
+        case "Fire" =>
       }
     }
   };
-  
-  def createYawPitchRoll() = {
 
-    val PIf = math.Pi.toFloat
-    Quaternion.IDENTITY.fromAngles(PIf / 2.0f, PIf/ 2.0f, 0f)
-  }
+
   
   def getCamPosition() : (Vector3f,Quaternion) = {
 
@@ -121,35 +118,7 @@ class Spel extends SimpleApplication {
     (camPos,rot)
   }
 
-
-
-  override def simpleInitApp() {
-
-    setPauseOnLostFocus(false)
-    setShowSettings(false)
-
-
-    stateManager.detach( stateManager.getState(classOf[FlyCamAppState]))
-    //import collection.JavaConversions.
-    inputManager.addListener(actionListener, List("Left","Right", "Forward", "Back", "Fire"):_*)
-    mat_default = new Material(
-          assetManager, "Common/MatDefs/Misc/ShowNormals.j3md");
-    
-    val tankGeometry = assetManager.loadModel("Models/Teapot/Teapot.obj") //.asInstanceOf[Mesh]
-    player = tankGeometry //new Geometry("Player", tankGeometry)
-
-    //player.setLocalTranslation(Vector3f.ZERO)
-    //player.setLocalRotation(Quaternion.ZERO)
-    player.setMaterial(mat_default);
-    rootNode.attachChild(player);
-
-
-    //val enemyShape = CollisionShapeFactory.createMeshShape((Node) enemy);
-
-
-    projectileHandler = new ProjectileHandler(mat_default)
-    projectileHandler.init()
-
+  def materializeLevel() {
     // Create a wall with a simple texture from test_data
     val box = new Box(Vector3f.ZERO, 2.5f, 2.5f, 1.0f);
     val wall = new Geometry("Box", box);
@@ -161,10 +130,9 @@ class Spel extends SimpleApplication {
     wall.setLocalTranslation(2.0f, -2.5f, 0.0f);
     rootNode.attachChild(wall);
 
-    var enemyNodes = new Node("Enemies")
-    rootNode.attachChild(enemyNodes)
+  }
 
-    // Display a line of text with a default font
+  def materializeStats() {
     guiNode.detachAllChildren();
     guiFont = assetManager.loadFont("Interface/Fonts/Default.fnt");
     val helloText = new BitmapText(guiFont, false);
@@ -172,11 +140,23 @@ class Spel extends SimpleApplication {
     helloText.setText("Hello World");
     helloText.setLocalTranslation(300, helloText.getLineHeight(), 0);
     guiNode.attachChild(helloText);
+  }
+  
+  def materializePlayer() {
+    mat_default = new Material(assetManager, "Common/MatDefs/Misc/ShowNormals.j3md");
 
-    // You must add a light to make the model visible
-    val sun = new DirectionalLight();
-    sun.setDirection(new Vector3f(-0.1f, -0.7f, -1.0f));
-    rootNode.addLight(sun);
+    player = assetManager.loadModel("Models/Teapot/Teapot.obj")
+
+    player.setLocalRotation(Quaternion.IDENTITY)
+    player.setMaterial(mat_default);
+
+    rootNode.attachChild(player);
+  }
+  
+  def setupInput() {
+
+    //import collection.JavaConversions.
+    inputManager.addListener(actionListener, List("Left","Right", "Forward", "Back", "Fire"):_*)
 
     inputManager.addMapping("Left",   new KeyTrigger(KeyInput.KEY_A));
     inputManager.addMapping("Right",  new KeyTrigger(KeyInput.KEY_D));
@@ -185,16 +165,51 @@ class Spel extends SimpleApplication {
     inputManager.addMapping("Fire",  new KeyTrigger(KeyInput.KEY_SPACE));
 
 
+  }
+
+  override def simpleInitApp() {
+
+    setPauseOnLostFocus(false)
+    setShowSettings(false)
+
+    stateManager.detach( stateManager.getState(classOf[FlyCamAppState]))
+
+
+    materializePlayer() 
+    projectileHandler = new ProjectileHandler(mat_default)
+    projectileHandler.init()
+
+    materializeLevel()
+
+    var enemyNodes = new Node("Enemies")
+    rootNode.attachChild(enemyNodes)
+
+    // Display a line of text with a default font
+    materializeStats()
+
+    // You must add a light to make the model visible
+    val sun = new DirectionalLight();
+    sun.setDirection(new Vector3f(-0.1f, -0.7f, -1.0f));
+    rootNode.addLight(sun);
+
+    setupInput() 
+    
     //inputManager.addMapping("Rotate", new KeyTrigger(KeyInput.KEY_SPACE));
 
     initClient()
   }
 
-  var lastSentUpdate = 0L
+
 
   override def simpleUpdate(tpf: Float) {
     if(playerIdOpt.isEmpty) return
     //ninja.rotate(0, 2 * tpf, 0);
+
+    player.move(playerInput._1)
+    player.rotate(playerInput._2)
+
+    playerInput = noPlayerInput
+
 
     lastGameWorldUpdate.foreach( gw => syncGameWorld(gw))
     lastGameWorldUpdate = None
