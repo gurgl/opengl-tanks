@@ -24,10 +24,13 @@ class GameServer extends SimpleApplication {
 
   import GameServer._
   var connectionSequence = 0
-  var players = new ArrayBuffer[PlayerGO]()
+  var players = new ArrayBuffer[PlayerStatus]()
+
 
   var lock : AnyRef = new Object()
 
+  var updateMaxTimeStamp = System.currentTimeMillis()
+  
   override def simpleInitApp() {
 
     val server = new Server();
@@ -44,14 +47,35 @@ class GameServer extends SimpleApplication {
             case request:PlayerActionRequest =>
              //println(request.playerId + " " + request.position);
               request.ensuring(request.translation != null && request.rotation != null)
+              
               lock.synchronized {
-               players.find( p => p.playerId == request.playerId).foreach {
+               updateMaxTimeStamp = if(updateMaxTimeStamp < request.timeStamp) request.timeStamp else updateMaxTimeStamp
+               players.find( p => p.state.playerId == request.playerId).foreach {
                  x => {
+                   x.lastUpdate = Some(request)
+                   //x.processedUpdate = false
+                   
+                   x.state.position = x.state.position.add(request.translation)
+                   x.state.direction = request.rotation.mult(x.state.direction)
+                   
                    //println("Rec " + request.translation + " " + request.rotation)
-                   x.position = x.position.add(request.translation)
-                   x.direction = request.rotation.mult(x.direction)
+                   //x.position = x.position.add(request.translation)
+                   //x.direction = request.rotation.mult(x.direction)
 
-                 }.ensuring(x.position != null && x.direction != null)
+                   /*
+                   
+                   val state = p.state
+                               if(!p.processedUpdate) {
+                                 p.lastUpdate.foreach { r =>
+                                   state.position = state.position.add(r.translation)
+                                   state.direction = r.rotation.mult(state.direction)
+                                   p.processedUpdate = true
+                                 }
+                               }
+                   
+                    */
+
+                 }//.ensuring(x.position != null && x.direction != null)
                }
              }
               
@@ -70,6 +94,10 @@ class GameServer extends SimpleApplication {
                   pd.position = Vector3f.ZERO
                   pd.direction = Quaternion.DIRECTION_Z
                   pd
+                  var ps = new PlayerStatus
+                  ps.state = pd
+                  ps.lastUpdate = None
+                  ps
                 }
 
                 connectionSequence += 1
@@ -81,13 +109,23 @@ class GameServer extends SimpleApplication {
     });
 
     while(true) {
+
+
+
       try {
-        Thread.sleep(1000 / 15)
+
+        Thread.sleep(1000 / 8)
         val gameWorld = new ServerGameWorld
         import scala.collection.JavaConversions.seqAsJavaList
 
         lock.synchronized {
-          gameWorld.players = new java.util.ArrayList[PlayerGO](players)
+          val playerState = players.map { p =>
+
+
+            p.state
+          }
+
+          gameWorld.players = new java.util.ArrayList[PlayerGO](playerState)
           gameWorld.projectiles = new java.util.ArrayList[ProjectileGO]()
           gameWorld.timeStamp = System.currentTimeMillis()
         }
@@ -102,6 +140,15 @@ class GameServer extends SimpleApplication {
 
 object GameServer {
 
+  class PlayerStatus {
+    var state:PlayerGO = _
+    var lastUpdate:Option[PlayerActionRequest] = None
+    var processedUpdate = true
+  }
+
+  class PlayerAction {
+
+  }
   class ObjectOrientation {
     var position:Vector3f = _
     var direction:Quaternion = _
@@ -172,6 +219,8 @@ object GameServer {
     var playerId:Int = _
     var translation:Vector3f = _
     var rotation:Quaternion = _
+    var timeStamp:Long = _
+    var elapsed:Long = _
 
   }
   class GameWorldResponse() {

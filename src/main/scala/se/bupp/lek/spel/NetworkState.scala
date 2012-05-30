@@ -54,7 +54,9 @@ class NetworkState extends AbstractAppState {
       (s,sUpdates)
     }.toMap
   }
-    
+
+  var predictions:Map[Long,Map[OwnedGameObjectId,Vector3f]] = Map[Long,Map[OwnedGameObjectId,Vector3f]]()
+
   def interpolate(timeSinceLast:Long) : List[AbstractOwnedGameObject with Savable] = {
     val res = projectGameHistoryByGameObjectId.toList.map {
       case (id,snapshotsUT) =>
@@ -65,25 +67,32 @@ class NetworkState extends AbstractAppState {
           //println("unable to interpolate")
           None
         } else {
-          
-          var startPos = snapshots.head._2.position
-          var startTime = snapshots.head._1
-          val velocities = snapshots.tail.map { x =>
-            val r = x._2.position.subtract(startPos).divide(x._1 - startTime) ; startTime = x._1 ; startPos = x._2.position ; r
-          }
-          
-          val sumVelocity = velocities.tail.foldLeft(velocities.head)( (a,b) => a.add(b))
-          val avgVelocity = sumVelocity.divide(velocities.size.toFloat)
-
-          val extrapolTranslation = avgVelocity.mult(timeSinceLast)
 
           var start = snapshots.reverse.tail.head
+          var end = snapshots.last
+          var startPos = start._2.position
+
+          var snapDeltaTime = (snapshots.last._1 - start._1)
+          var velocity = end._2.position.subtract(start._2.position).divide(snapDeltaTime)
+          /*val velocities = snapshots.tail.map { x =>
+            val r = x._2.position.subtract(startPos).divide(x._1 - startTime) ; startTime = x._1 ; startPos = x._2.position ; r
+          }
+
+          val sumVelocity = velocities.tail.foldLeft(velocities.head)( (a,b) => a.add(b))
+          val avgVelocity = sumVelocity.divide(velocities.size.toFloat)
+          val extrapolTranslation = avgVelocity.mult(timeSinceLast)
+            */
+
+          val extrapolTranslation = velocity.mult(timeSinceLast)
+
+          
+
           var startAngle = start._2.direction
           var endAngle = snapshots.last._2.direction
-          var snapDeltaTime = (snapshots.last._1 - start._1)
+
 
           val interpolationFactor: Float = (timeSinceLast + snapDeltaTime).toFloat / snapDeltaTime.toFloat
-          println("adf " + interpolationFactor)
+          //println("adf " + interpolationFactor)
           val exptrapolRotation = Quaternion.IDENTITY.slerp(startAngle,endAngle, interpolationFactor)
 
 
@@ -98,6 +107,9 @@ class NetworkState extends AbstractAppState {
           go.direction = exptrapolRotation
           go.position = go.position.add(extrapolTranslation)
 
+          if(gameApp.playerIdOpt.get % 2 == 1) {
+            println("a " + velocity + " " + extrapolTranslation + " " + timeSinceLast + " " + snapDeltaTime + " " + go.position)
+          }
           Some(go)
         }
         val r:AbstractOwnedGameObject with Savable = estimate.getOrElse(snapshots.last._2)
@@ -111,9 +123,10 @@ class NetworkState extends AbstractAppState {
   override def update(tpf: Float) {
     if(gameApp.playerIdOpt.isEmpty) return
     if(hasUnProcessedWorldUpdate) {
-      gameApp.syncGameWorld(gameWorldUpdates.last.all)
+      //gameApp.syncGameWorld(gameWorldUpdates.last.all)
       hasUnProcessedWorldUpdate = false
-    } else if(gameWorldUpdates.size > 0) {
+    }
+    if(gameWorldUpdates.size > 0) {
 
       val updates = interpolate(System.currentTimeMillis()-gameWorldUpdates.last.timeStamp)
       gameApp.syncGameWorld(updates)
@@ -125,11 +138,12 @@ class NetworkState extends AbstractAppState {
     if(System.currentTimeMillis() - lastSentUpdate > 1000/15 ) {
       val request: PlayerActionRequest = new PlayerActionRequest
 
+      request.timeStamp = System.currentTimeMillis()
       request.playerId = gameApp.playerIdOpt.get
       request.translation = accTranslation
       request.rotation = accRotation
       gameClient.sendUDP(request)
-      lastSentUpdate = System.currentTimeMillis()
+      lastSentUpdate = request.timeStamp
       accTranslation = Vector3f.ZERO
       accRotation = noRotation
     }
