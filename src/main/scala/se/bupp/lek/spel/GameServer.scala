@@ -54,7 +54,8 @@ class GameServer extends SimpleApplication {
                  x => {
                    x.lastUpdate = Some(request)
                    //x.processedUpdate = false
-                   
+
+                   x.state.sentToServer = request.timeStamp
                    x.state.position = x.state.position.add(request.translation)
                    x.state.direction = request.rotation.mult(x.state.direction)
                    
@@ -114,7 +115,7 @@ class GameServer extends SimpleApplication {
 
       try {
 
-        Thread.sleep(1000 / 8)
+        Thread.sleep(1000 / 15)
         val gameWorld = new ServerGameWorld
         import scala.collection.JavaConversions.seqAsJavaList
 
@@ -167,6 +168,7 @@ object GameServer {
 
   class AbstractOwnedGameObject extends AbstractGameObject {
     var playerId:Int = _
+    var sentToServer:Long = _
     def id:OwnedGameObjectId = (clientId,playerId)
     def id_=(goid:OwnedGameObjectId) = { clientId = goid._1 ; playerId = goid._2 }
 
@@ -187,11 +189,13 @@ object GameServer {
   }
   class PlayerGO() extends AbstractOwnedGameObject with Savable {
 
+
     def this(pgo:PlayerGO) = {
       this()
       id = pgo.id
       orientation = pgo
     }
+    
 
     //override def getClassTag = classOf[PlayerGO]
     override def read(reader:JmeImporter) {}
