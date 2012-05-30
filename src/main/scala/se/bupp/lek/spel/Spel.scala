@@ -19,6 +19,7 @@ import management.ManagementFactory
 import se.bupp.lek.spel.GameServer._
 import collection.immutable.Queue
 import MathUtil._
+import com.jme3.system.AppSettings
 
 
 /**
@@ -159,6 +160,7 @@ class Spel extends SimpleApplication {
 
   override def simpleInitApp() {
 
+    settings.setTitle("Tank Showdown")
     setPauseOnLostFocus(false)
     setShowSettings(false)
 
@@ -265,6 +267,10 @@ object Spel {
 
   def main(arguments: Array[String]): Unit = {
     val spel = new Spel()
+    val settings = new AppSettings(true);
+    settings.setResolution(640,480)
+    settings.setTitle("Tank Showdown")
+    spel.setSettings(settings)
     spel.setShowSettings(false)
     spel.start()
   }

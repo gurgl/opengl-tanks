@@ -33,6 +33,7 @@ class GameServer extends SimpleApplication {
   
   override def simpleInitApp() {
 
+
     val server = new Server();
     server.start();
     server.bind(54555, 54777);
