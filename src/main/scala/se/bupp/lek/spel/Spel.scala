@@ -146,6 +146,7 @@ class Spel extends SimpleApplication {
   }
   def materializeProjectile(p:ProjectileGO) {
 
+    println("adding projectile " + p.position + "" + p.id)
     val instance = new Geometry("Box", projectileHandler.projectileGeometry);
     instance.setModelBound(new BoundingSphere())
     instance.updateModelBound()
@@ -288,8 +289,7 @@ class Spel extends SimpleApplication {
         s.setLocalTranslation(u.position.clone())
         s.setLocalRotation(u.direction.clone())
         u match {
-          case p:ProjectileGO =>
-            s.setUserData(SceneGraphUserDataKeys.Projectile, p)
+          case p:ProjectileGO => s.setUserData(SceneGraphUserDataKeys.Projectile, p)
           case p:PlayerGO => s.setUserData(SceneGraphUserDataKeys.Player, p)
         }
     }

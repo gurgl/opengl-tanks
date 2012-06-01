@@ -68,6 +68,7 @@ class WorldSimulator {
           p.timeSpawned = pf.timeStamp
           p.playerId = pid
           p.clientSeqId = pf.clientSeqId
+          p.speed = pf.speed
           p
         }
       }
@@ -81,7 +82,7 @@ class WorldSimulator {
 
       projectiles.foreach { pf =>
         //pf.
-        pf.orientation.position = pf.position.add(pf.orientation.direction.getRotationColumn(0).mult(pf.speed * (simTime - pf.timeSpawned)))
+        pf.orientation.position = pf.position.add(pf.orientation.direction.getRotationColumn(0).mult(pf.speed * (simTime - pf.timeSpawned).toFloat/1000f))
       }
 
       //println("projectiles.size" + projectiles.size + " newProjectiles " + newProjectiles.size)
@@ -281,6 +282,9 @@ object GameServer {
 
     def this(pgo:ProjectileGO) = {
       this()
+      sentToServerByClient = pgo.sentToServerByClient
+      speed = pgo.speed
+      timeSpawned = pgo.timeSpawned
       id = pgo.id
       orientation = pgo
     }

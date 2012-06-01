@@ -41,8 +41,8 @@ class ProjectileHandler(val mat:Material) {
 
     fired = fired.push(
       new ProjectileFireGO(
-        new OrientationGO(pos,new Quaternion().fromAngleNormalAxis(0f,dir)),
-        2.0f,
+        new OrientationGO(pos,new Quaternion().fromAngleNormalAxis(1f,dir)),
+        0.3f,
         System.currentTimeMillis(),
         projectileSeqId
       ))

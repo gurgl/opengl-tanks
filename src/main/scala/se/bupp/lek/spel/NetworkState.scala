@@ -9,11 +9,11 @@ import collection.immutable.Queue._
 import MathUtil._
 import com.jme3.app.SimpleApplication._
 import com.jme3.scene.Node
-import se.bupp.lek.spel.GameServer._
 import com.jme3.export.Savable
 import com.jme3.math.{Quaternion, Vector3f}
 import collection.{JavaConversions, immutable}
-
+import scala.Option
+import se.bupp.lek.spel.GameServer._
 
 
 /**
@@ -60,12 +60,15 @@ class NetworkState extends AbstractAppState {
       }.toMap
     }
 
-    def simulatePlayer(p:PlayerGO, timeSinceLast:Long, snapshots:List[AbstractOwnedGameObject with Savable]) : PlayerGO = {
+    def simulatePlayer(p:PlayerGO, simTime:Long, snapshots:List[AbstractOwnedGameObject with Savable]) : PlayerGO = {
+
+
 
       var start = snapshots.reverse.tail.head
       var end = snapshots.last
 
       var snapDeltaTime = (end.sentToServerByClient - start.sentToServerByClient)
+      val timeSinceLast = simTime - end.sentToServerByClient
       //println("ugl " + end.position + " " + end.direction + " " + end.sentToServerByClient + " " + end.id + " " + snapDeltaTime + " " + timeSinceLast)
       if(snapDeltaTime == 0) {
         p
@@ -73,18 +76,8 @@ class NetworkState extends AbstractAppState {
 
 
       var velocity = end.position.subtract(start.position).divide(snapDeltaTime)
-      /*val velocities = snapshots.tail.map { x =>
-        val r = x._2.position.subtract(startPos).divide(x._1 - startTime) ; startTime = x._1 ; startPos = x._2.position ; r
-      }
-
-      val sumVelocity = velocities.tail.foldLeft(velocities.head)( (a,b) => a.add(b))
-      val avgVelocity = sumVelocity.divide(velocities.size.toFloat)
-      val extrapolTranslation = avgVelocity.mult(timeSinceLastServerState)
-        */
 
       val extrapolTranslation = velocity.mult(timeSinceLast)
-
-
 
       var startAngle = start.direction
       var endAngle = snapshots.last.direction
@@ -100,44 +93,43 @@ class NetworkState extends AbstractAppState {
       pNew
 
     }
-    def simulateProjectile(p:ProjectileGO) = {
-      p
+    def simulateProjectile(p:ProjectileGO,lastServerSimToSimTime:Long) = {
+      val pp = new ProjectileGO(p)
+      val translation = pp.direction.getRotationColumn(0).mult(pp.speed * lastServerSimToSimTime.toFloat/1000f)
+
+      pp.position = pp.position.add(translation)
+      println("moving " + translation + " " + lastServerSimToSimTime + " " + p.speed + pp.position)
+      pp
     }
 
-    def interpolate(timeSinceLastServerState:Long) : List[AbstractOwnedGameObject with Savable] = {
+    def interpolate(simTime:Long) : List[AbstractOwnedGameObject with Savable] = {
+      val lastServerSimTime = gameWorldUpdates.last.timeStamp
+      val lastServerSimToClientSim= simTime - lastServerSimTime
       //println(gameWorldUpdates.last.all.map(_.position).mkString(","))
       val res = projectGameHistoryByGameObjectId.toList.map {
         case (id,snapshotsUT) =>
 
           val orderedObjectSnapshots = snapshotsUT.asInstanceOf[List[AbstractOwnedGameObject with Savable]]
 
-          val estimate = if(orderedObjectSnapshots.size < 2 || id._2 == gameApp.playerIdOpt.get) {
+          val estimate:Option[AbstractOwnedGameObject with Savable] = if(orderedObjectSnapshots.size < 2) {
             //println("unable to interpolate")
             None
           } else {
-
-
-            val go = orderedObjectSnapshots.last match {
+              orderedObjectSnapshots.last match {
               case p:PlayerGO =>
 
-                simulatePlayer(p,timeSinceLastServerState, orderedObjectSnapshots)
+                if(id._2 == gameApp.playerIdOpt.get) {
+                  None
+                } else {
+                  Some(simulatePlayer(p,simTime, orderedObjectSnapshots))
+                }
                 
               case p:ProjectileGO =>
-                simulateProjectile(p)
+                Some(simulateProjectile(p,lastServerSimToClientSim))
             }
-            
-            //println("Interpolating " + avgVelocity.mult(timeSinceLastServerState) + go.playerId )
-
-
-            if(gameApp.playerIdOpt.get % 2 == 1) {
-              //println("a " + velocity + " " + extrapolTranslation + " " + timeSinceLastServerState + " " + snapDeltaTime + " " + go.position)
-            }
-            //if(go == null ) None else
-              Some(go)
           }
-          val r:AbstractOwnedGameObject with Savable = estimate.getOrElse(orderedObjectSnapshots.last)
+          estimate.getOrElse(orderedObjectSnapshots.last)
 
-          r
       }
 
       res
@@ -151,7 +143,7 @@ class NetworkState extends AbstractAppState {
       //gameApp.syncGameWorld(gameWorldUpdates.last.all)
       hasUnProcessedWorldUpdate = false
       //println(gameWorldUpdatesQueue.last.timeStamp + " " + gameWorldUpdatesQueue.last.all.size)
-      println("last updd " + gameWorldUpdatesQueue.last.all.map(_.position).mkString(","))
+      //println("last updd " + gameWorldUpdatesQueue.last.all.map(_.position).mkString(","))
     }
     var currentGameWorldUpdates:Queue[ServerGameWorld] = null
 //    lock.synchronized {
@@ -160,8 +152,9 @@ class NetworkState extends AbstractAppState {
 
     if(currentGameWorldUpdates.size > 0) {
 
-      val timeSinceLastServerState= System.currentTimeMillis() - currentGameWorldUpdates.last.timeStamp
-      val updates = new InstantSimulation(currentGameWorldUpdates).interpolate(timeSinceLastServerState)
+      val simTime = System.currentTimeMillis()
+
+      val updates = new InstantSimulation(currentGameWorldUpdates).interpolate(simTime)
       gameApp.syncGameWorld(updates.distinct.toSet)
     }
 
