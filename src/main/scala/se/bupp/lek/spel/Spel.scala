@@ -11,15 +11,15 @@ import com.jme3.renderer.Camera
 import com.jme3.math.{Matrix3f, Matrix4f, Quaternion, Vector3f}
 import com.jme3.asset.ModelKey
 import com.jme3.scene.{Node, Mesh, Spatial, Geometry}
-import com.jme3.bullet.util.CollisionShapeFactory
-import com.jme3.bullet.collision.shapes.{BoxCollisionShape, CollisionShape}
 import com.jme3.bounding.{BoundingSphere, BoundingBox}
 import com.esotericsoftware.kryonet.{Connection, Listener, Client}
 import management.ManagementFactory
 import se.bupp.lek.spel.GameServer._
-import collection.immutable.Queue
 import MathUtil._
 import com.jme3.system.AppSettings
+import collection.immutable.{HashSet, Queue}
+import com.jme3.export.Savable
+import se.bupp.lek.spel.Spel.SceneGraphUserDataKeys
 
 
 /**
@@ -39,6 +39,7 @@ object MathUtil {
 
 
 class Spel extends SimpleApplication {
+  import Spel._
 
   var player:Spatial = _
 
@@ -61,8 +62,8 @@ class Spel extends SimpleApplication {
 
       if (name.equals("Fire")) {
         if(value == true) {
-          val p = projectileHandler.fire(player.getLocalTranslation,player.getLocalRotation.getRotationColumn(0).normalize())
-          rootNode.attachChild(p)
+          val p = projectileHandler.fireProjectile(player.getLocalTranslation,player.getLocalRotation.getRotationColumn(0).normalize())
+          //rootNode.attachChild(p)
         }
       }
     }
@@ -143,6 +144,17 @@ class Spel extends SimpleApplication {
 
     rootNode.attachChild(player);
   }
+  def materializeProjectile(p:ProjectileGO) {
+
+    val instance = new Geometry("Box", projectileHandler.projectileGeometry);
+    instance.setModelBound(new BoundingSphere())
+    instance.updateModelBound()
+    instance.setMaterial(mat_default)
+    instance.setLocalTranslation(p.position)
+    instance.setUserData("ProjectileGO",p)
+
+    rootNode.getChild(SceneGraphNodeKeys.Projectiles).asInstanceOf[Node].attachChild(instance)
+  }
   
   def setupInput() {
 
@@ -169,13 +181,13 @@ class Spel extends SimpleApplication {
 
 
     materializePlayer()
-
     materializeLevel()
-
     materializeStats()
 
-    var enemyNodes = new Node("Enemies")
+    var enemyNodes = new Node(SceneGraphNodeKeys.Enemies)
     rootNode.attachChild(enemyNodes)
+    var projectileNodes = new Node(SceneGraphNodeKeys.Projectiles)
+    rootNode.attachChild(projectileNodes)
 
     // You must add a light to make the model visible
     val sun = new DirectionalLight();
@@ -193,7 +205,7 @@ class Spel extends SimpleApplication {
     //player.move(playerInput._1)
     //player.rotate(playerInput._2)
 
-    projectileHandler.update(rootNode, tpf)
+    //projectileHandler.update(rootNode, tpf)
 
     //projectileHandler.collidesWith(enemy, rootNode)
 
@@ -204,17 +216,104 @@ class Spel extends SimpleApplication {
     playerInput = noPlayerInput
   }
 
+  def setMatch[A,B](left:Set[A],right:Set[B],comp:Function2[A,B,Boolean]) : Tuple3[Set[A],Set[B],Set[(A,B)]] = {
+    var leftLeft = new HashSet[A]()
+    var rightLeft = new HashSet[B]() ++ right
+    var matched = new HashSet[(A,B)]()
 
-  def syncGameWorld(all:List[_ <: AbstractGameObject]) {
+    left.foreach { l => 
+      rightLeft.find(r => comp(l,r)) match {
+        case Some(rr) =>
+          rightLeft -= rr
+          matched = matched + Pair(l, rr)
+          ()
+        case None =>
+          leftLeft += l
+          ()
+      }
+    }
+    (leftLeft,rightLeft, matched)
+  }
+  
+
+  type L = AbstractOwnedGameObject with Savable
+  def syncGameWorld(allUpdates:Set[_ <: AbstractOwnedGameObject with Savable]) {
 
     import scala.collection.JavaConversions.asScalaBuffer
-    val enemyNodes = rootNode.getChild("Enemies").asInstanceOf[Node].getChildren
-    val enemyMap = enemyNodes.map( e => (e.getUserData[PlayerGO]("PlayerGO"),e) ).toMap
+    val enemyNodes = rootNode.getChild(SceneGraphNodeKeys.Enemies).asInstanceOf[Node].getChildren
+    val projectileNodes = rootNode.getChild(SceneGraphNodeKeys.Projectiles).asInstanceOf[Node].getChildren
+    val enemyMap = enemyNodes.map( e => (e.getUserData[PlayerGO](SceneGraphUserDataKeys.Player),e).ensuring(_._1 != null) ).toMap
+    val projectileMap = projectileNodes.map( e => (e.getUserData[ProjectileGO](SceneGraphUserDataKeys.Projectile),e).ensuring(_._1 != null) ).toMap
 
-    var i=0
-    all.foreach {
+    var allExisting = enemyMap.toSet ++ projectileMap.toSet
+
+    def doMatch(l:L,r:(L,Spatial)) : Boolean = {
+      (l, r._1) match {
+        case (l:PlayerGO, rr:PlayerGO) => 
+          l.playerId == rr.playerId
+        case (l:ProjectileGO, rr:ProjectileGO) => 
+          l.id == rr.id
+        case _ => false
+      }
+    }
+    var (newInUpdateOrPlayer, noUpdate, matched) = setMatch(allUpdates, allExisting, doMatch)
+
+    if(false && (System.currentTimeMillis()) % 10 == 3) {
+      println("enemies" + enemyNodes.size +
+        "noUpdate" + noUpdate.size +
+        "newInUpdate " + newInUpdateOrPlayer.size +
+        "projectileMap " + projectileMap.size +
+        "matched " + matched.size +
+        "allU "+allUpdates.size
+      )
+      enemyMap.foreach {  case (k,v) => println( "pos " +  k.position + " " + v.getLocalTranslation()) }
+      
+    }
+
+    newInUpdateOrPlayer.foreach {
+      case p:PlayerGO =>
+        if(p.playerId == playerIdOpt.get) {
+          player.setLocalTranslation(p.position)
+          player.setLocalRotation(p.direction)
+        } else {
+          materializeEnemy(p)
+        }
       case p:ProjectileGO =>
+        materializeProjectile(p)
+    }
 
+    matched.foreach {
+      case (u:AbstractOwnedGameObject with Savable,(o,s:Spatial)) =>
+        //println("upd match" + s.getLocalTranslation + " " + u.position + " " +u.direction)
+        s.setLocalTranslation(u.position.clone())
+        s.setLocalRotation(u.direction.clone())
+        u match {
+          case p:ProjectileGO =>
+            s.setUserData(SceneGraphUserDataKeys.Projectile, p)
+          case p:PlayerGO => s.setUserData(SceneGraphUserDataKeys.Player, p)
+        }
+    }
+    noUpdate.foreach {
+      case (o, spatial) =>
+        println("removing " + o.id + " " + o.getClass)
+        o match {
+          case p:ProjectileGO => rootNode.getChild(SceneGraphNodeKeys.Projectiles).asInstanceOf[Node].detachChild(spatial)
+          case p:PlayerGO => rootNode.getChild(SceneGraphNodeKeys.Enemies).asInstanceOf[Node].detachChild(spatial)
+        }
+    }
+
+
+
+    /*allUpdates.foreach {
+      case p:ProjectileGO =>
+        val projectileOpt = projectileMap.find { case (pd, spatial ) => pd.id == p.id }
+        projectileOpt match {
+          case Some((proj, spatial)) =>
+            spatial.setLocalTranslation(p.position)
+            spatial.setLocalRotation(p.direction)
+          case None =>
+            materializeProjectile()
+        }
       case p:PlayerGO =>
         if(p.playerId == playerIdOpt.get) {
           //println("Getting server state" + p.position + " " + p.direction)
@@ -235,7 +334,7 @@ class Spel extends SimpleApplication {
           }
         }
       case _ =>
-    }
+    }*/
 
   }
 
@@ -244,7 +343,7 @@ class Spel extends SimpleApplication {
     enemy.setMaterial(mat_default)
 
     println("Materialize enemy " + pd.position + " " + pd.direction)
-    enemy.setUserData("PlayerGO",pd)
+    enemy.setUserData(SceneGraphUserDataKeys.Player,pd)
     enemy.setLocalTranslation(pd.position)
     enemy.setLocalRotation(pd.direction)
 
@@ -256,7 +355,7 @@ class Spel extends SimpleApplication {
     //enemy.asInstanceOf[Node].getChildren.toList.foreach( x => println(x.getClass.getName))
     println("........................")
     println(enemy.asInstanceOf[Geometry].getModelBound)
-    rootNode.getChild("Enemies").asInstanceOf[Node].attachChild(enemy)
+    rootNode.getChild(SceneGraphNodeKeys.Enemies).asInstanceOf[Node].attachChild(enemy)
 
   }
 
@@ -264,6 +363,15 @@ class Spel extends SimpleApplication {
 }
 
 object Spel {
+
+  object SceneGraphUserDataKeys {
+    val Projectile= "ProjectileGO"
+    val Player = "PlayerGO"
+  }
+  object SceneGraphNodeKeys {
+    val Projectiles = "Projectiles"
+    val Enemies= "Enemies"
+  }
 
   def main(arguments: Array[String]): Unit = {
     val spel = new Spel()

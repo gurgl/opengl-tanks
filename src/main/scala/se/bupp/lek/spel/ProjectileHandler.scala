@@ -5,9 +5,10 @@ import com.jme3.math.{Quaternion, Vector3f}
 import collection.mutable.ArrayBuffer
 import com.jme3.scene.{Spatial, Node, Geometry}
 import com.jme3.material.Material
-import com.jme3.bullet.collision.shapes.BoxCollisionShape
 import com.jme3.collision.CollisionResults
 import com.jme3.bounding.{BoundingSphere, BoundingBox}
+import collection.immutable.Stack
+import se.bupp.lek.spel.GameServer.{OrientationGO, ProjectileGO, ProjectileFireGO}
 
 /**
  * Created by IntelliJ IDEA.
@@ -21,11 +22,32 @@ class ProjectileHandler(val mat:Material) {
 
   var projectileGeometry:Box = _
 
+  var projectileSeqId = 0
   class Projectile(val geometry:Geometry, val velocity:Vector3f, val maxDistanceTraveled:Float) {
     var distanceTraveled = 0f
   }
 
   var flying = new ArrayBuffer[Projectile]()
+
+  var fired = Stack[ProjectileFireGO]()
+
+  def purgeFired() : List[ProjectileFireGO] = {
+
+    val res = fired.toList
+    fired = Stack[ProjectileFireGO]()
+    res
+  }
+  def fireProjectile(pos:Vector3f, dir:Vector3f) = {
+
+    fired = fired.push(
+      new ProjectileFireGO(
+        new OrientationGO(pos,new Quaternion().fromAngleNormalAxis(0f,dir)),
+        2.0f,
+        System.currentTimeMillis(),
+        projectileSeqId
+      ))
+    projectileSeqId += 1
+  }
 
   def fire(pos:Vector3f, dir:Vector3f) : Spatial = {
 
@@ -39,6 +61,9 @@ class ProjectileHandler(val mat:Material) {
     //instance.setLocalRotation(Quaternion.IDENTITY.from)
     instance
 
+
+  }
+  def materializeProjectile(p:ProjectileGO) {
 
   }
   
