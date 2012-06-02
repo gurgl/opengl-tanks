@@ -57,7 +57,7 @@ class NetworkState extends AbstractAppState {
 
     def projectGameHistoryByGameObjectId() : immutable.Map[OwnedGameObjectId,List[ _ <: AbstractOwnedGameObject with Savable]] = {
       val slots = gameWorldUpdates.last.all.map(_.id).toSet
-      //val gameWorldUpdatesRev = gameWorldUpdates.reverse
+
       slots.map { s =>
         val sUpdates = gameWorldUpdates.flatMap { upd =>
            upd.all.find( _.id == s )
@@ -91,7 +91,7 @@ class NetworkState extends AbstractAppState {
 
 
       val interpolationFactor: Float = (timeSinceLast + snapDeltaTime).toFloat / snapDeltaTime.toFloat
-      //println("adf " + interpolationFactor)
+
       val exptrapolRotation = Quaternion.IDENTITY.slerp(startAngle,endAngle, interpolationFactor)
 
       val pNew = new PlayerGO(p)
@@ -103,7 +103,7 @@ class NetworkState extends AbstractAppState {
     def simulateProjectile(lastServerSimToSimTimes:Seq[Long],snapshots:List[AbstractOwnedGameObject with Savable]) = {
       
       //buffer.append(snapshots.map(_.position).mkString(", ") + "\n")
-      val (p:ProjectileGO,lastServerSimToSimTime) =  if(lastServerSimToSimTimes.last > 15) {
+      val (p:ProjectileGO,lastServerSimToSimTime) =  if(lastServerSimToSimTimes.last > 25) {
         (snapshots.last,lastServerSimToSimTimes.last)
       } else {
         (snapshots.reverse.tail.head, lastServerSimToSimTimes.reverse.tail.head)
@@ -145,9 +145,7 @@ class NetworkState extends AbstractAppState {
             }
           }
           estimate.getOrElse(orderedObjectSnapshots.last)
-
       }
-
       res
     }
   }
@@ -155,11 +153,7 @@ class NetworkState extends AbstractAppState {
   override def update(tpf: Float) {
     if(gameApp.playerIdOpt.isEmpty) return
     if(hasUnProcessedWorldUpdate) {
-      //println("upd s " +  gameWorldUpdates.last.projectiles.size)
-      //gameApp.syncGameWorld(gameWorldUpdates.last.all)
       hasUnProcessedWorldUpdate = false
-      //println(gameWorldUpdatesQueue.last.timeStamp + " " + gameWorldUpdatesQueue.last.all.size)
-      //println("last updd " + gameWorldUpdatesQueue.last.all.map(_.position).mkString(","))
     }
 
     var currentGameWorldUpdates:Queue[ServerGameWorld] = null
@@ -187,12 +181,11 @@ class NetworkState extends AbstractAppState {
       request.playerId = gameApp.playerIdOpt.get
       request.motion = new MotionGO(accTranslation,accRotation)
       gameClient.sendUDP(request)
-      lastSentUpdate = request.timeStamp
+      lastSentUpdate = System.currentTimeMillis()
       accTranslation = Vector3f.ZERO
       accRotation = noRotation
     }
   }
-
 
   override def initialize(stateManager: AppStateManager, app: Application) {
     gameApp = app.asInstanceOf[Spel]
