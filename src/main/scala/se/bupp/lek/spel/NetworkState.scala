@@ -46,6 +46,13 @@ class NetworkState extends AbstractAppState {
 
   var gameApp:Spel = _
 
+
+  var buffer = new StringBuffer()
+  
+  override def cleanup() {
+    println(buffer.toString)
+  }
+
   class InstantSimulation(gameWorldUpdates:Queue[GameServer.ServerGameWorld]) {
 
     def projectGameHistoryByGameObjectId() : immutable.Map[OwnedGameObjectId,List[ _ <: AbstractOwnedGameObject with Savable]] = {
@@ -93,19 +100,27 @@ class NetworkState extends AbstractAppState {
       pNew
 
     }
-    def simulateProjectile(p:ProjectileGO,lastServerSimToSimTime:Long) = {
-      val pp = new ProjectileGO(p)
+    def simulateProjectile(lastServerSimToSimTimes:Seq[Long],snapshots:List[AbstractOwnedGameObject with Savable]) = {
+      
+      //buffer.append(snapshots.map(_.position).mkString(", ") + "\n")
+      val (p:ProjectileGO,lastServerSimToSimTime) =  if(lastServerSimToSimTimes.last > 15) {
+        (snapshots.last,lastServerSimToSimTimes.last)
+      } else {
+        (snapshots.reverse.tail.head, lastServerSimToSimTimes.reverse.tail.head)
+      }
+      val pp = new ProjectileGO(p)  
+
       val translation = pp.direction.getRotationColumn(0).mult(pp.speed * lastServerSimToSimTime.toFloat/1000f)
 
       pp.position = pp.position.add(translation)
 
-      //println("moving " + translation + " " + lastServerSimToSimTime + " " + p.speed + pp.position)
+      //buffer.append("moving " + translation + " " + lastServerSimToSimTime + " " + p.speed + " " + pp.position + System.currentTimeMillis() + "\n")
       pp
     }
 
     def interpolate(simTime:Long) : List[AbstractOwnedGameObject with Savable] = {
-      val lastServerSimTime = gameWorldUpdates.last.timeStamp
-      val lastServerSimToClientSim= simTime - lastServerSimTime
+      val lastServerSimInstants = gameWorldUpdates.map(_.timeStamp).toSeq
+      val lastServerSimToClientSimDurations= lastServerSimInstants.map(simTime - _)
       //println(gameWorldUpdates.last.all.map(_.position).mkString(","))
       val res = projectGameHistoryByGameObjectId.toList.map {
         case (id,snapshotsUT) =>
@@ -126,7 +141,7 @@ class NetworkState extends AbstractAppState {
                 }
                 
               case p:ProjectileGO =>
-                Some(simulateProjectile(p,lastServerSimToClientSim))
+                Some(simulateProjectile(lastServerSimToClientSimDurations, orderedObjectSnapshots))
             }
           }
           estimate.getOrElse(orderedObjectSnapshots.last)
