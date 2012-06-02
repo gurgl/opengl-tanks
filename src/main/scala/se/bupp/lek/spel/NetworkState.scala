@@ -98,7 +98,8 @@ class NetworkState extends AbstractAppState {
       val translation = pp.direction.getRotationColumn(0).mult(pp.speed * lastServerSimToSimTime.toFloat/1000f)
 
       pp.position = pp.position.add(translation)
-      println("moving " + translation + " " + lastServerSimToSimTime + " " + p.speed + pp.position)
+
+      //println("moving " + translation + " " + lastServerSimToSimTime + " " + p.speed + pp.position)
       pp
     }
 
@@ -135,7 +136,7 @@ class NetworkState extends AbstractAppState {
       res
     }
   }
-  
+
   override def update(tpf: Float) {
     if(gameApp.playerIdOpt.isEmpty) return
     if(hasUnProcessedWorldUpdate) {
@@ -145,6 +146,7 @@ class NetworkState extends AbstractAppState {
       //println(gameWorldUpdatesQueue.last.timeStamp + " " + gameWorldUpdatesQueue.last.all.size)
       //println("last updd " + gameWorldUpdatesQueue.last.all.map(_.position).mkString(","))
     }
+
     var currentGameWorldUpdates:Queue[ServerGameWorld] = null
 //    lock.synchronized {
       currentGameWorldUpdates = gameWorldUpdatesQueue
@@ -161,7 +163,7 @@ class NetworkState extends AbstractAppState {
     accTranslation = accTranslation.add(gameApp.playerInput._1)
     accRotation = gameApp.playerInput._2.mult(accRotation)
 
-    if(System.currentTimeMillis() - lastSentUpdate > 1000/8 ) {
+    if(System.currentTimeMillis() - lastSentUpdate > 1000/16 ) {
       val request: PlayerActionRequest = new PlayerActionRequest
 
       import JavaConversions.seqAsJavaList

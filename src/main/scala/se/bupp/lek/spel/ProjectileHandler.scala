@@ -37,11 +37,11 @@ class ProjectileHandler(val mat:Material) {
     fired = Stack[ProjectileFireGO]()
     res
   }
-  def fireProjectile(pos:Vector3f, dir:Vector3f) = {
+  def fireProjectile(pos:Vector3f, dir:Quaternion) = {
 
     fired = fired.push(
       new ProjectileFireGO(
-        new OrientationGO(pos,new Quaternion().fromAngleNormalAxis(1f,dir)),
+        new OrientationGO(pos,dir.clone()),
         0.3f,
         System.currentTimeMillis(),
         projectileSeqId

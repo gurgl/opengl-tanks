@@ -226,7 +226,7 @@ class GameServer extends SimpleApplication {
 
       try {
 
-        Thread.sleep(1000 / 8)
+        Thread.sleep(1000 / 15)
 
         val gameWorld = worldSimulator.getGameWorld
         //println("" + players.size)

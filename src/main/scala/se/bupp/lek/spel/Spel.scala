@@ -62,7 +62,7 @@ class Spel extends SimpleApplication {
 
       if (name.equals("Fire")) {
         if(value == true) {
-          val p = projectileHandler.fireProjectile(player.getLocalTranslation,player.getLocalRotation.getRotationColumn(0).normalize())
+          val p = projectileHandler.fireProjectile(player.getLocalTranslation,player.getLocalRotation)
           //rootNode.attachChild(p)
         }
       }
@@ -200,8 +200,10 @@ class Spel extends SimpleApplication {
 
     setupInput()
   }
+  
 
   override def simpleUpdate(tpf: Float) {
+
 
     //player.move(playerInput._1)
     //player.rotate(playerInput._2)
