@@ -28,19 +28,15 @@ import se.bupp.lek.server.Server._
 
 class NetworkState extends AbstractAppState {
 
-
   var gameClient:KryoClient = _
 
   val GW_UPDATES_SIZE = 4
 
-    var lastSentUpdate = 0L
+  var lastSentUpdate = 0L
 
 
   var gameWorldUpdatesQueue:Queue[Server.ServerGameWorld] = Queue()
-  var hasUnProcessedWorldUpdate = false
 
-  var accTranslation = Vector3f.ZERO
-  var accRotation = noRotation
 
   //var predictions:Map[Long,Map[OwnedGameObjectId,Vector3f]] = Map[Long,Map[OwnedGameObjectId,Vector3f]]()
 
@@ -56,13 +52,10 @@ class NetworkState extends AbstractAppState {
 
   override def update(tpf: Float) {
     if(gameApp.playerIdOpt.isEmpty) return
-    if(hasUnProcessedWorldUpdate) {
-      hasUnProcessedWorldUpdate = false
-    }
 
     var currentGameWorldUpdates:Queue[ServerGameWorld] = null
 //    lock.synchronized {
-      currentGameWorldUpdates = gameWorldUpdatesQueue
+    currentGameWorldUpdates = gameWorldUpdatesQueue
 //    }
 
     if(currentGameWorldUpdates.size > 0) {
@@ -73,21 +66,12 @@ class NetworkState extends AbstractAppState {
       gameApp.gameWorld.syncGameWorld(updates.distinct.toSet)
     }
 
-    accTranslation = accTranslation.add(gameApp.playerInput._1)
-    accRotation = gameApp.playerInput._2.mult(accRotation)
-
+    gameApp.playerInput.saveInput()
     if(System.currentTimeMillis() - lastSentUpdate > 1000/16 ) {
-      val request: PlayerActionRequest = new PlayerActionRequest
 
-      import JavaConversions.seqAsJavaList
-      request.projectilesFired = new java.util.ArrayList[ProjectileFireGO](gameApp.gameWorld.projectileHandler.purgeFired)
-      request.timeStamp = System.currentTimeMillis()
-      request.playerId = gameApp.playerIdOpt.get
-      request.motion = new MotionGO(accTranslation,accRotation)
+      val request = gameApp.createPlayerActionRequest
       gameClient.sendUDP(request)
       lastSentUpdate = System.currentTimeMillis()
-      accTranslation = Vector3f.ZERO
-      accRotation = noRotation
     }
   }
 
@@ -114,7 +98,6 @@ class NetworkState extends AbstractAppState {
                     Option(gameWorldUpdatesQueue).map(
                       x => if(x.size >= GW_UPDATES_SIZE) {x.dequeue._2} else {x}
                     ).head.enqueue(response)
-                  hasUnProcessedWorldUpdate = true
   //              }
               } else {
                 println("Getting world wo player received")

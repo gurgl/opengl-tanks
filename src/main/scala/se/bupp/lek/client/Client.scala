@@ -12,7 +12,6 @@ import com.jme3.math.{Matrix3f, Matrix4f, Quaternion, Vector3f}
 import com.jme3.asset.ModelKey
 import com.jme3.scene.{Node, Mesh, Spatial, Geometry}
 import com.jme3.bounding.{BoundingSphere, BoundingBox}
-import com.esotericsoftware.kryonet.{Connection, Listener, Client}
 import management.ManagementFactory
 import se.bupp.lek.server.Server
 import MathUtil._
@@ -20,7 +19,8 @@ import com.jme3.system.AppSettings
 import collection.immutable.{HashSet, Queue}
 import com.jme3.export.Savable
 import se.bupp.lek.client.ClientWorld
-import se.bupp.lek.server.Server.{ProjectileGO, PlayerGO, AbstractOwnedGameObject}
+import collection.JavaConversions
+import se.bupp.lek.server.Server._
 
 
 /**
@@ -38,21 +38,45 @@ object MathUtil {
 }
 
 
+object PlayerInput {
+  val noPlayerInput = Pair(Vector3f.ZERO, noRotation)
+}
+
+class PlayerInput() {
+  import PlayerInput._
+  var translation:Vector3f = noPlayerInput._1
+  var rotation:Quaternion = noPlayerInput._2
+
+  var accTranslation = Vector3f.ZERO
+  var accRotation = noRotation
+
+  def flushAccumulated() = {
+    val r = (accTranslation.clone(),accRotation.clone())
+    accTranslation = Vector3f.ZERO
+    accRotation = noRotation
+    r
+  }
+
+  def resetInput() {
+    translation = noPlayerInput._1
+    rotation = noPlayerInput._2
+  }
+
+  def saveInput() {
+    accTranslation = accTranslation.add(translation)
+    accRotation = rotation.mult(accRotation)
+    resetInput()
+  }
+}
 
 class Client extends SimpleApplication {
   import Client._
 
-
-  //val speed = 1.0f
-  val rotSpeed = 2.0f
-
   var playerIdOpt:Option[Int] = None
 
-  val noPlayerInput = Pair(Vector3f.ZERO, noRotation)
-  var playerInput:(Vector3f,Quaternion) = noPlayerInput
+  val playerInput = new PlayerInput
 
   var gameWorld:ClientWorld = _
-
 
   val actionListener = new AnalogListener() with ActionListener {
 
@@ -71,27 +95,39 @@ class Client extends SimpleApplication {
       name match {
         case "Left" =>
 
-          playerInput = (playerInput._1, new Quaternion().fromAngleNormalAxis(rotSpeed * tpf,Vector3f.UNIT_Y))
+          playerInput.rotation = new Quaternion().fromAngleNormalAxis(rotSpeed * tpf,Vector3f.UNIT_Y)
 
         case "Right" =>
           //player.rotate(0, -rotSpeed * tpf, 0);
           //val rot = new Quaternion(0f, math.sin(angle/2d).toFloat, 0f, math.cos(angle/2d).toFloat)
 
-          playerInput= (playerInput._1, new Quaternion().fromAngleNormalAxis(-rotSpeed * tpf,Vector3f.UNIT_Y))
+          playerInput.rotation = new Quaternion().fromAngleNormalAxis(-rotSpeed * tpf,Vector3f.UNIT_Y)
 
         case "Forward" =>
 
           val v = gameWorld.player.getLocalRotation.toRotationMatrix;
-          playerInput= (v.getColumn(0).mult(speed*tpf), playerInput._2)
+          playerInput.translation = v.getColumn(0).mult(speed*tpf)
 
         case "Back" =>
 
           val v = gameWorld.player.getLocalRotation.toRotationMatrix;
-          playerInput= (v.getColumn(0).mult(-speed*tpf), playerInput._2)
+          playerInput.translation = v.getColumn(0).mult(-speed*tpf)
         case "Fire" =>
       }
     }
   };
+
+  def createPlayerActionRequest(): Server.PlayerActionRequest = {
+      val request: PlayerActionRequest = new PlayerActionRequest
+
+      val (accTranslation, accRotation) = playerInput.flushAccumulated()
+      import JavaConversions.seqAsJavaList
+      request.projectilesFired = new java.util.ArrayList[ProjectileFireGO](gameWorld.projectileHandler.purgeFired)
+      request.timeStamp = System.currentTimeMillis()
+      request.playerId = playerIdOpt.get
+      request.motion = new MotionGO(accTranslation, accRotation)
+      request
+    }
 
   def setupInput() {
 
@@ -136,13 +172,12 @@ class Client extends SimpleApplication {
     val (pos,rot) = gameWorld.getCamPosition
     getCamera.setFrame(pos,rot)
 
-    playerInput = noPlayerInput
   }
-
-
 }
 
 object Client {
+
+  val rotSpeed = 2.0f
 
   def main(arguments: Array[String]): Unit = {
     val spel = new Client()
