@@ -2,18 +2,17 @@ package se.bupp.lek.client
 
 import com.jme3.material.Material
 import com.jme3.scene.shape.Box
-import com.jme3.app.Application._
-import com.jme3.font.BitmapText
 import com.jme3.math.{Quaternion, Vector3f}
 import com.jme3.bounding.BoundingSphere
-import com.jme3.app.SimpleApplication._
 import com.jme3.light.DirectionalLight
-import se.bupp.lek.spel.ProjectileHandler
 import com.jme3.scene.{Spatial, Node, Geometry}
 import com.jme3.asset.{ModelKey, AssetManager}
 import collection.immutable.HashSet
 import se.bupp.lek.server.Server.{AbstractOwnedGameObject, PlayerGO, ProjectileGO}
 import com.jme3.export.Savable
+import scala.collection.JavaConversions.asScalaBuffer
+
+
 
 /**
  * Created by IntelliJ IDEA.
@@ -25,6 +24,28 @@ import com.jme3.export.Savable
 
 
 object ClientWorld {
+
+  def setMatch[A,B](left:Set[A],right:Set[B],comp:Function2[A,B,Boolean]) : Tuple3[Set[A],Set[B],Set[(A,B)]] = {
+    var leftLeft = new HashSet[A]()
+    var rightLeft = new HashSet[B]() ++ right
+    var matched = new HashSet[(A,B)]()
+
+    left.foreach { l =>
+      rightLeft.find(r => comp(l,r)) match {
+        case Some(rr) =>
+          rightLeft -= rr
+          matched = matched + Pair(l, rr)
+          ()
+        case None =>
+          leftLeft += l
+          ()
+      }
+    }
+    (leftLeft,rightLeft, matched)
+  }
+
+  type GOWithSavable = AbstractOwnedGameObject with Savable
+
   object SceneGraphUserDataKeys {
     val Projectile= "ProjectileGO"
     val Player = "PlayerGO"
@@ -123,7 +144,6 @@ class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:(
     val enemy = assetManager.loadModel(new ModelKey("Models/Teapot/Teapot.obj"))
     enemy.setMaterial(mat_default)
 
-    println("Materialize enemy " + pd.position + " " + pd.direction)
     enemy.setUserData(SceneGraphUserDataKeys.Player,pd)
     enemy.setLocalTranslation(pd.position)
     enemy.setLocalRotation(pd.direction)
@@ -131,136 +151,71 @@ class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:(
     enemy.setModelBound(new BoundingSphere())
     enemy.updateModelBound()
 
-    println(enemy.getClass.getName)
-    import scala.collection.JavaConversions.asScalaBuffer
-    //enemy.asInstanceOf[Node].getChildren.toList.foreach( x => println(x.getClass.getName))
-    println("........................")
-    println(enemy.asInstanceOf[Geometry].getModelBound)
     rootNode.getChild(SceneGraphNodeKeys.Enemies).asInstanceOf[Node].attachChild(enemy)
-
   }
 
-  def setMatch[A,B](left:Set[A],right:Set[B],comp:Function2[A,B,Boolean]) : Tuple3[Set[A],Set[B],Set[(A,B)]] = {
-      var leftLeft = new HashSet[A]()
-      var rightLeft = new HashSet[B]() ++ right
-      var matched = new HashSet[(A,B)]()
+  def syncGameWorld(allUpdates:Set[_ <: AbstractOwnedGameObject with Savable]) {
 
-      left.foreach { l =>
-        rightLeft.find(r => comp(l,r)) match {
-          case Some(rr) =>
-            rightLeft -= rr
-            matched = matched + Pair(l, rr)
-            ()
-          case None =>
-            leftLeft += l
-            ()
-        }
+    import scala.collection.JavaConversions.asScalaBuffer
+    val enemyNodes = rootNode.getChild(SceneGraphNodeKeys.Enemies).asInstanceOf[Node].getChildren
+    val projectileNodes = rootNode.getChild(SceneGraphNodeKeys.Projectiles).asInstanceOf[Node].getChildren
+    val enemyMap = enemyNodes.map( e => (e.getUserData[PlayerGO](SceneGraphUserDataKeys.Player),e).ensuring(_._1 != null) ).toMap
+    val projectileMap = projectileNodes.map( e => (e.getUserData[ProjectileGO](SceneGraphUserDataKeys.Projectile),e).ensuring(_._1 != null) ).toMap
+
+    var allExisting = enemyMap.toSet ++ projectileMap.toSet
+
+    def doMatch(l:GOWithSavable,r:(GOWithSavable,Spatial)) : Boolean = {
+      (l, r._1) match {
+        case (l:PlayerGO, rr:PlayerGO) =>
+          l.playerId == rr.playerId
+        case (l:ProjectileGO, rr:ProjectileGO) =>
+          l.id == rr.id
+        case _ => false
       }
-      (leftLeft,rightLeft, matched)
     }
+    var (newInUpdateOrPlayer, noUpdate, matched) = setMatch(allUpdates, allExisting, doMatch)
 
-
-    type L = AbstractOwnedGameObject with Savable
-    def syncGameWorld(allUpdates:Set[_ <: AbstractOwnedGameObject with Savable]) {
-
-      import scala.collection.JavaConversions.asScalaBuffer
-      val enemyNodes = rootNode.getChild(SceneGraphNodeKeys.Enemies).asInstanceOf[Node].getChildren
-      val projectileNodes = rootNode.getChild(SceneGraphNodeKeys.Projectiles).asInstanceOf[Node].getChildren
-      val enemyMap = enemyNodes.map( e => (e.getUserData[PlayerGO](SceneGraphUserDataKeys.Player),e).ensuring(_._1 != null) ).toMap
-      val projectileMap = projectileNodes.map( e => (e.getUserData[ProjectileGO](SceneGraphUserDataKeys.Projectile),e).ensuring(_._1 != null) ).toMap
-
-      var allExisting = enemyMap.toSet ++ projectileMap.toSet
-
-      def doMatch(l:L,r:(L,Spatial)) : Boolean = {
-        (l, r._1) match {
-          case (l:PlayerGO, rr:PlayerGO) =>
-            l.playerId == rr.playerId
-          case (l:ProjectileGO, rr:ProjectileGO) =>
-            l.id == rr.id
-          case _ => false
-        }
-      }
-      var (newInUpdateOrPlayer, noUpdate, matched) = setMatch(allUpdates, allExisting, doMatch)
-
-      if(false && (System.currentTimeMillis()) % 10 == 3) {
-        println("enemies" + enemyNodes.size +
-          "noUpdate" + noUpdate.size +
-          "newInUpdate " + newInUpdateOrPlayer.size +
-          "projectileMap " + projectileMap.size +
-          "matched " + matched.size +
-          "allU "+allUpdates.size
-        )
-        enemyMap.foreach {  case (k,v) => println( "pos " +  k.position + " " + v.getLocalTranslation()) }
-
-      }
-
-      newInUpdateOrPlayer.foreach {
-        case p:PlayerGO =>
-          if(p.playerId == playerIdOpt.apply().get) {
-            player.setLocalTranslation(p.position)
-            player.setLocalRotation(p.direction)
-          } else {
-            materializeEnemy(p)
-          }
-        case p:ProjectileGO =>
-          materializeProjectile(p)
-      }
-
-      matched.foreach {
-        case (u:AbstractOwnedGameObject with Savable,(o,s:Spatial)) =>
-          //println("upd match" + s.getLocalTranslation + " " + u.position + " " +u.direction)
-          s.setLocalTranslation(u.position.clone())
-          s.setLocalRotation(u.direction.clone())
-          u match {
-            case p:ProjectileGO => s.setUserData(SceneGraphUserDataKeys.Projectile, p)
-            case p:PlayerGO => s.setUserData(SceneGraphUserDataKeys.Player, p)
-          }
-      }
-      noUpdate.foreach {
-        case (o, spatial) =>
-          println("removing " + o.id + " " + o.getClass)
-          o match {
-            case p:ProjectileGO => rootNode.getChild(SceneGraphNodeKeys.Projectiles).asInstanceOf[Node].detachChild(spatial)
-            case p:PlayerGO => rootNode.getChild(SceneGraphNodeKeys.Enemies).asInstanceOf[Node].detachChild(spatial)
-          }
-      }
-
-
-
-      /*allUpdates.foreach {
-        case p:ProjectileGO =>
-          val projectileOpt = projectileMap.find { case (pd, spatial ) => pd.id == p.id }
-          projectileOpt match {
-            case Some((proj, spatial)) =>
-              spatial.setLocalTranslation(p.position)
-              spatial.setLocalRotation(p.direction)
-            case None =>
-              materializeProjectile()
-          }
-        case p:PlayerGO =>
-          if(p.playerId == playerIdOpt.get) {
-            //println("Getting server state" + p.position + " " + p.direction)
-
-            player.setLocalTranslation(p.position)
-            player.setLocalRotation(p.direction)
-          } else {
-            val enemyOpt = enemyMap.find { case (pd, spatial ) => pd.playerId == p.playerId }
-
-            enemyOpt match {
-              case Some((enemyPd, spatial)) =>
-                //println("updated " + p.position)
-                //println("updating existing " + enemyPd.position)
-                spatial.setUserData("PlayerGO",enemyPd)
-                spatial.setLocalTranslation(p.position)
-                spatial.setLocalRotation(p.direction)
-              case None => materializeEnemy(p)
-            }
-          }
-        case _ =>
-      }*/
+    if(false && (System.currentTimeMillis()) % 10 == 3) {
+      println("enemies" + enemyNodes.size +
+        "noUpdate" + noUpdate.size +
+        "newInUpdate " + newInUpdateOrPlayer.size +
+        "projectileMap " + projectileMap.size +
+        "matched " + matched.size +
+        "allU "+allUpdates.size
+      )
+      enemyMap.foreach {  case (k,v) => println( "pos " +  k.position + " " + v.getLocalTranslation()) }
 
     }
 
+    newInUpdateOrPlayer.foreach {
+      case p:PlayerGO =>
+        if(p.playerId == playerIdOpt.apply().get) {
+          player.setLocalTranslation(p.position)
+          player.setLocalRotation(p.direction)
+        } else {
+          materializeEnemy(p)
+        }
+      case p:ProjectileGO =>
+        materializeProjectile(p)
+    }
 
+    matched.foreach {
+      case (u:AbstractOwnedGameObject with Savable,(o,s:Spatial)) =>
+        //println("upd match" + s.getLocalTranslation + " " + u.position + " " +u.direction)
+        s.setLocalTranslation(u.position.clone())
+        s.setLocalRotation(u.direction.clone())
+        u match {
+          case p:ProjectileGO => s.setUserData(SceneGraphUserDataKeys.Projectile, p)
+          case p:PlayerGO => s.setUserData(SceneGraphUserDataKeys.Player, p)
+        }
+    }
+    noUpdate.foreach {
+      case (o, spatial) =>
+        o match {
+          case p:ProjectileGO => rootNode.getChild(SceneGraphNodeKeys.Projectiles).asInstanceOf[Node].detachChild(spatial)
+          case p:PlayerGO => rootNode.getChild(SceneGraphNodeKeys.Enemies).asInstanceOf[Node].detachChild(spatial)
+        }
+    }
+  }
 }
 
