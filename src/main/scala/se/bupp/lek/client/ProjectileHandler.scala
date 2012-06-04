@@ -1,4 +1,4 @@
-package se.bupp.lek.spel
+package se.bupp.lek.client
 
 import com.jme3.scene.shape.Box
 import com.jme3.math.{Quaternion, Vector3f}
@@ -8,7 +8,8 @@ import com.jme3.material.Material
 import com.jme3.collision.CollisionResults
 import com.jme3.bounding.{BoundingSphere, BoundingBox}
 import collection.immutable.Stack
-import se.bupp.lek.spel.GameServer.{OrientationGO, ProjectileGO, ProjectileFireGO}
+import se.bupp.lek.server.Server
+import se.bupp.lek.server.Server.{OrientationGO, ProjectileGO, ProjectileFireGO}
 
 /**
  * Created by IntelliJ IDEA.

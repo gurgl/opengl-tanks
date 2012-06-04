@@ -2,6 +2,7 @@ package se.bupp.lek.spel
 
 import com.esotericsoftware.kryonet.{Connection, Listener, Client}
 import management.ManagementFactory
+import se.bupp.lek.server.Server
 import se.bupp.lek.spel.GameServer._
 
 
@@ -23,7 +24,7 @@ object TestClient {
     println("Tjo")
       val kryo = gameClient.getKryo();
 
-      GameServer.getNetworkMessages.foreach( kryo.register(_))
+      Server.getNetworkMessages.foreach( kryo.register(_))
 
       gameClient.addListener(new Listener() {
          override def received (connection:Connection , obj:Object ) {

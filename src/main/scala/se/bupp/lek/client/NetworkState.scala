@@ -1,6 +1,6 @@
-package se.bupp.lek.spel
+package se.bupp.lek.client
 
-import com.esotericsoftware.kryonet.{Connection, Listener, Client}
+import com.esotericsoftware.kryonet.{Connection, Listener, Client => KryoClient}
 import management.ManagementFactory
 import com.jme3.app.state.{AppStateManager, AbstractAppState}
 import com.jme3.app.Application
@@ -13,7 +13,8 @@ import com.jme3.export.Savable
 import com.jme3.math.{Quaternion, Vector3f}
 import collection.{JavaConversions, immutable}
 import scala.Option
-import se.bupp.lek.spel.GameServer._
+import se.bupp.lek.server.Server
+import se.bupp.lek.server.Server._
 
 
 /**
@@ -28,23 +29,23 @@ import se.bupp.lek.spel.GameServer._
 class NetworkState extends AbstractAppState {
 
 
-  var gameClient:Client = _
+  var gameClient:KryoClient = _
 
   val GW_UPDATES_SIZE = 4
 
     var lastSentUpdate = 0L
 
 
-  var gameWorldUpdatesQueue:Queue[GameServer.ServerGameWorld] = Queue()
+  var gameWorldUpdatesQueue:Queue[Server.ServerGameWorld] = Queue()
   var hasUnProcessedWorldUpdate = false
 
   var accTranslation = Vector3f.ZERO
   var accRotation = noRotation
 
-  var predictions:Map[Long,Map[OwnedGameObjectId,Vector3f]] = Map[Long,Map[OwnedGameObjectId,Vector3f]]()
+  //var predictions:Map[Long,Map[OwnedGameObjectId,Vector3f]] = Map[Long,Map[OwnedGameObjectId,Vector3f]]()
 
 
-  var gameApp:Spel = _
+  var gameApp:Client = _
 
 
   var buffer = new StringBuffer()
@@ -53,7 +54,7 @@ class NetworkState extends AbstractAppState {
     println(buffer.toString)
   }
 
-  class InstantSimulation(gameWorldUpdates:Queue[GameServer.ServerGameWorld]) {
+  class InstantSimulation(gameWorldUpdates:Queue[Server.ServerGameWorld]) {
 
     def projectGameHistoryByGameObjectId() : immutable.Map[OwnedGameObjectId,List[ _ <: AbstractOwnedGameObject with Savable]] = {
       val slots = gameWorldUpdates.last.all.map(_.id).toSet
@@ -166,7 +167,7 @@ class NetworkState extends AbstractAppState {
       val simTime = System.currentTimeMillis()
 
       val updates = new InstantSimulation(currentGameWorldUpdates).interpolate(simTime)
-      gameApp.syncGameWorld(updates.distinct.toSet)
+      gameApp.gameWorld.syncGameWorld(updates.distinct.toSet)
     }
 
     accTranslation = accTranslation.add(gameApp.playerInput._1)
@@ -176,7 +177,7 @@ class NetworkState extends AbstractAppState {
       val request: PlayerActionRequest = new PlayerActionRequest
 
       import JavaConversions.seqAsJavaList
-      request.projectilesFired = new java.util.ArrayList[ProjectileFireGO](gameApp.projectileHandler.purgeFired)
+      request.projectilesFired = new java.util.ArrayList[ProjectileFireGO](gameApp.gameWorld.projectileHandler.purgeFired)
       request.timeStamp = System.currentTimeMillis()
       request.playerId = gameApp.playerIdOpt.get
       request.motion = new MotionGO(accTranslation,accRotation)
@@ -188,17 +189,17 @@ class NetworkState extends AbstractAppState {
   }
 
   override def initialize(stateManager: AppStateManager, app: Application) {
-    gameApp = app.asInstanceOf[Spel]
+    gameApp = app.asInstanceOf[Client]
     initClient()
   }
 
   val lock : AnyRef = new Object()
   def initClient() {
-    gameClient = new Client();
+    gameClient = new KryoClient();
 
     val kryo = gameClient.getKryo();
 
-    GameServer.getNetworkMessages.foreach( kryo.register(_))
+    Server.getNetworkMessages.foreach( kryo.register(_))
 
     gameClient.addListener(new Listener() {
        override def received (connection:Connection , obj:Object ) {
