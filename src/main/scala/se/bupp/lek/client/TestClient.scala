@@ -1,9 +1,9 @@
-package se.bupp.lek.spel
+package se.bupp.lek.client
 
-import com.esotericsoftware.kryonet.{Connection, Listener, Client}
+import com.esotericsoftware.kryonet.{Connection, Listener, Client => KryoClient}
 import management.ManagementFactory
 import se.bupp.lek.server.Server
-import se.bupp.lek.spel.GameServer._
+import se.bupp.lek.server.Server.{PlayerActionRequest, PlayerJoinRequest, PlayerJoinResponse, ServerGameWorld}
 
 
 /**
@@ -18,7 +18,7 @@ object TestClient {
   var playerIdOpt:Option[Int] = None
   
   def main(arg:Array[String]) {
-    val gameClient = new Client();
+    val gameClient = new KryoClient();
 
 
     println("Tjo")

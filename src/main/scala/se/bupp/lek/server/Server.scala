@@ -8,7 +8,7 @@ import com.jme3.export.{JmeExporter, JmeImporter, Savable}
 import com.jme3.app.SimpleApplication
 import com.jme3.system.JmeContext
 import collection.JavaConversions
-import se.bupp.lek.server.Server
+import se.bupp.lek.server.Server._
 
 import JavaConversions.asScalaBuffer
 import collection.mutable.{HashMap, ArrayBuffer}
@@ -47,6 +47,7 @@ class WorldSimulator {
           p.state
       }
 
+      //println("pos " + playerState.map ( p => p.playerId + " " + p.position).mkString(", "))
       s = playerState.map(x => " | " + x.playerId + " " + x.position + " " + x.direction).mkString(",")
 
 
@@ -112,8 +113,8 @@ class WorldSimulator {
       val player = {
         val pd = new PlayerGO
         pd.playerId = playerId
-        pd.position = Vector3f.ZERO
-        pd.direction = Quaternion.DIRECTION_Z
+        pd.position = Vector3f.ZERO.clone()
+        pd.direction = Quaternion.DIRECTION_Z.clone()
         pd
         var ps = new PlayerStatus
         ps.state = pd
@@ -241,32 +242,82 @@ object Server {
     var processedUpdate = true
   }
 
+  type Reorientation = (Vector3f,Quaternion)
 
-  class OrientationGO(
-                       var position: Vector3f,
-                       var direction: Quaternion
-                       ) {
-    def this() = this(null, null)
+  class Orientation(or:Orientation) {
+
+    var position: Vector3f = _
+    var direction: Quaternion = _
+
+    if(or != null) {
+      position = or.position.clone()
+      direction = or.direction.clone()
+    }
+
+    def this() = this(null)
+    def this(p:Vector3f,r:Quaternion) = {
+      this()
+      position = p.clone()
+      direction = r.clone()
+    }
+
+    //def this(o:Orientation) = this(o.position,o.direction)
 
     def orientation = this
 
-    def orientation_=(o: OrientationGO): Unit = {
+    def reorientate(reorientation:Reorientation) = {
+      new Orientation(position.add(reorientation._1),reorientation._2.mult(orientation.direction))
+    }
+
+    def orientation_=(o: Orientation): Unit = {
       position = o.position.clone()
       direction = o.direction.clone()
     }
+    override def toString() = "(" + position + ", " + direction + ")"
   }
 
-  class AbstractGameObject extends OrientationGO {
+
+  class OrientationGO(
+    or:OrientationGO
+  ) extends Orientation(or) {
+
+    //def this() = this(null, null)
+
+    def this() = this(null)
+
+    def this(p:Vector3f,r:Quaternion) = {
+      this()
+      position = p
+      direction = r
+    }
+  }
+
+  class AbstractGameObject(ago:AbstractGameObject) extends OrientationGO(ago) {
     var clientSeqId: Int = _
+    if(ago != null) {
+      clientSeqId = ago.clientSeqId
+    }
+    //def this(clientSeqId: Int, or:OrientationGO)
+    def this() = this(null)
+
   }
 
   type OwnedGameObjectId = (Int, Int)
 
-  class AbstractOwnedGameObject extends AbstractGameObject {
+  class AbstractOwnedGameObject(aogo:AbstractOwnedGameObject) extends AbstractGameObject(aogo) {
     /* Only applic to player really */
-    var sentToServerByClient: Long = _
-    var playerId: Int = _
+    var sentToServerByClient: Long = -1
+    var playerId: Int = -1
 
+    if(aogo != null) {
+      sentToServerByClient = aogo.sentToServerByClient
+      playerId = aogo.playerId
+
+    }
+
+    def this() = {
+      this(null)
+    }
     def id: OwnedGameObjectId = (clientSeqId, playerId)
 
     def id_=(goid: OwnedGameObjectId) = {
@@ -275,34 +326,27 @@ object Server {
   }
 
 
-  class ProjectileGO() extends AbstractOwnedGameObject with Savable {
+  class ProjectileGO(pgo: ProjectileGO) extends AbstractOwnedGameObject(pgo) with Savable {
 
     var speed: Float = _
     var timeSpawned: Long = _
+
+    if(pgo != null) {
+      speed = pgo.speed
+      timeSpawned = pgo.timeSpawned
+    }
 
     override def read(reader: JmeImporter) {}
 
     override def write(writer: JmeExporter) {}
 
-    def this(pgo: ProjectileGO) = {
-      this()
-      sentToServerByClient = pgo.sentToServerByClient
-      speed = pgo.speed
-      timeSpawned = pgo.timeSpawned
-      id = pgo.id
-      orientation = pgo
-    }
+    def this() = this(null)
   }
 
-  class PlayerGO() extends AbstractOwnedGameObject with Savable {
+  class PlayerGO(pgo: PlayerGO) extends AbstractOwnedGameObject(pgo) with Savable {
 
 
-    def this(pgo: PlayerGO) = {
-      this()
-      id = pgo.id
-      orientation = pgo
-      sentToServerByClient = pgo.sentToServerByClient
-    }
+    def this() = this(null)
 
 
     //override def getClassTag = classOf[PlayerGO]

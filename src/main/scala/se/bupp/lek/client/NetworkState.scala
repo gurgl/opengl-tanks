@@ -58,15 +58,14 @@ class NetworkState extends AbstractAppState {
     currentGameWorldUpdates = gameWorldUpdatesQueue
 //    }
 
+    val simTime = System.currentTimeMillis()
+
     if(currentGameWorldUpdates.size > 0) {
-
-      val simTime = System.currentTimeMillis()
-
-      val updates = new InstantSimulation(currentGameWorldUpdates, gameApp.playerIdOpt.get).interpolate(simTime)
+      val updates = new InstantSimulation(currentGameWorldUpdates, gameApp.playerIdOpt.get).interpolate(simTime, gameApp.playerInput)
       gameApp.gameWorld.syncGameWorld(updates.distinct.toSet)
     }
 
-    gameApp.playerInput.saveInput()
+    gameApp.playerInput.saveInput(simTime)
     if(System.currentTimeMillis() - lastSentUpdate > 1000/16 ) {
 
       val request = gameApp.createPlayerActionRequest
@@ -104,7 +103,7 @@ class NetworkState extends AbstractAppState {
               }
 
             case response:PlayerJoinResponse =>
-              println("join resp received")
+              println("join resp received" + response.playerId)
               gameApp.playerIdOpt = Some(response.playerId)
 
             case _ =>

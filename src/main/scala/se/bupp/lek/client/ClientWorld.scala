@@ -8,10 +8,9 @@ import com.jme3.light.DirectionalLight
 import com.jme3.scene.{Spatial, Node, Geometry}
 import com.jme3.asset.{ModelKey, AssetManager}
 import collection.immutable.HashSet
-import se.bupp.lek.server.Server.{AbstractOwnedGameObject, PlayerGO, ProjectileGO}
 import com.jme3.export.Savable
 import scala.collection.JavaConversions.asScalaBuffer
-
+import se.bupp.lek.server.Server.{Orientation, AbstractOwnedGameObject, PlayerGO, ProjectileGO}
 
 
 /**
@@ -56,7 +55,7 @@ object ClientWorld {
   }
 }
 
-class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:() => Option[Int]) {
+class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:() => Option[Int],playerInput:PlayerInput) {
   import ClientWorld._
 
   var mat_default : Material = _
@@ -66,9 +65,9 @@ class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:(
   var projectileHandler : ProjectileHandler = _
 
 
-  def init() {
+  def init(playerPosition:Orientation) {
 
-    materializePlayer()
+    materializePlayer(playerPosition)
     materializeLevel()
     //materializeStats()
 
@@ -116,12 +115,14 @@ class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:(
 
   }
 
-  def materializePlayer() {
+  def materializePlayer(orientation:Orientation) {
     mat_default = new Material(assetManager, "Common/MatDefs/Misc/ShowNormals.j3md");
 
     player = assetManager.loadModel("Models/Teapot/Teapot.obj")
 
-    player.setLocalRotation(Quaternion.IDENTITY)
+    player.setLocalRotation(orientation.direction)
+    player.setLocalTranslation(orientation.position)
+
     player.setMaterial(mat_default);
 
     rootNode.attachChild(player);
@@ -176,13 +177,13 @@ class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:(
     var (newInUpdateOrPlayer, noUpdate, matched) = setMatch(allUpdates, allExisting, doMatch)
 
     if(false && (System.currentTimeMillis()) % 10 == 3) {
-      println("enemies" + enemyNodes.size +
+      /*println("enemies" + enemyNodes.size +
         "noUpdate" + noUpdate.size +
         "newInUpdate " + newInUpdateOrPlayer.size +
         "projectileMap " + projectileMap.size +
         "matched " + matched.size +
         "allU "+allUpdates.size
-      )
+      )*/
       enemyMap.foreach {  case (k,v) => println( "pos " +  k.position + " " + v.getLocalTranslation()) }
 
     }
@@ -190,6 +191,9 @@ class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:(
     newInUpdateOrPlayer.foreach {
       case p:PlayerGO =>
         if(p.playerId == playerIdOpt.apply().get) {
+
+          //player.move(playerInput.translation)
+          //player.rotate(playerInput.rotation)
           player.setLocalTranslation(p.position)
           player.setLocalRotation(p.direction)
         } else {

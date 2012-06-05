@@ -52,7 +52,7 @@ class InstantSimulation(gameWorldUpdates:Queue[Server.ServerGameWorld], val play
 
     val interpolationFactor: Float = (timeSinceLast + snapDeltaTime).toFloat / snapDeltaTime.toFloat
 
-    val exptrapolRotation = Quaternion.IDENTITY.slerp(startAngle,endAngle, interpolationFactor)
+    val exptrapolRotation = Quaternion.IDENTITY.clone().slerp(startAngle,endAngle, interpolationFactor)
 
     val pNew = new PlayerGO(p)
     pNew.direction = exptrapolRotation
@@ -78,7 +78,7 @@ class InstantSimulation(gameWorldUpdates:Queue[Server.ServerGameWorld], val play
     pp
   }
 
-  def interpolate(simTime:Long) : List[AbstractOwnedGameObject with Savable] = {
+  def interpolate(simTime:Long, playerInput:PlayerInput) : List[AbstractOwnedGameObject with Savable] = {
     val lastServerSimInstants = gameWorldUpdates.map(_.timeStamp).toSeq
     val lastServerSimToClientSimDurations= lastServerSimInstants.map(simTime - _)
     //println(gameWorldUpdates.last.all.map(_.position).mkString(","))
@@ -95,7 +95,10 @@ class InstantSimulation(gameWorldUpdates:Queue[Server.ServerGameWorld], val play
             case p:PlayerGO =>
 
               if(id._2 == playerId) {
-                None
+                val newP = new PlayerGO(p)
+                newP.orientation = playerInput.recalculateFrom(lastServerSimInstants.last,p)
+                Some(newP)
+                //Some(p)
               } else {
                 Some(simulatePlayer(p,simTime, orderedObjectSnapshots))
               }

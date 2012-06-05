@@ -1,26 +1,18 @@
 package se.bupp.lek.client
 
-import com.jme3.scene.shape.Box
-import com.jme3.material.Material
-import com.jme3.font.BitmapText
-import com.jme3.light.DirectionalLight
 import com.jme3.app.{FlyCamAppState, SimpleApplication}
 import com.jme3.input.KeyInput
 import com.jme3.input.controls.{AnalogListener, ActionListener, KeyTrigger}
-import com.jme3.renderer.Camera
-import com.jme3.math.{Matrix3f, Matrix4f, Quaternion, Vector3f}
-import com.jme3.asset.ModelKey
 import com.jme3.scene.{Node, Mesh, Spatial, Geometry}
 import com.jme3.bounding.{BoundingSphere, BoundingBox}
-import management.ManagementFactory
 import se.bupp.lek.server.Server
 import MathUtil._
 import com.jme3.system.AppSettings
 import collection.immutable.{HashSet, Queue}
-import com.jme3.export.Savable
-import se.bupp.lek.client.ClientWorld
+import se.bupp.lek.client.ClientWorld._
 import collection.JavaConversions
 import se.bupp.lek.server.Server._
+import com.jme3.math._
 
 
 /**
@@ -33,22 +25,29 @@ import se.bupp.lek.server.Server._
 
 
 object MathUtil {
-  val noRotation = Quaternion.ZERO.fromAngleNormalAxis(0f,Vector3f.UNIT_XYZ)
+  def noRotation = Quaternion.ZERO.fromAngleNormalAxis(0f,Vector3f.UNIT_XYZ.clone())
+
+  def noMotion:Reorientation = (Vector3f.ZERO.clone(), noRotation)
 
 }
 
 
 object PlayerInput {
-  val noPlayerInput = Pair(Vector3f.ZERO, noRotation)
+  val noPlayerInput = noMotion
+  type Reorientation = (Vector3f,Quaternion)
+  val LocalInputLogSize = 20
 }
 
-class PlayerInput() {
+class PlayerInput(startPosition:Orientation) {
   import PlayerInput._
   var translation:Vector3f = noPlayerInput._1
   var rotation:Quaternion = noPlayerInput._2
 
+  def reorientation:Reorientation = (translation,rotation)
   var accTranslation = Vector3f.ZERO
   var accRotation = noRotation
+
+  var saved = Queue.empty[(Long, Orientation, Reorientation)] + (System.currentTimeMillis(),startPosition, noMotion)
 
   def flushAccumulated() = {
     val r = (accTranslation.clone(),accRotation.clone())
@@ -61,8 +60,46 @@ class PlayerInput() {
     translation = noPlayerInput._1
     rotation = noPlayerInput._2
   }
+  def diff(client:Orientation,server:Orientation) = {
+    val transDiff = client.position.subtract(server.position)
 
-  def saveInput() {
+    //new Quaternion(client.direction).subtract(server.direction)
+
+    val rotDiff = Quaternion.IDENTITY.clone().slerp(client.direction,server.direction,1.0f)
+    //transDiff.length() < 0.1 && rotDiff.getW < FastMath.PI / 80
+    (transDiff.length(),rotDiff.getW)
+  }
+
+  def recalculateFrom(timeStamp:Long, server:Orientation) : Orientation = {
+
+    val(discarded, newSaved) = saved.partition ( _._1 < timeStamp)
+    saved = discarded.last +: newSaved
+    val diffHeur = diff(saved.head._2,server.orientation)
+    val newPos = if(diffHeur._1 < 0.05 && diffHeur._2 < FastMath.PI / 120) {
+
+      val newSavedPos = saved.foldLeft(Queue(server)) {
+        case (orList,(time,orientationBeforeReorientation, reorient)) =>
+          orList :+ orList.last.reorientate(reorient)
+      }
+      saved = newSavedPos.tail.zip(saved).map {case (np, (ts, _ , reor)) => (ts, np, reor) }
+      //println("Recalculating " + diffHeur + " " + newSavedPos.last)
+      newSavedPos.last
+    } else {
+      //println("using " + saved.last._2)
+      saved.last._2
+    }
+    newPos
+
+  }
+
+  def saveInput(timeStamp:Long) {
+    while(saved.size >= LocalInputLogSize) {
+      saved = saved.dequeue._2
+
+    }
+    val orientation = saved.last._2.reorientate(reorientation)
+    saved =  saved + (timeStamp, orientation, (translation,rotation))
+    
     accTranslation = accTranslation.add(translation)
     accRotation = rotation.mult(accRotation)
     resetInput()
@@ -74,7 +111,7 @@ class Client extends SimpleApplication {
 
   var playerIdOpt:Option[Int] = None
 
-  val playerInput = new PlayerInput
+  var playerInput:PlayerInput = _
 
   var gameWorld:ClientWorld = _
 
@@ -160,8 +197,13 @@ class Client extends SimpleApplication {
     stateManager.detach( stateManager.getState(classOf[FlyCamAppState]))
     stateManager.attach(new NetworkState)
 
-    gameWorld = new ClientWorld(rootNode,assetManager,() => playerIdOpt)
-    gameWorld.init
+    gameWorld = new ClientWorld(rootNode,assetManager,() => playerIdOpt,playerInput)
+
+    val playerStartPosition = new Orientation(Vector3f.ZERO, Quaternion.IDENTITY)
+    gameWorld.init(playerStartPosition)
+
+    playerInput = new PlayerInput(playerStartPosition)
+
 
     setupInput()
   }
