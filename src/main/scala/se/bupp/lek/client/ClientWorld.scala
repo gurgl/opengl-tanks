@@ -1,16 +1,22 @@
 package se.bupp.lek.client
 
-import com.jme3.material.Material
 import com.jme3.scene.shape.Box
-import com.jme3.math.{Quaternion, Vector3f}
 import com.jme3.bounding.BoundingSphere
-import com.jme3.light.DirectionalLight
 import com.jme3.scene.{Spatial, Node, Geometry}
 import com.jme3.asset.{ModelKey, AssetManager}
 import collection.immutable.HashSet
 import com.jme3.export.Savable
 import scala.collection.JavaConversions.asScalaBuffer
 import se.bupp.lek.server.Server.{Orientation, AbstractOwnedGameObject, PlayerGO, ProjectileGO}
+import com.jme3.material.{MaterialDef, MaterialList, Material}
+import com.jme3.math.{ColorRGBA, Quaternion, Vector3f}
+import com.jme3.shadow.BasicShadowRenderer
+import com.jme3.renderer.ViewPort
+import com.jme3.renderer.queue.RenderQueue.ShadowMode
+import com.jme3.light.{AmbientLight, DirectionalLight}
+import com.jme3.post.FilterPostProcessor
+import com.jme3.post.ssao.SSAOFilter
+import com.jme3.util.TangentBinormalGenerator
 
 
 /**
@@ -55,10 +61,12 @@ object ClientWorld {
   }
 }
 
-class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:() => Option[Int],playerInput:PlayerInput) {
+class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:() => Option[Int],playerInput:PlayerInput, viewPort:ViewPort) {
   import ClientWorld._
 
   var mat_default : Material = _
+  var mat_default_lgt : Material = _
+  var mat_default_ush : Material = _
 
   var player:Spatial = _
 
@@ -66,6 +74,25 @@ class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:(
 
 
   def init(playerPosition:Orientation) {
+
+    mat_default = new Material(assetManager, "Common/MatDefs/Misc/ShowNormals.j3md");
+    mat_default_lgt = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+
+    //mat_default_lgt.setBoolean("UseMaterialColors",true);  // Set some parameters, e.g. blue.
+    mat_default_lgt.setBoolean("m_UseMaterialColors", true);
+    mat_default_lgt.setColor("m_Ambient",  ColorRGBA.Orange);
+    mat_default_lgt.setColor("m_Diffuse",  ColorRGBA.Orange);
+    mat_default_lgt.setColor("m_Specular", ColorRGBA.White);
+    mat_default_lgt.setFloat("m_Shininess", 12);
+
+
+
+    mat_default_ush = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+
+    mat_default_ush.setColor("Color", ColorRGBA.Blue);
+    //mat_default_ush.setColor("Diffuse", ColorRGBA.Blue ); // with Lighting.j3md
+    //mat_default_ush.setColor("Ambient", ColorRGBA.White);
+
 
     materializePlayer(playerPosition)
     materializeLevel()
@@ -78,9 +105,28 @@ class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:(
 
     // You must add a light to make the model visible
     val sun = new DirectionalLight();
-    sun.setDirection(new Vector3f(-0.1f, -0.7f, -1.0f));
+    //sun.setColor(ColorRGBA.White)
+    val sunDirection: Vector3f = new Vector3f(-1, -1, -1).normalizeLocal()
+    sun.setDirection(sunDirection);
+    sun.setColor(ColorRGBA.Green)
     rootNode.addLight(sun);
 
+    val al = new AmbientLight();
+    al.setColor(ColorRGBA.White.mult(1.3f));
+    rootNode.addLight(al);
+
+    /*val bsr = new BasicShadowRenderer(assetManager, 1024);
+    bsr.setDirection(sunDirection.clone()); // light direction
+    viewPort.addProcessor(bsr);
+    */
+
+    /*
+    val fpp = new FilterPostProcessor(assetManager);
+    val ssaoFilter = new SSAOFilter(12.94f, 43.92f, 0.33f, 0.61f);
+    fpp.addFilter(ssaoFilter)
+    viewPort.addProcessor(fpp);
+    */
+    rootNode.setShadowMode(ShadowMode.CastAndReceive);
     projectileHandler = new ProjectileHandler(mat_default)
     projectileHandler.init()
 
@@ -99,31 +145,38 @@ class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:(
     (camPos,rot)
   }
 
-
-
   def materializeLevel() {
     // Create a wall with a simple texture from test_data
-    val box = new Box(Vector3f.ZERO, 2.5f, 2.5f, 1.0f);
-    val wall = new Geometry("Box", box);
-    val mat_brick = new Material(
-      assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-    mat_brick.setTexture("ColorMap",
-      assetManager.loadTexture("Textures/Terrain/BrickWall/BrickWall.jpg"));
-    wall.setMaterial(mat_brick);
-    wall.setLocalTranslation(2.0f, -2.5f, 0.0f);
+    val wall = assetManager.loadModel("level.blend")//new Box(Vector3f.ZERO, 2.5f, 2.5f, 1.0f);
+    //val wall = new Geometry("Box", box);
+    //val matLevel = new MaterialList()
+    //val materialList = assetManager.loadAsset("level.mtl").asInstanceOf[MaterialList]
+
+
+    /*wall.asInstanceOf[Node].getChildren.foreach {
+      case x:Geometry =>TangentBinormalGenerator.generate(x.getMesh, true)
+      case _ =>
+    }*/
+
+    //wall.setMaterial(mat_default_lgt)
+    /*mat_brick.setTexture("ColorMap",
+      assetManager.loadTexture("level.mtl"));*/
+    //wall.asInstanceOf[Geometry].
+    wall.setLocalTranslation(0.0f, 0.0f, 0.0f);
     rootNode.attachChild(wall);
 
   }
 
   def materializePlayer(orientation:Orientation) {
-    mat_default = new Material(assetManager, "Common/MatDefs/Misc/ShowNormals.j3md");
 
-    player = assetManager.loadModel("Models/Teapot/Teapot.obj")
 
+    //player = assetManager.loadModel("Models/Teapot/Teapot.obj")
+    player = assetManager.loadModel(new ModelKey("tank2.blend"))
+    player.setLocalScale(0.5f)
     player.setLocalRotation(orientation.direction)
     player.setLocalTranslation(orientation.position)
 
-    player.setMaterial(mat_default);
+    //player.setMaterial(mat_default);
 
     rootNode.attachChild(player);
   }
@@ -142,9 +195,10 @@ class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:(
   }
 
   def materializeEnemy(pd:PlayerGO) {
-    val enemy = assetManager.loadModel(new ModelKey("Models/Teapot/Teapot.obj"))
-    enemy.setMaterial(mat_default)
+    val enemy = assetManager.loadModel(new ModelKey("tank2.blend"))
+    //enemy.setMaterial(mat_default)
 
+    enemy.setLocalScale(0.5f)
     enemy.setUserData(SceneGraphUserDataKeys.Player,pd)
     enemy.setLocalTranslation(pd.position)
     enemy.setLocalRotation(pd.direction)

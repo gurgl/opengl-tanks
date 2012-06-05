@@ -197,7 +197,7 @@ class Client extends SimpleApplication {
     stateManager.detach( stateManager.getState(classOf[FlyCamAppState]))
     stateManager.attach(new NetworkState)
 
-    gameWorld = new ClientWorld(rootNode,assetManager,() => playerIdOpt,playerInput)
+    gameWorld = new ClientWorld(rootNode,assetManager,() => playerIdOpt,playerInput, viewPort)
 
     val playerStartPosition = new Orientation(Vector3f.ZERO, Quaternion.IDENTITY)
     gameWorld.init(playerStartPosition)

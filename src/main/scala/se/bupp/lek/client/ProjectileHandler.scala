@@ -42,7 +42,7 @@ class ProjectileHandler(val mat:Material) {
 
     fired = fired.push(
       new ProjectileFireGO(
-        new OrientationGO(pos,dir.clone()),
+        new OrientationGO(pos.add(0f,0.7f,0.0f).add(dir.getRotationColumn(0).mult(0.5f)),dir.clone()),
         0.3f,
         System.currentTimeMillis(),
         projectileSeqId
