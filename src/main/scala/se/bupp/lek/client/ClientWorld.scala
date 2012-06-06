@@ -54,7 +54,9 @@ object ClientWorld {
   }
 
   type GOWithSavable = AbstractOwnedGameObject with Savable
+}
 
+object SceneGraphWorld {
   object SceneGraphUserDataKeys {
     val Projectile= "ProjectileGO"
     val Player = "PlayerGO"
@@ -63,10 +65,13 @@ object ClientWorld {
     val Projectiles = "Projectiles"
     val Enemies= "Enemies"
   }
+
 }
 
-class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:() => Option[Int],playerInput:PlayerInput, viewPort:ViewPort, val bulletAppState:BulletAppState) {
-  import ClientWorld._
+class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager, bulletAppState:BulletAppState, rootNode:Node) {
+
+  var playerControl:CharacterControl = _
+  var player:Spatial = _
 
   var mat_default : Material = _
   var mat_default_lgt : Material = _
@@ -74,10 +79,139 @@ class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:(
 
   var projectileGeometry:Box = _
 
+  import SceneGraphWorld._
+
+  def init() {
+    projectileGeometry = new Box(Vector3f.ZERO.clone(), 0.1f, 0.1f, 0.1f)
+    projectileGeometry.setBound(new BoundingSphere())
+    projectileGeometry.updateBound()
+
+    if(!isHeadLess) {
+      mat_default = new Material(assetManager, "Common/MatDefs/Misc/ShowNormals.j3md");
+      mat_default_lgt = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+
+      //mat_default_lgt.setBoolean("UseMaterialColors",true);  // Set some parameters, e.g. blue.
+      mat_default_lgt.setBoolean("m_UseMaterialColors", true);
+      mat_default_lgt.setColor("m_Ambient",  ColorRGBA.Orange);
+      mat_default_lgt.setColor("m_Diffuse",  ColorRGBA.Orange);
+      mat_default_lgt.setColor("m_Specular", ColorRGBA.White);
+      mat_default_lgt.setFloat("m_Shininess", 12);
 
 
-  var playerControl:CharacterControl = _
-  var player:Spatial = _
+
+      mat_default_ush = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+
+      mat_default_ush.setColor("Color", ColorRGBA.Blue);
+      //mat_default_ush.setColor("Diffuse", ColorRGBA.Blue ); // with Lighting.j3md
+      //mat_default_ush.setColor("Ambient", ColorRGBA.White);
+    }
+    var enemyNodes = new Node(SceneGraphNodeKeys.Enemies)
+    rootNode.attachChild(enemyNodes)
+    var projectileNodes = new Node(SceneGraphNodeKeys.Projectiles)
+    rootNode.attachChild(projectileNodes)
+
+  }
+
+  def materializeLevel() {
+    // Create a wall with a simple texture from test_data
+    val level = assetManager.loadModel("level.blend")//new Box(Vector3f.ZERO, 2.5f, 2.5f, 1.0f);
+
+    val sceneCollisionShape = CollisionShapeFactory.createMeshShape(level.asInstanceOf[Node])
+    val landscape = new RigidBodyControl(sceneCollisionShape, 0)
+    level.addControl(landscape);
+    bulletAppState.getPhysicsSpace.add(landscape)
+
+    //val wall = new Geometry("Box", box);
+    //val matLevel = new MaterialList()
+    //val materialList = assetManager.loadAsset("level.mtl").asInstanceOf[MaterialList]
+
+
+    /*wall.asInstanceOf[Node].getChildren.foreach {
+      case x:Geometry =>TangentBinormalGenerator.generate(x.getMesh, true)
+      case _ =>
+    }*/
+
+    //wall.setMaterial(mat_default_lgt)
+    /*mat_brick.setTexture("ColorMap",
+      assetManager.loadTexture("level.mtl"));*/
+    //wall.asInstanceOf[Geometry].
+    level.setLocalTranslation(0.0f, 0.0f, 0.0f);
+    if(!isHeadLess) {
+      level.setShadowMode(ShadowMode.Receive)
+    }
+    rootNode.attachChild(level);
+  }
+
+  def materializeTank(pd: Orientation): Spatial = {
+    val tank = assetManager.loadModel(new ModelKey("tank2.blend"))
+    //enemy.setMaterial(mat_default)
+
+    tank.setLocalScale(0.5f)
+    tank.setLocalTranslation(pd.position)
+    tank.setLocalRotation(pd.direction)
+    if(!isHeadLess) {
+      tank.setShadowMode(ShadowMode.Off)
+    }
+    tank
+  }
+
+  def materializeEnemy(pd:PlayerGO) {
+    val tank = materializeTank(pd)
+
+    //enemy.setModelBound(new BoundingSphere())
+    //enemy.updateModelBound()
+    tank.setUserData(SceneGraphUserDataKeys.Player, pd)
+
+    rootNode.getChild(SceneGraphNodeKeys.Enemies).asInstanceOf[Node].attachChild(tank)
+  }
+
+  def materializePlayer(orientation:Orientation) {
+
+    //player = assetManager.loadModel("Models/Teapot/Teapot.obj")
+    player = materializeTank(orientation)
+
+
+
+    /*val capsuleShape = new CapsuleCollisionShape(0.5f, 0.51f, 1)
+    playerControl = new CharacterControl(capsuleShape, 0.05f)
+    player.addControl(playerControl)
+    bulletAppState.getPhysicsSpace.add(playerControl)
+
+
+    playerControl.setJumpSpeed(0);
+    playerControl.setFallSpeed(0);
+    playerControl.setGravity(0);
+    playerControl.setPhysicsLocation(new Vector3f(0, 0.5f, 0));
+    */
+    //player.setMaterial(mat_default);
+
+    rootNode.attachChild(player);
+  }
+
+  def materializeProjectile(p:ProjectileGO) {
+
+    //println("adding projectile " + p.position + "" + p.id)
+    val instance = new Geometry("Box", projectileGeometry);
+    instance.setModelBound(new BoundingSphere())
+    instance.updateModelBound()
+    instance.setLocalTranslation(p.position)
+    instance.setUserData(SceneGraphUserDataKeys.Projectile,p)
+
+    if(!isHeadLess) {
+      instance.setShadowMode(ShadowMode.Off)
+      instance.setMaterial(mat_default)
+    }
+
+    rootNode.getChild(SceneGraphNodeKeys.Projectiles).asInstanceOf[Node].attachChild(instance)
+  }
+
+}
+
+class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:() => Option[Int],playerInput:PlayerInput, viewPort:ViewPort, val bulletAppState:BulletAppState) extends SceneGraphWorld(false,assetManager,bulletAppState,rootNode) {
+  import ClientWorld._
+  import SceneGraphWorld._
+
+
 
   var projectileSeqId = 0
 
@@ -86,40 +220,16 @@ class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:(
 
 
   def init(playerPosition:Orientation) {
+    super.init()
 
 
     rootNode.setShadowMode(ShadowMode.Off)
-    projectileGeometry = new Box(Vector3f.ZERO.clone(), 0.1f, 0.1f, 0.1f)
-    projectileGeometry.setBound(new BoundingSphere())
-    projectileGeometry.updateBound()
-
-    mat_default = new Material(assetManager, "Common/MatDefs/Misc/ShowNormals.j3md");
-    mat_default_lgt = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
-
-    //mat_default_lgt.setBoolean("UseMaterialColors",true);  // Set some parameters, e.g. blue.
-    mat_default_lgt.setBoolean("m_UseMaterialColors", true);
-    mat_default_lgt.setColor("m_Ambient",  ColorRGBA.Orange);
-    mat_default_lgt.setColor("m_Diffuse",  ColorRGBA.Orange);
-    mat_default_lgt.setColor("m_Specular", ColorRGBA.White);
-    mat_default_lgt.setFloat("m_Shininess", 12);
-
-
-
-    mat_default_ush = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-
-    mat_default_ush.setColor("Color", ColorRGBA.Blue);
-    //mat_default_ush.setColor("Diffuse", ColorRGBA.Blue ); // with Lighting.j3md
-    //mat_default_ush.setColor("Ambient", ColorRGBA.White);
 
 
     materializePlayer(playerPosition)
     materializeLevel()
     //materializeStats()
 
-    var enemyNodes = new Node(SceneGraphNodeKeys.Enemies)
-    rootNode.attachChild(enemyNodes)
-    var projectileNodes = new Node(SceneGraphNodeKeys.Projectiles)
-    rootNode.attachChild(projectileNodes)
 
     // You must add a light to make the model visible
     val sun = new DirectionalLight();
@@ -133,9 +243,10 @@ class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:(
     al.setColor(ColorRGBA.White.mult(1.3f));
     rootNode.addLight(al);
 
-    val bsr = new BasicShadowRenderer(assetManager, 1024);
+    /*val bsr = new BasicShadowRenderer(assetManager, 1024);
     bsr.setDirection(sunDirection.clone()); // light direction
     viewPort.addProcessor(bsr);
+    */
 
 
     /*
@@ -179,93 +290,7 @@ class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:(
     (camPos,rot)
   }
 
-  def materializeLevel() {
-    // Create a wall with a simple texture from test_data
-    val level = assetManager.loadModel("level.blend")//new Box(Vector3f.ZERO, 2.5f, 2.5f, 1.0f);
 
-    val sceneCollisionShape = CollisionShapeFactory.createMeshShape(level.asInstanceOf[Node])
-    val landscape = new RigidBodyControl(sceneCollisionShape, 0)
-    level.addControl(landscape);
-    bulletAppState.getPhysicsSpace.add(landscape)
-
-    //val wall = new Geometry("Box", box);
-    //val matLevel = new MaterialList()
-    //val materialList = assetManager.loadAsset("level.mtl").asInstanceOf[MaterialList]
-
-
-    /*wall.asInstanceOf[Node].getChildren.foreach {
-      case x:Geometry =>TangentBinormalGenerator.generate(x.getMesh, true)
-      case _ =>
-    }*/
-
-    //wall.setMaterial(mat_default_lgt)
-    /*mat_brick.setTexture("ColorMap",
-      assetManager.loadTexture("level.mtl"));*/
-    //wall.asInstanceOf[Geometry].
-    level.setLocalTranslation(0.0f, 0.0f, 0.0f);
-    level.setShadowMode(ShadowMode.Receive)
-    rootNode.attachChild(level);
-
-  }
-
-  def materializePlayer(orientation:Orientation) {
-
-
-    //player = assetManager.loadModel("Models/Teapot/Teapot.obj")
-    player = materializeTank(orientation)
-
-
-
-    /*val capsuleShape = new CapsuleCollisionShape(0.5f, 0.51f, 1)
-    playerControl = new CharacterControl(capsuleShape, 0.05f)
-    player.addControl(playerControl)
-    bulletAppState.getPhysicsSpace.add(playerControl)
-
-
-    playerControl.setJumpSpeed(0);
-    playerControl.setFallSpeed(0);
-    playerControl.setGravity(0);
-    playerControl.setPhysicsLocation(new Vector3f(0, 0.5f, 0));
-    */
-    //player.setMaterial(mat_default);
-
-    rootNode.attachChild(player);
-  }
-
-  def materializeProjectile(p:ProjectileGO) {
-
-    //println("adding projectile " + p.position + "" + p.id)
-    val instance = new Geometry("Box", projectileGeometry);
-    instance.setModelBound(new BoundingSphere())
-    instance.updateModelBound()
-    instance.setMaterial(mat_default)
-    instance.setLocalTranslation(p.position)
-    instance.setUserData("ProjectileGO",p)
-    instance.setShadowMode(ShadowMode.Off)
-
-    rootNode.getChild(SceneGraphNodeKeys.Projectiles).asInstanceOf[Node].attachChild(instance)
-  }
-
-  def materializeTank(pd: Orientation): Spatial = {
-    val tank = assetManager.loadModel(new ModelKey("tank2.blend"))
-    //enemy.setMaterial(mat_default)
-
-    tank.setLocalScale(0.5f)
-    tank.setLocalTranslation(pd.position)
-    tank.setLocalRotation(pd.direction)
-    tank.setShadowMode(ShadowMode.Off)
-    tank
-  }
-
-  def materializeEnemy(pd:PlayerGO) {
-    val tank = materializeTank(pd)
-
-    //enemy.setModelBound(new BoundingSphere())
-    //enemy.updateModelBound()
-    tank.setUserData(SceneGraphUserDataKeys.Player, pd)
-
-    rootNode.getChild(SceneGraphNodeKeys.Enemies).asInstanceOf[Node].attachChild(tank)
-  }
 
   def syncGameWorld(allUpdates:Set[_ <: AbstractOwnedGameObject with Savable]) {
 
