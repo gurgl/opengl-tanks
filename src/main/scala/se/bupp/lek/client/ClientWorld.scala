@@ -4,10 +4,8 @@ import com.jme3.scene.shape.Box
 import com.jme3.bounding.BoundingSphere
 import com.jme3.scene.{Spatial, Node, Geometry}
 import com.jme3.asset.{ModelKey, AssetManager}
-import collection.immutable.HashSet
 import com.jme3.export.Savable
 import scala.collection.JavaConversions.asScalaBuffer
-import se.bupp.lek.server.Server.{Orientation, AbstractOwnedGameObject, PlayerGO, ProjectileGO}
 import com.jme3.material.{MaterialDef, MaterialList, Material}
 import com.jme3.math.{ColorRGBA, Quaternion, Vector3f}
 import com.jme3.shadow.BasicShadowRenderer
@@ -17,6 +15,8 @@ import com.jme3.light.{AmbientLight, DirectionalLight}
 import com.jme3.post.FilterPostProcessor
 import com.jme3.post.ssao.SSAOFilter
 import com.jme3.util.TangentBinormalGenerator
+import se.bupp.lek.server.Server._
+import collection.immutable.{Stack, HashSet}
 
 
 /**
@@ -68,12 +68,25 @@ class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:(
   var mat_default_lgt : Material = _
   var mat_default_ush : Material = _
 
+  var projectileGeometry:Box = _
+
+
+
   var player:Spatial = _
 
-  var projectileHandler : ProjectileHandler = _
+  var projectileSeqId = 0
+
+  var fired = Stack[ProjectileFireGO]()
+
 
 
   def init(playerPosition:Orientation) {
+
+
+    rootNode.setShadowMode(ShadowMode.Off)
+    projectileGeometry = new Box(Vector3f.ZERO.clone(), 0.1f, 0.1f, 0.1f)
+    projectileGeometry.setBound(new BoundingSphere())
+    projectileGeometry.updateBound()
 
     mat_default = new Material(assetManager, "Common/MatDefs/Misc/ShowNormals.j3md");
     mat_default_lgt = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
@@ -115,10 +128,10 @@ class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:(
     al.setColor(ColorRGBA.White.mult(1.3f));
     rootNode.addLight(al);
 
-    /*val bsr = new BasicShadowRenderer(assetManager, 1024);
+    val bsr = new BasicShadowRenderer(assetManager, 1024);
     bsr.setDirection(sunDirection.clone()); // light direction
     viewPort.addProcessor(bsr);
-    */
+
 
     /*
     val fpp = new FilterPostProcessor(assetManager);
@@ -126,20 +139,36 @@ class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:(
     fpp.addFilter(ssaoFilter)
     viewPort.addProcessor(fpp);
     */
-    rootNode.setShadowMode(ShadowMode.CastAndReceive);
-    projectileHandler = new ProjectileHandler(mat_default)
-    projectileHandler.init()
-
+    //rootNode.setShadowMode(ShadowMode.CastAndReceive);
   }
+
+  def purgeFired() : List[ProjectileFireGO] = {
+
+    val res = fired.toList
+    fired = Stack[ProjectileFireGO]()
+    res
+  }
+
+  def fireProjectile(pos:Vector3f, dir:Quaternion) = {
+
+      fired = fired.push(
+        new ProjectileFireGO(
+          new OrientationGO(pos.add(0f,0.7f,0.0f).add(dir.getRotationColumn(0).mult(0.5f)),dir.clone()),
+          4.5f,
+          System.currentTimeMillis(),
+          projectileSeqId
+        ))
+      projectileSeqId += 1
+    }
 
   def getCamPosition() : (Vector3f,Quaternion) = {
 
     val pos = player.getLocalTranslation
-    val camPos = pos.add(Vector3f.UNIT_XYZ.mult(5))
+    val camPos = pos.add(Vector3f.UNIT_XYZ.clone().mult(5))
 
     val dir = pos.subtract(camPos).normalize()
 
-    val rot = Quaternion.IDENTITY
+    val rot = Quaternion.IDENTITY.clone()
     rot.lookAt(dir, new Vector3f(0, 1, 0))
 
     (camPos,rot)
@@ -163,6 +192,7 @@ class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:(
       assetManager.loadTexture("level.mtl"));*/
     //wall.asInstanceOf[Geometry].
     wall.setLocalTranslation(0.0f, 0.0f, 0.0f);
+    wall.setShadowMode(ShadowMode.Receive)
     rootNode.attachChild(wall);
 
   }
@@ -171,10 +201,7 @@ class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:(
 
 
     //player = assetManager.loadModel("Models/Teapot/Teapot.obj")
-    player = assetManager.loadModel(new ModelKey("tank2.blend"))
-    player.setLocalScale(0.5f)
-    player.setLocalRotation(orientation.direction)
-    player.setLocalTranslation(orientation.position)
+    player = materializeTank(orientation)
 
     //player.setMaterial(mat_default);
 
@@ -183,30 +210,37 @@ class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:(
 
   def materializeProjectile(p:ProjectileGO) {
 
-    println("adding projectile " + p.position + "" + p.id)
-    val instance = new Geometry("Box", projectileHandler.projectileGeometry);
+    //println("adding projectile " + p.position + "" + p.id)
+    val instance = new Geometry("Box", projectileGeometry);
     instance.setModelBound(new BoundingSphere())
     instance.updateModelBound()
     instance.setMaterial(mat_default)
     instance.setLocalTranslation(p.position)
     instance.setUserData("ProjectileGO",p)
+    instance.setShadowMode(ShadowMode.Off)
 
     rootNode.getChild(SceneGraphNodeKeys.Projectiles).asInstanceOf[Node].attachChild(instance)
   }
 
-  def materializeEnemy(pd:PlayerGO) {
-    val enemy = assetManager.loadModel(new ModelKey("tank2.blend"))
+  def materializeTank(pd: Orientation): Spatial = {
+    val tank = assetManager.loadModel(new ModelKey("tank2.blend"))
     //enemy.setMaterial(mat_default)
 
-    enemy.setLocalScale(0.5f)
-    enemy.setUserData(SceneGraphUserDataKeys.Player,pd)
-    enemy.setLocalTranslation(pd.position)
-    enemy.setLocalRotation(pd.direction)
+    tank.setLocalScale(0.5f)
+    tank.setLocalTranslation(pd.position)
+    tank.setLocalRotation(pd.direction)
+    tank.setShadowMode(ShadowMode.Off)
+    tank
+  }
 
-    enemy.setModelBound(new BoundingSphere())
-    enemy.updateModelBound()
+  def materializeEnemy(pd:PlayerGO) {
+    val tank = materializeTank(pd)
 
-    rootNode.getChild(SceneGraphNodeKeys.Enemies).asInstanceOf[Node].attachChild(enemy)
+    //enemy.setModelBound(new BoundingSphere())
+    //enemy.updateModelBound()
+    tank.setUserData(SceneGraphUserDataKeys.Player, pd)
+
+    rootNode.getChild(SceneGraphNodeKeys.Enemies).asInstanceOf[Node].attachChild(tank)
   }
 
   def syncGameWorld(allUpdates:Set[_ <: AbstractOwnedGameObject with Savable]) {

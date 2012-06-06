@@ -13,6 +13,8 @@ import se.bupp.lek.server.Server._
 import JavaConversions.asScalaBuffer
 import collection.mutable.{HashMap, ArrayBuffer}
 import se.bupp.lek.server.Server._
+import com.jme3.scene.Geometry
+import scala.None
 
 /**
  * Created by IntelliJ IDEA.
@@ -27,12 +29,14 @@ class WorldSimulator {
 
   var lock: AnyRef = new Object()
 
-  var lastWorldSimTimeStamp = null
+  var lastWorldSimTimeStamp:Option[Long] = None
   var players = new ArrayBuffer[PlayerStatus]()
   var firedProjectiles = new HashMap[Int, List[ProjectileFireGO]]()
 
   var projectiles = List[ProjectileGO]()
 
+
+  //enemy.asInstanceOf[Geometry].collideWith(f.geometry.getWorldBound,res)
 
   //var projectiles = new ArrayBuffer[ProjectileGO]()
 
@@ -77,10 +81,14 @@ class WorldSimulator {
       projectiles = projectiles.filter(_.timeSpawned > maxAgeProjectiles)
 
 
+      lastWorldSimTimeStamp.foreach { lastSimTime =>
       projectiles.foreach {
         pf =>
         //pf.
-          pf.orientation.position = pf.position.add(pf.orientation.direction.getRotationColumn(0).mult(pf.speed * (simTime - pf.timeSpawned).toFloat / 1000f))
+          val translate = pf.orientation.direction.getRotationColumn(0).mult(pf.speed * (simTime - lastSimTime).toFloat / 1000f)
+          //println("translate " + translate + translate.length)
+          pf.orientation.position = pf.orientation.position.add(translate)
+      }
       }
 
       //println("projectiles.size" + projectiles.size + " newProjectiles " + newProjectiles.size)
@@ -98,7 +106,9 @@ class WorldSimulator {
       gameWorld.players = new java.util.ArrayList[PlayerGO](playerState)
       gameWorld.projectiles = new java.util.ArrayList[ProjectileGO](projectiles)
       gameWorld.timeStamp = simTime
+      lastWorldSimTimeStamp = Some(simTime)
     }
+
     //println(s)
     gameWorld
   }

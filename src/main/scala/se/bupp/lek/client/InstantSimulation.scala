@@ -74,7 +74,7 @@ class InstantSimulation(gameWorldUpdates:Queue[Server.ServerGameWorld], val play
 
     pp.position = pp.position.add(translation)
 
-    //buffer.append("moving " + translation + " " + lastServerSimToSimTime + " " + p.speed + " " + pp.position + System.currentTimeMillis() + "\n")
+    //Client.buffer.append("moving " + translation + " " + translation.length() + " " + lastServerSimToSimTime + " " + p.speed + " " + pp.position + System.currentTimeMillis() + "\n")
     pp
   }
 

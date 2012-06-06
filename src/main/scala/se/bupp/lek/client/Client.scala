@@ -73,7 +73,7 @@ class PlayerInput(startPosition:Orientation) {
   def recalculateFrom(timeStamp:Long, server:Orientation) : Orientation = {
 
     val(discarded, newSaved) = saved.partition ( _._1 < timeStamp)
-    saved = discarded.last +: newSaved
+    saved = if(discarded.size > 0) discarded.last +: newSaved else newSaved
     val diffHeur = diff(saved.head._2,server.orientation)
     val newPos = if(diffHeur._1 < 0.05 && diffHeur._2 < FastMath.PI / 120) {
 
@@ -121,7 +121,7 @@ class Client extends SimpleApplication {
 
       if (name.equals("Fire")) {
         if(value == true) {
-          val p = gameWorld.projectileHandler.fireProjectile(gameWorld.player.getLocalTranslation,gameWorld.player.getLocalRotation)
+          val p = gameWorld.fireProjectile(gameWorld.player.getLocalTranslation,gameWorld.player.getLocalRotation)
           //rootNode.attachChild(p)
         }
       }
@@ -159,7 +159,7 @@ class Client extends SimpleApplication {
 
       val (accTranslation, accRotation) = playerInput.flushAccumulated()
       import JavaConversions.seqAsJavaList
-      request.projectilesFired = new java.util.ArrayList[ProjectileFireGO](gameWorld.projectileHandler.purgeFired)
+      request.projectilesFired = new java.util.ArrayList[ProjectileFireGO](gameWorld.purgeFired)
       request.timeStamp = System.currentTimeMillis()
       request.playerId = playerIdOpt.get
       request.motion = new MotionGO(accTranslation, accRotation)
@@ -215,11 +215,22 @@ class Client extends SimpleApplication {
     getCamera.setFrame(pos,rot)
 
   }
+
+
+  override def destroyInput() {}
+
+  override def destroy() {
+    super.destroy()
+
+    println("destroy " + Client.buffer.toString())
+  }
 }
 
 object Client {
 
   val rotSpeed = 2.0f
+
+  var buffer = new StringBuilder
 
   def main(arguments: Array[String]): Unit = {
     val spel = new Client()
