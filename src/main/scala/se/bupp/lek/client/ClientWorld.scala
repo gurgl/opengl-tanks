@@ -17,6 +17,10 @@ import com.jme3.post.ssao.SSAOFilter
 import com.jme3.util.TangentBinormalGenerator
 import se.bupp.lek.server.Server._
 import collection.immutable.{Stack, HashSet}
+import com.jme3.bullet.util.CollisionShapeFactory
+import com.jme3.bullet.BulletAppState
+import com.jme3.bullet.collision.shapes.CapsuleCollisionShape
+import com.jme3.bullet.control.{CharacterControl, RigidBodyControl}
 
 
 /**
@@ -61,7 +65,7 @@ object ClientWorld {
   }
 }
 
-class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:() => Option[Int],playerInput:PlayerInput, viewPort:ViewPort) {
+class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:() => Option[Int],playerInput:PlayerInput, viewPort:ViewPort, val bulletAppState:BulletAppState) {
   import ClientWorld._
 
   var mat_default : Material = _
@@ -72,6 +76,7 @@ class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:(
 
 
 
+  var playerControl:CharacterControl = _
   var player:Spatial = _
 
   var projectileSeqId = 0
@@ -176,7 +181,13 @@ class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:(
 
   def materializeLevel() {
     // Create a wall with a simple texture from test_data
-    val wall = assetManager.loadModel("level.blend")//new Box(Vector3f.ZERO, 2.5f, 2.5f, 1.0f);
+    val level = assetManager.loadModel("level.blend")//new Box(Vector3f.ZERO, 2.5f, 2.5f, 1.0f);
+
+    val sceneCollisionShape = CollisionShapeFactory.createMeshShape(level.asInstanceOf[Node])
+    val landscape = new RigidBodyControl(sceneCollisionShape, 0)
+    level.addControl(landscape);
+    bulletAppState.getPhysicsSpace.add(landscape)
+
     //val wall = new Geometry("Box", box);
     //val matLevel = new MaterialList()
     //val materialList = assetManager.loadAsset("level.mtl").asInstanceOf[MaterialList]
@@ -191,9 +202,9 @@ class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:(
     /*mat_brick.setTexture("ColorMap",
       assetManager.loadTexture("level.mtl"));*/
     //wall.asInstanceOf[Geometry].
-    wall.setLocalTranslation(0.0f, 0.0f, 0.0f);
-    wall.setShadowMode(ShadowMode.Receive)
-    rootNode.attachChild(wall);
+    level.setLocalTranslation(0.0f, 0.0f, 0.0f);
+    level.setShadowMode(ShadowMode.Receive)
+    rootNode.attachChild(level);
 
   }
 
@@ -203,6 +214,19 @@ class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:(
     //player = assetManager.loadModel("Models/Teapot/Teapot.obj")
     player = materializeTank(orientation)
 
+
+
+    /*val capsuleShape = new CapsuleCollisionShape(0.5f, 0.51f, 1)
+    playerControl = new CharacterControl(capsuleShape, 0.05f)
+    player.addControl(playerControl)
+    bulletAppState.getPhysicsSpace.add(playerControl)
+
+
+    playerControl.setJumpSpeed(0);
+    playerControl.setFallSpeed(0);
+    playerControl.setGravity(0);
+    playerControl.setPhysicsLocation(new Vector3f(0, 0.5f, 0));
+    */
     //player.setMaterial(mat_default);
 
     rootNode.attachChild(player);

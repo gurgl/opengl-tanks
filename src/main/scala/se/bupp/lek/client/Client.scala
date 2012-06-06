@@ -13,6 +13,7 @@ import se.bupp.lek.client.ClientWorld._
 import collection.JavaConversions
 import se.bupp.lek.server.Server._
 import com.jme3.math._
+import com.jme3.bullet.BulletAppState
 
 
 /**
@@ -197,9 +198,11 @@ class Client extends SimpleApplication {
     stateManager.detach( stateManager.getState(classOf[FlyCamAppState]))
     stateManager.attach(new NetworkState)
 
-    gameWorld = new ClientWorld(rootNode,assetManager,() => playerIdOpt,playerInput, viewPort)
+    val bulletAppState = new BulletAppState();
+    stateManager.attach(bulletAppState);
+    gameWorld = new ClientWorld(rootNode,assetManager,() => playerIdOpt,playerInput, viewPort, bulletAppState);
 
-    val playerStartPosition = new Orientation(Vector3f.ZERO, Quaternion.IDENTITY)
+    val playerStartPosition = new Orientation(Vector3f.ZERO.clone().setY(0.5f), Quaternion.IDENTITY.clone())
     gameWorld.init(playerStartPosition)
 
     playerInput = new PlayerInput(playerStartPosition)
