@@ -68,7 +68,7 @@ class NetworkState extends AbstractAppState {
     gameApp.playerInput.saveInput(simTime)
     if(System.currentTimeMillis() - lastSentUpdate > 1000/15 ) {
 
-      val request = gameApp.createPlayerActionRequest
+      val request = gameApp.createPlayerActionRequest(simTime)
       gameClient.sendUDP(request)
       lastSentUpdate = System.currentTimeMillis()
     }

@@ -110,7 +110,8 @@ object Server {
   class PlayerStatus extends Savable {
     var state: PlayerGO = _
 
-    var reorientation:Option[MotionGO] = None
+    var seqId : Int = _
+    var reorientation:Seq[MotionGO] = Seq.empty
     //var lastUpdate: Option[PlayerActionRequest] = None
     override def read(reader: JmeImporter) {}
 
@@ -275,6 +276,7 @@ object Server {
     var elapsed: Long = _
     var projectilesFired: java.util.ArrayList[ProjectileFireGO] = _
 
+    var seqId:Int = _
   }
 
   class GameWorldResponse() {

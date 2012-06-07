@@ -45,14 +45,15 @@ class PlayerInput(startPosition:Orientation) {
   var rotation:Quaternion = noPlayerInput._2
 
   def reorientation:Reorientation = (translation,rotation)
-  var accTranslation = Vector3f.ZERO
+  var accTranslation = Vector3f.ZERO.clone()
   var accRotation = noRotation
 
   var saved = Queue.empty[(Long, Orientation, Reorientation)] + (System.currentTimeMillis(),startPosition, noMotion)
 
+  val lock:AnyRef = new Object
   def flushAccumulated() = {
     val r = (accTranslation.clone(),accRotation.clone())
-    accTranslation = Vector3f.ZERO
+    accTranslation = Vector3f.ZERO.clone()
     accRotation = noRotation
     r
   }
@@ -64,52 +65,62 @@ class PlayerInput(startPosition:Orientation) {
   def diff(client:Orientation,server:Orientation) = {
     val transDiff = client.position.subtract(server.position)
 
+    //println(client.position + " " + server.position + " " + transDiff + " " + transDiff.length())
     //new Quaternion(client.direction).subtract(server.direction)
 
     //val rotDiff = Quaternion.IDENTITY.clone().slerp(client.direction,server.direction,1.0f)
     //transDiff.length() < 0.1 && rotDiff.getW < FastMath.PI / 80
     //math.sqrt(client.direction.dot(server.direction))
     val deltaQ: Quaternion = client.direction.subtract(server.direction)
-    val sqrt: Double = math.sqrt(deltaQ.dot(deltaQ))
-    (math.abs(transDiff.length()),math.abs(sqrt))
+    val sqrt = math.sqrt(deltaQ.dot(deltaQ))
+    (transDiff.length(),math.abs(sqrt))
   }
 
-  def recalculateFrom(timeStamp:Long, server:Orientation) : Orientation = {
+  def recalculateFrom(serverSnapshotSentByPlayerTime:Long,serverSimTime:Long, server:Orientation) : Orientation = {
 
-    val(discarded, newSaved) = saved.partition ( _._1 < timeStamp)
-    //saved = newSaved
-    saved = if(discarded.size > 0) discarded.last +: newSaved else newSaved
-    val diffHeur = diff(saved.head._2,server.orientation)
-    val newPos = if(diffHeur._1 > 0.2 || diffHeur._2 > FastMath.PI / 45) {
+    lock.synchronized {
+      val(discarded, newSaved) = saved.partition ( _._1 < serverSnapshotSentByPlayerTime)
+      saved = newSaved
+      //saved = if(discarded.size > 0) discarded.last +: newSaved else newSaved
+      if(saved.size == 0) {
+        server
+      } else {
+        val diffHeur = diff(saved.head._2,server)
+        val newPos = if(diffHeur._1 > 1.0 || diffHeur._2 > FastMath.PI / 45) {
 
-      val newSavedPos = saved.foldLeft(Queue(server)) {
-        case (orList,(time,orientationBeforeReorientation, reorient)) =>
-          orList :+ orList.last.reorientate(reorient)
+          val newSavedPos = saved.foldLeft(Queue(server)) {
+            case (recalculatedPositions,(time,orientationBeforeReorientation, reorient)) =>
+              recalculatedPositions :+ recalculatedPositions.last.reorientate(reorient)
+          }
+          println("Bad " + saved.head._2.position + " " + server.position + " " + serverSimTime + " " + diffHeur._1 + " " + serverSnapshotSentByPlayerTime)
+          saved = newSavedPos.tail.zip(saved).map {case (np, (ts, _ , reor)) => (ts, np, reor) }
+          //println("Bad " + saved.head._2.position+ " " + server.position + " " + diffHeur._1) // + " " + newSavedPos.last)
+          //println("Bad " + diffHeur)
+          newSavedPos.last
+        } else {
+          //println("Good " + diffHeur)
+          //println("using " + saved.last._2)
+          saved.last._2
+        }
+        newPos
       }
-      saved = newSavedPos.tail.zip(saved).map {case (np, (ts, _ , reor)) => (ts, np, reor) }
-      //println("Bad " + saved.head._2.direction + " " + server.direction) // + " " + newSavedPos.last)
-      println("Bad " + diffHeur)
-      newSavedPos.last
-    } else {
-      println("Good " + diffHeur)
-      //println("using " + saved.last._2)
-      saved.last._2
     }
-    newPos
-
   }
 
   def saveInput(timeStamp:Long) {
-    while(saved.size >= LocalInputLogSize) {
-      saved = saved.dequeue._2
+    lock.synchronized {
+      while(saved.size >= LocalInputLogSize) {
+        saved = saved.dequeue._2
 
+      }
+
+      val orientation = saved.last._2.reorientate(reorientation)
+      saved =  saved + (timeStamp, orientation, (translation,rotation))
+
+      accTranslation = accTranslation.add(translation)
+      accRotation = rotation.mult(accRotation)
+      resetInput()
     }
-    val orientation = saved.last._2.reorientate(reorientation)
-    saved =  saved + (timeStamp, orientation, (translation,rotation))
-    
-    accTranslation = accTranslation.add(translation)
-    accRotation = rotation.mult(accRotation)
-    resetInput()
   }
 }
 
@@ -161,14 +172,17 @@ class Client extends SimpleApplication {
     }
   };
 
-  def createPlayerActionRequest(): Server.PlayerActionRequest = {
+  var seqId = 0
+  def createPlayerActionRequest(lastRecordedActionTime:Long): Server.PlayerActionRequest = {
       val request: PlayerActionRequest = new PlayerActionRequest
 
       val (accTranslation, accRotation) = playerInput.flushAccumulated()
       import JavaConversions.seqAsJavaList
       request.projectilesFired = new java.util.ArrayList[ProjectileFireGO](gameWorld.purgeFired)
-      request.timeStamp = System.currentTimeMillis()
+      request.timeStamp = lastRecordedActionTime
       request.playerId = playerIdOpt.get
+      request.seqId = seqId
+      seqId += 1
       request.motion = new MotionGO(accTranslation, accRotation)
       request
     }

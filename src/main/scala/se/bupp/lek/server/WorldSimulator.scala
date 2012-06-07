@@ -27,8 +27,6 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, bulletAppState:Bull
     super.init()
   }
 
-  
-  
   def players() = projectNodeChildrenByData[PlayerStatus](SceneGraphWorld.SceneGraphNodeKeys.Enemies, SceneGraphWorld.SceneGraphUserDataKeys.Player)
 
   def projectNodeChildrenByData[U](nodeKey:String, userDataKey:String) = {
@@ -88,19 +86,27 @@ class WorldSimulator(world:ServerWorld) {
 
     var s = ""
     lock.synchronized {
+      
       val players = world.players
+      val simTime: Long = System.currentTimeMillis()
       
       players.foreach {
         case (d,s) => 
           val ctrl = s.getControl(classOf[CharacterControl])
+          var ss = ""
           d.reorientation.foreach { m => 
+            //println("seqId " + d.seqId)
+            //ctrl.setWalkDirection(m.translation)
 
-            ctrl.setWalkDirection(m.translation)
             d.state.direction = m.rotation.mult(d.state.direction)
-            
-            d.state.position = ctrl.getPhysicsLocation
+            //d.state.position = ctrl.getPhysicsLocation
+            d.state.position = d.state.position.add(m.translation)
             //println("phy " + ctrl.getPhysicsLocation + " reor " + m.translation)
+            
+            ss += m.translation + " " + d.state.position
           }
+          //println("sim " + ss + " " + simTime + " " + d.state.sentToServerByClient)
+          d.reorientation = Seq.empty
       }
       val playerState = players.map {
         case (ps, s)  => ps.state
@@ -117,7 +123,7 @@ class WorldSimulator(world:ServerWorld) {
       s = playerState.map(x => " | " + x.playerId + " " + x.position + " " + x.direction).mkString(",")
 
 
-      val simTime: Long = System.currentTimeMillis()
+      
       val maxAgeProjectiles = simTime - 5 * 1000
 
 
@@ -210,8 +216,9 @@ class WorldSimulator(world:ServerWorld) {
           //x.processedUpdate = false
 
           x.state.sentToServerByClient = request.timeStamp
-          x.reorientation = Some(request.motion)
+          x.reorientation = x.reorientation :+ request.motion
 
+          x.seqId = request.seqId
 
 
           firedProjectiles.get(request.playerId) match {
