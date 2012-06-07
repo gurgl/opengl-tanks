@@ -5,7 +5,6 @@ import scala.Predef._
 import management.ManagementFactory
 import com.jme3.math.{Quaternion, Vector3f}
 import com.jme3.export.{JmeExporter, JmeImporter, Savable}
-import com.jme3.app.SimpleApplication
 import com.jme3.system.JmeContext
 import collection.JavaConversions
 import se.bupp.lek.server.Server._
@@ -15,6 +14,8 @@ import collection.mutable.{HashMap, ArrayBuffer}
 import se.bupp.lek.server.Server._
 import com.jme3.scene.Geometry
 import scala.None
+import com.jme3.app.{FlyCamAppState, SimpleApplication}
+import com.jme3.bullet.{PhysicsSpace, PhysicsTickListener, BulletAppState}
 
 /**
  * Created by IntelliJ IDEA.
@@ -25,20 +26,35 @@ import scala.None
  */
 
 
-class Server extends SimpleApplication {
+class Server extends SimpleApplication with PhysicsTickListener {
+
 
 
   import Server._
+
+  override def prePhysicsTick(p1: PhysicsSpace, p2: Float) {}
+
+  override def physicsTick(p1: PhysicsSpace, p2: Float) {}
 
   var updateMaxTimeStamp = System.currentTimeMillis()
 
   var worldSimulator: WorldSimulator = _
 
+  var server:KryoServer = _
+
   override def simpleInitApp() {
 
-    worldSimulator = new WorldSimulator(rootNode)
+    stateManager.detach( stateManager.getState(classOf[FlyCamAppState]))
+    val bulletAppState = new BulletAppState();
 
-    val server = new KryoServer();
+    stateManager.attach(bulletAppState);
+    flyCam.setEnabled(false)
+
+    val serverWorld = new ServerWorld(rootNode,assetManager,bulletAppState)
+    serverWorld.initEmpty()
+    worldSimulator = new WorldSimulator(serverWorld)
+
+    server = new KryoServer();
     server.start();
     server.bind(54555, 54777);
 
@@ -71,29 +87,34 @@ class Server extends SimpleApplication {
       }
     });
 
-    while (true) {
+  }
 
 
-      try {
+  var lastSentUpdate = 0L
+  override def simpleUpdate(tpf: Float) {
 
-        Thread.sleep(1000 / 10)
+    if(System.currentTimeMillis() - lastSentUpdate > 1000/16) {
+
 
         val gameWorld = worldSimulator.getGameWorld
         //println("" + players.size)
         server.sendToAllUDP(gameWorld)
-      } catch {
-        case e: InterruptedException =>
-      }
+        lastSentUpdate = System.currentTimeMillis()
+
     }
   }
 }
 
 object Server {
 
-  class PlayerStatus {
+  class PlayerStatus extends Savable {
     var state: PlayerGO = _
-    var lastUpdate: Option[PlayerActionRequest] = None
-    var processedUpdate = true
+
+    var reorientation:Option[MotionGO] = None
+    //var lastUpdate: Option[PlayerActionRequest] = None
+    override def read(reader: JmeImporter) {}
+
+    override def write(writer: JmeExporter) {}
   }
 
   type Reorientation = (Vector3f,Quaternion)

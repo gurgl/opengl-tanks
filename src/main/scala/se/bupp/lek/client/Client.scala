@@ -66,26 +66,32 @@ class PlayerInput(startPosition:Orientation) {
 
     //new Quaternion(client.direction).subtract(server.direction)
 
-    val rotDiff = Quaternion.IDENTITY.clone().slerp(client.direction,server.direction,1.0f)
+    //val rotDiff = Quaternion.IDENTITY.clone().slerp(client.direction,server.direction,1.0f)
     //transDiff.length() < 0.1 && rotDiff.getW < FastMath.PI / 80
-    (transDiff.length(),rotDiff.getW)
+    //math.sqrt(client.direction.dot(server.direction))
+    val deltaQ: Quaternion = client.direction.subtract(server.direction)
+    val sqrt: Double = math.sqrt(deltaQ.dot(deltaQ))
+    (math.abs(transDiff.length()),math.abs(sqrt))
   }
 
   def recalculateFrom(timeStamp:Long, server:Orientation) : Orientation = {
 
     val(discarded, newSaved) = saved.partition ( _._1 < timeStamp)
+    //saved = newSaved
     saved = if(discarded.size > 0) discarded.last +: newSaved else newSaved
     val diffHeur = diff(saved.head._2,server.orientation)
-    val newPos = if(diffHeur._1 < 0.05 && diffHeur._2 < FastMath.PI / 120) {
+    val newPos = if(diffHeur._1 > 0.2 || diffHeur._2 > FastMath.PI / 45) {
 
       val newSavedPos = saved.foldLeft(Queue(server)) {
         case (orList,(time,orientationBeforeReorientation, reorient)) =>
           orList :+ orList.last.reorientate(reorient)
       }
       saved = newSavedPos.tail.zip(saved).map {case (np, (ts, _ , reor)) => (ts, np, reor) }
-      //println("Recalculating " + diffHeur + " " + newSavedPos.last)
+      //println("Bad " + saved.head._2.direction + " " + server.direction) // + " " + newSavedPos.last)
+      println("Bad " + diffHeur)
       newSavedPos.last
     } else {
+      println("Good " + diffHeur)
       //println("using " + saved.last._2)
       saved.last._2
     }

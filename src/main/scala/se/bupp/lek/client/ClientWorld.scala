@@ -21,6 +21,7 @@ import com.jme3.bullet.util.CollisionShapeFactory
 import com.jme3.bullet.BulletAppState
 import com.jme3.bullet.collision.shapes.CapsuleCollisionShape
 import com.jme3.bullet.control.{CharacterControl, RigidBodyControl}
+import com.jme3.asset.plugins.ZipLocator
 
 
 /**
@@ -34,26 +35,7 @@ import com.jme3.bullet.control.{CharacterControl, RigidBodyControl}
 
 object ClientWorld {
 
-  def setMatch[A,B](left:Set[A],right:Set[B],comp:Function2[A,B,Boolean]) : Tuple3[Set[A],Set[B],Set[(A,B)]] = {
-    var leftLeft = new HashSet[A]()
-    var rightLeft = new HashSet[B]() ++ right
-    var matched = new HashSet[(A,B)]()
 
-    left.foreach { l =>
-      rightLeft.find(r => comp(l,r)) match {
-        case Some(rr) =>
-          rightLeft -= rr
-          matched = matched + Pair(l, rr)
-          ()
-        case None =>
-          leftLeft += l
-          ()
-      }
-    }
-    (leftLeft,rightLeft, matched)
-  }
-
-  type GOWithSavable = AbstractOwnedGameObject with Savable
 }
 
 object SceneGraphWorld {
@@ -66,6 +48,26 @@ object SceneGraphWorld {
     val Enemies= "Enemies"
   }
 
+  def setMatch[A,B](left:Set[A],right:Set[B],comp:Function2[A,B,Boolean]) : Tuple3[Set[A],Set[B],Set[(A,B)]] = {
+      var leftLeft = new HashSet[A]()
+      var rightLeft = new HashSet[B]() ++ right
+      var matched = new HashSet[(A,B)]()
+
+      left.foreach { l =>
+        rightLeft.find(r => comp(l,r)) match {
+          case Some(rr) =>
+            rightLeft -= rr
+            matched = matched + Pair(l, rr)
+            ()
+          case None =>
+            leftLeft += l
+            ()
+        }
+      }
+      (leftLeft,rightLeft, matched)
+    }
+
+    type GOWithSavable = AbstractOwnedGameObject with Savable
 }
 
 class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager, bulletAppState:BulletAppState, rootNode:Node) {
@@ -81,10 +83,13 @@ class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager, bulletA
 
   import SceneGraphWorld._
 
+  def getNode(key:String) = rootNode.getChild(key).asInstanceOf[Node]
+  
   def init() {
     projectileGeometry = new Box(Vector3f.ZERO.clone(), 0.1f, 0.1f, 0.1f)
     projectileGeometry.setBound(new BoundingSphere())
     projectileGeometry.updateBound()
+
 
     if(!isHeadLess) {
       mat_default = new Material(assetManager, "Common/MatDefs/Misc/ShowNormals.j3md");
@@ -105,6 +110,9 @@ class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager, bulletA
       //mat_default_ush.setColor("Diffuse", ColorRGBA.Blue ); // with Lighting.j3md
       //mat_default_ush.setColor("Ambient", ColorRGBA.White);
     }
+
+    materializeLevel()
+
     var enemyNodes = new Node(SceneGraphNodeKeys.Enemies)
     rootNode.attachChild(enemyNodes)
     var projectileNodes = new Node(SceneGraphNodeKeys.Projectiles)
@@ -116,9 +124,13 @@ class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager, bulletA
     // Create a wall with a simple texture from test_data
     val level = assetManager.loadModel("level.blend")//new Box(Vector3f.ZERO, 2.5f, 2.5f, 1.0f);
 
+    //assetManager.registerLocator("town.zip", classOf[ZipLocator]);
+    //val level = assetManager.loadModel("main.scene");
+    //level.setLocalScale(0.2f)
     val sceneCollisionShape = CollisionShapeFactory.createMeshShape(level.asInstanceOf[Node])
     val landscape = new RigidBodyControl(sceneCollisionShape, 0)
     level.addControl(landscape);
+
     bulletAppState.getPhysicsSpace.add(landscape)
 
     //val wall = new Geometry("Box", box);
@@ -154,6 +166,18 @@ class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager, bulletA
     }
     tank
   }
+
+  def materializeTank2(pd: Orientation): Spatial = {
+      val tank = assetManager.loadModel(new ModelKey("tank2.blend"))
+      //enemy.setMaterial(mat_default)
+
+      tank.setLocalScale(0.5f)
+      if(!isHeadLess) {
+        tank.setShadowMode(ShadowMode.Off)
+      }
+      tank
+    }
+
 
   def materializeEnemy(pd:PlayerGO) {
     val tank = materializeTank(pd)
@@ -227,7 +251,7 @@ class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:(
 
 
     materializePlayer(playerPosition)
-    materializeLevel()
+
     //materializeStats()
 
 
