@@ -96,6 +96,7 @@ class InstantSimulation(gameWorldUpdates:Queue[Server.ServerGameWorld], val play
 
               if(id._2 == playerId) {
                 val newP = new PlayerGO(p)
+
                 newP.orientation = playerInput.recalculateFrom(p.sentToServerByClient,lastServerSimInstants.last,p)
                 Some(newP)
                 //Some(p)

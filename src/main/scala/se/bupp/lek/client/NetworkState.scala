@@ -65,7 +65,13 @@ class NetworkState extends AbstractAppState {
       gameApp.gameWorld.syncGameWorld(updates.distinct.toSet)
     }
 
+
+    val phyTranslation = gameApp.gameWorld.player.getLocalTranslation.subtract(gameApp.playerInput.saved.last._2.position)
+    gameApp.playerInput.saveReorientation(simTime,(phyTranslation, MathUtil.noRotation))
     gameApp.playerInput.saveInput(simTime)
+
+
+
     if(System.currentTimeMillis() - lastSentUpdate > 1000/15 ) {
 
       val request = gameApp.createPlayerActionRequest(simTime)

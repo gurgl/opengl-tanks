@@ -47,7 +47,7 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, bulletAppState:Bull
     tank.setUserData(SceneGraphUserDataKeys.Player, ps)
 
     //tank.attachChild(tankModel)
-    val capsuleShape = new CapsuleCollisionShape(0.05f, 0.05f, 1)
+    /*val capsuleShape = new CapsuleCollisionShape(0.05f, 0.05f, 1)
     val playerControl = new CharacterControl(capsuleShape, 0.1f)
     tank.addControl(playerControl)
     
@@ -58,7 +58,7 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, bulletAppState:Bull
     playerControl.setFallSpeed(0.3f);
     playerControl.setGravity(0.3f);
     playerControl.setPhysicsLocation(new Vector3f(0, 2.5f, 0));
-
+    */
     getNode(SceneGraphWorld.SceneGraphNodeKeys.Enemies).attachChild(tank)
 
   }
@@ -92,7 +92,7 @@ class WorldSimulator(world:ServerWorld) {
       
       players.foreach {
         case (d,s) => 
-          val ctrl = s.getControl(classOf[CharacterControl])
+          //val ctrl = s.getControl(classOf[CharacterControl])
           var ss = ""
           d.reorientation.foreach { m => 
             //println("seqId " + d.seqId)

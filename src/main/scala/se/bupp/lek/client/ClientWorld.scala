@@ -195,6 +195,19 @@ class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager, bulletA
     player = materializeTank(orientation)
 
 
+    val capsuleShape = new CapsuleCollisionShape(0.05f, 0.05f, 1)
+    val playerControl = new CharacterControl(capsuleShape, 0.1f)
+    player.addControl(playerControl)
+
+    bulletAppState.getPhysicsSpace.add(playerControl)
+
+
+    playerControl.setJumpSpeed(0);
+    playerControl.setFallSpeed(0.3f);
+    playerControl.setGravity(0.3f);
+    playerControl.setPhysicsLocation(new Vector3f(0, 2.5f, 0));
+
+
 
     /*val capsuleShape = new CapsuleCollisionShape(0.5f, 0.51f, 1)
     playerControl = new CharacterControl(capsuleShape, 0.05f)
@@ -231,7 +244,7 @@ class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager, bulletA
 
 }
 
-class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:() => Option[Int],playerInput:PlayerInput, viewPort:ViewPort, val bulletAppState:BulletAppState) extends SceneGraphWorld(false,assetManager,bulletAppState,rootNode) {
+class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:() => Option[Int],val playerInput:PlayerInput, viewPort:ViewPort, val bulletAppState:BulletAppState) extends SceneGraphWorld(false,assetManager,bulletAppState,rootNode) {
   import ClientWorld._
   import SceneGraphWorld._
 
@@ -353,10 +366,20 @@ class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:(
       case p:PlayerGO =>
         if(p.playerId == playerIdOpt.apply().get) {
 
-          //player.move(playerInput.translation)
-          //player.rotate(playerInput.rotation)
-          player.setLocalTranslation(p.position)
-          player.setLocalRotation(p.direction)
+          //player.move(playerinput.translation)
+          //player.rotate(playerinput.rotation)
+          
+          val control = player.getControl(classOf[CharacterControl])
+          val direction: Vector3f = p.position //.subtract(player.getLocalTranslation).setY(0)
+          //println(direction + " " + bulletAppState.getSpeed + " " + bulletAppState.getPhysicsSpace.getAccuracy)
+          control.setWalkDirection(direction)
+          //control.setviewdirection(player.setlocalrotation(p.direction))
+          control.setViewDirection(p.direction.getRotationColumn(0))
+
+
+
+          //player.setlocaltranslation(p.position)
+          //player.setLocalRotation(p.direction)
         } else {
           materializeEnemy(p)
         }

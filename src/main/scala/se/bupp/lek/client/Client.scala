@@ -14,6 +14,7 @@ import collection.JavaConversions
 import se.bupp.lek.server.Server._
 import com.jme3.math._
 import com.jme3.bullet.BulletAppState
+import com.jme3.bullet.control.CharacterControl
 
 
 /**
@@ -44,7 +45,7 @@ class PlayerInput(startPosition:Orientation) {
   var translation:Vector3f = noPlayerInput._1
   var rotation:Quaternion = noPlayerInput._2
 
-  def reorientation:Reorientation = (translation,rotation)
+  def lastInput:Reorientation = (translation,rotation)
   var accTranslation = Vector3f.ZERO.clone()
   var accRotation = noRotation
 
@@ -83,31 +84,40 @@ class PlayerInput(startPosition:Orientation) {
       saved = newSaved
       //saved = if(discarded.size > 0) discarded.last +: newSaved else newSaved
       if(saved.size == 0) {
-        server
+        //server
+        new Orientation(Vector3f.ZERO.clone(), MathUtil.noRotation)
       } else {
         val diffHeur = diff(saved.head._2,server)
-        val newPos = if(diffHeur._1 > 1.0 || diffHeur._2 > FastMath.PI / 45) {
+        //val newPos = 
+          if(diffHeur._1 > 1.0 || diffHeur._2 > FastMath.PI / 45) {
 
           val newSavedPos = saved.foldLeft(Queue(server)) {
             case (recalculatedPositions,(time,orientationBeforeReorientation, reorient)) =>
               recalculatedPositions :+ recalculatedPositions.last.reorientate(reorient)
           }
-          println("Bad " + saved.head._2.position + " " + server.position + " " + serverSimTime + " " + diffHeur._1 + " " + serverSnapshotSentByPlayerTime)
+          //println("Bad " + saved.head._2.position + " " + server.position + " " + serverSimTime + " " + diffHeur._1 + " " + serverSnapshotSentByPlayerTime)
           saved = newSavedPos.tail.zip(saved).map {case (np, (ts, _ , reor)) => (ts, np, reor) }
           //println("Bad " + saved.head._2.position+ " " + server.position + " " + diffHeur._1) // + " " + newSavedPos.last)
           //println("Bad " + diffHeur)
-          newSavedPos.last
-        } else {
+          //newSavedPos.last
+            val control: CharacterControl = Client.spel.gameWorld.player.getControl(classOf[CharacterControl])
+            control.setPhysicsLocation(saved.last._2.position)
+            control.setViewDirection(saved.last._2.direction.getRotationColumn(0))
+        } /*else {
           //println("Good " + diffHeur)
           //println("using " + saved.last._2)
           saved.last._2
-        }
-        newPos
+        } */
+        //saved.map{ case (a,b,c) => a + " p" + b._1 + " t" + a._1 }.
+        //newPos
+        new Orientation(saved.last._3._1,saved.last._2.direction)
       }
     }
   }
 
-  def saveInput(timeStamp:Long) {
+
+
+  def saveReorientation(timeStamp:Long, reorientation:Reorientation) {
     lock.synchronized {
       while(saved.size >= LocalInputLogSize) {
         saved = saved.dequeue._2
@@ -115,12 +125,16 @@ class PlayerInput(startPosition:Orientation) {
       }
 
       val orientation = saved.last._2.reorientate(reorientation)
-      saved =  saved + (timeStamp, orientation, (translation,rotation))
+      saved =  saved + (timeStamp, orientation, reorientation)
 
-      accTranslation = accTranslation.add(translation)
-      accRotation = rotation.mult(accRotation)
-      resetInput()
+      accTranslation = accTranslation.add(reorientation._1)
+      accRotation = reorientation._2.mult(accRotation)
     }
+  }
+  def saveInput(timeStamp:Long) {
+    saveReorientation(timeStamp, lastInput)
+    resetInput()
+
   }
 }
 
@@ -254,9 +268,10 @@ object Client {
   val rotSpeed = 2.0f
 
   var buffer = new StringBuilder
+  var spel:Client = _
 
   def main(arguments: Array[String]): Unit = {
-    val spel = new Client()
+    spel = new Client()
     val settings = new AppSettings(true);
     settings.setResolution(640,480)
     settings.setTitle("Tank Showdown")
