@@ -33,7 +33,7 @@ import com.jme3.asset.plugins.ZipLocator
  */
 
 
-object ClientWorld {
+object VisualWorldSimulation {
 
 
 }
@@ -245,8 +245,8 @@ class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager, bulletA
 
 }
 
-class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:() => Option[Int],val playerInput:PlayerInput, viewPort:ViewPort, val bulletAppState:BulletAppState) extends SceneGraphWorld(false,assetManager,bulletAppState,rootNode) {
-  import ClientWorld._
+class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:() => Option[Int],val playerInput:PlayerInput, viewPort:ViewPort, val bulletAppState:BulletAppState) extends SceneGraphWorld(false,assetManager,bulletAppState,rootNode) {
+  import VisualWorldSimulation._
   import SceneGraphWorld._
 
 

@@ -9,7 +9,7 @@ import se.bupp.lek.server.Server
 import MathUtil._
 import com.jme3.system.AppSettings
 import collection.immutable.{HashSet, Queue}
-import se.bupp.lek.client.ClientWorld._
+import se.bupp.lek.client.VisualWorldSimulation._
 import collection.JavaConversions
 import se.bupp.lek.server.Server._
 import com.jme3.math._
@@ -52,8 +52,8 @@ class PlayerInput(startPosition:Orientation) {
   var saved = Queue.empty[(Long, Orientation, Reorientation)] + (System.currentTimeMillis(),startPosition, noMotion)
 
   val lock:AnyRef = new Object
-  def flushAccumulated() = {
-    val r = (accTranslation.clone(),accRotation.clone())
+  def flushAccumulated() : Reorientation = {
+    val r = (accTranslation,accRotation)
     accTranslation = Vector3f.ZERO.clone()
     accRotation = noRotation
     r
@@ -63,66 +63,11 @@ class PlayerInput(startPosition:Orientation) {
     translation = noPlayerInput._1
     rotation = noPlayerInput._2
   }
-  def diff(client:Orientation,server:Orientation) = {
-    val transDiff = client.position.subtract(server.position)
-
-    //println(client.position + " " + server.position + " " + transDiff + " " + transDiff.length())
-    //new Quaternion(client.direction).subtract(server.direction)
-
-    //val rotDiff = Quaternion.IDENTITY.clone().slerp(client.direction,server.direction,1.0f)
-    //transDiff.length() < 0.1 && rotDiff.getW < FastMath.PI / 80
-    //math.sqrt(client.direction.dot(server.direction))
-    val deltaQ: Quaternion = client.direction.subtract(server.direction)
-    val sqrt = math.sqrt(deltaQ.dot(deltaQ))
-    (transDiff.length(),math.abs(sqrt))
-  }
-
-  def recalculateFrom(serverSnapshotSentByPlayerTime:Long,serverSimTime:Long, server:Orientation) : Orientation = {
-
-    lock.synchronized {
-      val(discarded, newSaved) = saved.partition ( _._1 < serverSnapshotSentByPlayerTime)
-      saved = newSaved
-      //saved = if(discarded.size > 0) discarded.last +: newSaved else newSaved
-      if(saved.size == 0) {
-        //server
-        new Orientation(Vector3f.ZERO.clone(), MathUtil.noRotation)
-      } else {
-        val diffHeur = diff(saved.head._2,server)
-        //val newPos = 
-          if(diffHeur._1 > 1.0 || diffHeur._2 > FastMath.PI / 45) {
-
-          val newSavedPos = saved.foldLeft(Queue(server)) {
-            case (recalculatedPositions,(time,orientationBeforeReorientation, reorient)) =>
-              recalculatedPositions :+ recalculatedPositions.last.reorientate(reorient)
-          }
-          println("Bad " + saved.head._2.position + " " + server.position + " " + serverSimTime + " " + diffHeur._1 + " " + serverSnapshotSentByPlayerTime)
-          saved = newSavedPos.tail.zip(saved).map {case (np, (ts, _ , reor)) => (ts, np, reor) }
-          //println("Bad " + saved.head._2.position+ " " + server.position + " " + diffHeur._1) // + " " + newSavedPos.last)
-          //println("Bad " + diffHeur)
-          //newSavedPos.last
-            val control: CharacterControl = Client.spel.gameWorld.player.getControl(classOf[CharacterControl])
-            control.setPhysicsLocation(saved.last._2.position)
-            //Client.spel.gameWorld.player.setLocalRotation(saved.last._2.direction)
-            //control.setViewDirection(saved.last._2.direction.getRotationColumn(0))
-        } /*else {
-          //println("Good " + diffHeur)
-          //println("using " + saved.last._2)
-          saved.last._2
-        } */
-        //saved.map{ case (a,b,c) => a + " p" + b._1 + " t" + a._1 }.
-        //newPos
-        new Orientation(saved.last._3._1,saved.last._2.direction)
-      }
-    }
-  }
-
-
 
   def saveReorientation(timeStamp:Long, reorientation:Reorientation) {
     lock.synchronized {
       while(saved.size >= LocalInputLogSize) {
         saved = saved.dequeue._2
-
       }
 
       val orientation = saved.last._2.reorientate(reorientation)
@@ -146,7 +91,7 @@ class Client extends SimpleApplication {
 
   var playerInput:PlayerInput = _
 
-  var gameWorld:ClientWorld = _
+  var gameWorld:VisualWorldSimulation = _
 
   val actionListener = new AnalogListener() with ActionListener {
 
@@ -188,17 +133,17 @@ class Client extends SimpleApplication {
   };
 
   var seqId = 0
-  def createPlayerActionRequest(lastRecordedActionTime:Long): Server.PlayerActionRequest = {
+  def createPlayerActionRequest(lastRecordedActionTime:Long, reorientation:Reorientation,projectiles:List[ProjectileFireGO]): Server.PlayerActionRequest = {
       val request: PlayerActionRequest = new PlayerActionRequest
 
-      val (accTranslation, accRotation) = playerInput.flushAccumulated()
+
       import JavaConversions.seqAsJavaList
-      request.projectilesFired = new java.util.ArrayList[ProjectileFireGO](gameWorld.purgeFired)
+      request.projectilesFired = new java.util.ArrayList[ProjectileFireGO](projectiles)//gameWorld.purgeFired)
       request.timeStamp = lastRecordedActionTime
       request.playerId = playerIdOpt.get
       request.seqId = seqId
       seqId += 1
-      request.motion = new MotionGO(accTranslation, accRotation)
+      request.motion = new MotionGO(reorientation._1, reorientation._2)
       request
     }
 
@@ -235,7 +180,7 @@ class Client extends SimpleApplication {
 
     val bulletAppState = new BulletAppState();
     stateManager.attach(bulletAppState);
-    gameWorld = new ClientWorld(rootNode,assetManager,() => playerIdOpt,playerInput, viewPort, bulletAppState);
+    gameWorld = new VisualWorldSimulation(rootNode,assetManager,() => playerIdOpt,playerInput, viewPort, bulletAppState);
 
     val playerStartPosition = new Orientation(Vector3f.ZERO.clone().setY(0.5f), Quaternion.IDENTITY.clone())
     gameWorld.init(playerStartPosition)

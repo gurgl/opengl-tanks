@@ -12,6 +12,7 @@ import com.jme3.bullet.BulletAppState
 import com.jme3.bullet.control.CharacterControl
 import se.bupp.lek.client.SceneGraphWorld.SceneGraphUserDataKeys
 import com.jme3.bullet.collision.shapes.CapsuleCollisionShape
+import util.Random
 
 /**
  * Created by IntelliJ IDEA.
@@ -101,6 +102,11 @@ class WorldSimulator(world:ServerWorld) {
             d.state.direction = m.rotation.mult(d.state.direction)
             //d.state.position = ctrl.getPhysicsLocation
             d.state.position = d.state.position.add(m.translation)
+            if(simTime % 100 == 23) {
+              val angle= new Random().nextDouble()
+              d.state.position = d.state.position.add(new Vector3f(math.sin(angle).toFloat, 0f, math.cos(angle).toFloat))
+            }
+            
             //println("phy " + ctrl.getPhysicsLocation + " reor " + m.translation)
             
             ss += m.translation + " " + d.state.position
