@@ -95,14 +95,15 @@ class PlayerInput(startPosition:Orientation) {
             case (recalculatedPositions,(time,orientationBeforeReorientation, reorient)) =>
               recalculatedPositions :+ recalculatedPositions.last.reorientate(reorient)
           }
-          //println("Bad " + saved.head._2.position + " " + server.position + " " + serverSimTime + " " + diffHeur._1 + " " + serverSnapshotSentByPlayerTime)
+          println("Bad " + saved.head._2.position + " " + server.position + " " + serverSimTime + " " + diffHeur._1 + " " + serverSnapshotSentByPlayerTime)
           saved = newSavedPos.tail.zip(saved).map {case (np, (ts, _ , reor)) => (ts, np, reor) }
           //println("Bad " + saved.head._2.position+ " " + server.position + " " + diffHeur._1) // + " " + newSavedPos.last)
           //println("Bad " + diffHeur)
           //newSavedPos.last
             val control: CharacterControl = Client.spel.gameWorld.player.getControl(classOf[CharacterControl])
             control.setPhysicsLocation(saved.last._2.position)
-            control.setViewDirection(saved.last._2.direction.getRotationColumn(0))
+            //Client.spel.gameWorld.player.setLocalRotation(saved.last._2.direction)
+            //control.setViewDirection(saved.last._2.direction.getRotationColumn(0))
         } /*else {
           //println("Good " + diffHeur)
           //println("using " + saved.last._2)

@@ -70,8 +70,6 @@ class NetworkState extends AbstractAppState {
     gameApp.playerInput.saveReorientation(simTime,(phyTranslation, MathUtil.noRotation))
     gameApp.playerInput.saveInput(simTime)
 
-
-
     if(System.currentTimeMillis() - lastSentUpdate > 1000/15 ) {
 
       val request = gameApp.createPlayerActionRequest(simTime)

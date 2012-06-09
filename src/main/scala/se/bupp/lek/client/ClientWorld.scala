@@ -159,7 +159,7 @@ class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager, bulletA
     //enemy.setMaterial(mat_default)
 
     tank.setLocalScale(0.5f)
-    tank.setLocalTranslation(pd.position)
+    //tank.setLocalTranslation(pd.position)
     tank.setLocalRotation(pd.direction)
     if(!isHeadLess) {
       tank.setShadowMode(ShadowMode.Off)
@@ -197,6 +197,7 @@ class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager, bulletA
 
     val capsuleShape = new CapsuleCollisionShape(0.05f, 0.05f, 1)
     val playerControl = new CharacterControl(capsuleShape, 0.1f)
+    playerControl.setUseViewDirection(false)
     player.addControl(playerControl)
 
     bulletAppState.getPhysicsSpace.add(playerControl)
@@ -374,8 +375,8 @@ class ClientWorld(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:(
           //println(direction + " " + bulletAppState.getSpeed + " " + bulletAppState.getPhysicsSpace.getAccuracy)
           control.setWalkDirection(direction)
           //control.setviewdirection(player.setlocalrotation(p.direction))
-          control.setViewDirection(p.direction.getRotationColumn(0))
-
+          //control.setViewDirection(p.direction.getRotationColumn(0))
+          player.setLocalRotation(p.direction)
 
 
           //player.setlocaltranslation(p.position)
