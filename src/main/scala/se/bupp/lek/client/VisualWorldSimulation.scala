@@ -7,7 +7,6 @@ import com.jme3.asset.{ModelKey, AssetManager}
 import com.jme3.export.Savable
 import scala.collection.JavaConversions.asScalaBuffer
 import com.jme3.material.{MaterialDef, MaterialList, Material}
-import com.jme3.math.{ColorRGBA, Quaternion, Vector3f}
 import com.jme3.shadow.BasicShadowRenderer
 import com.jme3.renderer.ViewPort
 import com.jme3.renderer.queue.RenderQueue.ShadowMode
@@ -16,12 +15,14 @@ import com.jme3.post.FilterPostProcessor
 import com.jme3.post.ssao.SSAOFilter
 import com.jme3.util.TangentBinormalGenerator
 import se.bupp.lek.server.Server._
-import collection.immutable.{Stack, HashSet}
 import com.jme3.bullet.util.CollisionShapeFactory
 import com.jme3.bullet.BulletAppState
 import com.jme3.bullet.collision.shapes.CapsuleCollisionShape
 import com.jme3.bullet.control.{CharacterControl, RigidBodyControl}
 import com.jme3.asset.plugins.ZipLocator
+import com.jme3.math.{FastMath, ColorRGBA, Quaternion, Vector3f}
+import collection.immutable.Queue._
+import collection.immutable.{Queue, Stack, HashSet}
 
 
 /**
@@ -330,7 +331,8 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
 
 
 
-  def syncGameWorld(allUpdates:Set[_ <: AbstractOwnedGameObject with Savable]) {
+
+  def syncNonPlayerGameWorld(allUpdates:Set[_ <: AbstractOwnedGameObject with Savable]) {
 
     import scala.collection.JavaConversions.asScalaBuffer
     val enemyNodes = rootNode.getChild(SceneGraphNodeKeys.Enemies).asInstanceOf[Node].getChildren
@@ -349,7 +351,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
         case _ => false
       }
     }
-    var (newInUpdateOrPlayer, noUpdate, matched) = setMatch(allUpdates, allExisting, doMatch)
+    var (newInUpdate, noUpdate, matched) = setMatch(allUpdates, allExisting, doMatch)
 
     if(false && (System.currentTimeMillis()) % 10 == 3) {
       /*println("enemies" + enemyNodes.size +
@@ -363,24 +365,10 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
 
     }
 
-    newInUpdateOrPlayer.foreach {
+    newInUpdate.foreach {
       case p:PlayerGO =>
         if(p.playerId == playerIdOpt.apply().get) {
 
-          //player.move(playerinput.translation)
-          //player.rotate(playerinput.rotation)
-          
-          val control = player.getControl(classOf[CharacterControl])
-          val direction: Vector3f = p.position //.subtract(player.getLocalTranslation).setY(0)
-          //println(direction + " " + bulletAppState.getSpeed + " " + bulletAppState.getPhysicsSpace.getAccuracy)
-          control.setWalkDirection(direction)
-          //control.setviewdirection(player.setlocalrotation(p.direction))
-          //control.setViewDirection(p.direction.getRotationColumn(0))
-          player.setLocalRotation(p.direction)
-
-
-          //player.setlocaltranslation(p.position)
-          //player.setLocalRotation(p.direction)
         } else {
           materializeEnemy(p)
         }
@@ -406,5 +394,94 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
         }
     }
   }
+
+  def update(simTime: Long,currentGameWorldUpdates:Queue[ServerGameWorld], playerId:Int) {
+    val predictor: VisualSimulationPrediction = new VisualSimulationPrediction(currentGameWorldUpdates, playerId)
+    val nonPlayerPredictons = predictor.interpolateNonPlayerObjects(simTime)
+
+    syncNonPlayerGameWorld(nonPlayerPredictons.distinct.toSet)
+
+    applyPlayerInput(currentGameWorldUpdates);
+  }
+
+
+  def diff(client:Orientation,server:Orientation) = {
+    val transDiff = client.position.subtract(server.position)
+
+    //println(client.position + " " + server.position + " " + transDiff + " " + transDiff.length())
+    //new Quaternion(client.direction).subtract(server.direction)
+
+    //val rotDiff = Quaternion.IDENTITY.clone().slerp(client.direction,server.direction,1.0f)
+    //transDiff.length() < 0.1 && rotDiff.getW < FastMath.PI / 80
+    //math.sqrt(client.direction.dot(server.direction))
+    val deltaQ: Quaternion = client.direction.subtract(server.direction)
+    val sqrt = math.sqrt(deltaQ.dot(deltaQ))
+    (transDiff.length(),math.abs(sqrt))
+  }
+
+  def recalculateFrom(serverSnapshotSentByPlayerTime:Long,serverSimTime:Long, server:Orientation) : Orientation = {
+
+    Client.spel.playerInput.lock.synchronized {
+
+      val(discarded, newSaved) = Client.spel.playerInput.saved.partition ( _._1 < serverSnapshotSentByPlayerTime)
+      var saved = newSaved
+      //saved = if(discarded.size > 0) discarded.last +: newSaved else newSaved
+      if(saved.size == 0) {
+        //server
+        new Orientation(Vector3f.ZERO.clone(), MathUtil.noRotation)
+      } else {
+        val diffHeur = diff(saved.head._2,server)
+        //val newPos =
+          if(diffHeur._1 > 1.0 || diffHeur._2 > FastMath.PI / 45) {
+
+          val newSavedPos = saved.foldLeft(Queue(server)) {
+            case (recalculatedPositions,(time,orientationBeforeReorientation, reorient)) =>
+              recalculatedPositions :+ recalculatedPositions.last.reorientate(reorient)
+          }
+          println("Bad " + saved.head._2.position + " " + server.position + " " + serverSimTime + " " + diffHeur._1 + " " + serverSnapshotSentByPlayerTime)
+          saved = newSavedPos.tail.zip(saved).map {case (np, (ts, _ , reor)) => (ts, np, reor) }
+          //println("Bad " + saved.head._2.position+ " " + server.position + " " + diffHeur._1) // + " " + newSavedPos.last)
+          //println("Bad " + diffHeur)
+          //newSavedPos.last
+            val control: CharacterControl = Client.spel.visualWorldSimulation.player.getControl(classOf[CharacterControl])
+            control.setPhysicsLocation(saved.last._2.position)
+            //Client.spel.gameWorld.player.setLocalRotation(saved.last._2.direction)
+            //control.setViewDirection(saved.last._2.direction.getRotationColumn(0))
+        } /*else {
+          //println("Good " + diffHeur)
+          //println("using " + saved.last._2)
+          saved.last._2
+        } */
+        //saved.map{ case (a,b,c) => a + " p" + b._1 + " t" + a._1 }.
+        //newPos
+        Client.spel.playerInput.saved = saved
+        new Orientation(saved.last._3._1,saved.last._2.direction)
+      }
+    }
+  }
+
+  def applyPlayerInput(currentGameWorldUpdates:Queue[ServerGameWorld]) {
+
+
+    currentGameWorldUpdates.last.players.find(_.playerId == playerIdOpt().get).foreach {
+      x => 
+      val p = recalculateFrom(x.sentToServerByClient, currentGameWorldUpdates.last.timeStamp, x)
+      //player.move(playerinput.translation)
+      //player.rotate(playerinput.rotation)
+
+      val control = player.getControl(classOf[CharacterControl])
+      val direction: Vector3f = p.position //.subtract(player.getLocalTranslation).setY(0)
+      //println(direction + " " + bulletAppState.getSpeed + " " + bulletAppState.getPhysicsSpace.getAccuracy)
+      control.setWalkDirection(direction)
+      //control.setviewdirection(player.setlocalrotation(p.direction))
+      //control.setViewDirection(p.direction.getRotationColumn(0))
+      player.setLocalRotation(p.direction)
+
+
+      //player.setlocaltranslation(p.position)
+      //player.setLocalRotation(p.direction)
+    }
+  }
+
 }
 

@@ -50,6 +50,8 @@ class NetworkState extends AbstractAppState {
     println(buffer.toString)
   }
 
+
+
   override def update(tpf: Float) {
     if(gameApp.playerIdOpt.isEmpty) return
 
@@ -61,12 +63,12 @@ class NetworkState extends AbstractAppState {
     val simTime = System.currentTimeMillis()
 
     if(currentGameWorldUpdates.size > 0) {
-      val updates = new VisualSimulationPrediction(currentGameWorldUpdates, gameApp.playerIdOpt.get).interpolate(simTime, gameApp.playerInput)
-      gameApp.gameWorld.syncGameWorld(updates.distinct.toSet)
+      gameApp.visualWorldSimulation.update(simTime,currentGameWorldUpdates, gameApp.playerIdOpt.get)
+
     }
 
 
-    val physicalSimCorrection = gameApp.gameWorld.player.getLocalTranslation.subtract(gameApp.playerInput.saved.last._2.position)
+    val physicalSimCorrection = gameApp.visualWorldSimulation.player.getLocalTranslation.subtract(gameApp.playerInput.saved.last._2.position)
     gameApp.playerInput.saveReorientation(simTime,(physicalSimCorrection, MathUtil.noRotation))
 
     gameApp.playerInput.saveInput(simTime)
@@ -74,7 +76,7 @@ class NetworkState extends AbstractAppState {
     if(System.currentTimeMillis() - lastSentUpdate > 1000/15 ) {
 
       val reorientation = gameApp.playerInput.flushAccumulated()
-      val projectiles = gameApp.gameWorld.purgeFired()
+      val projectiles = gameApp.visualWorldSimulation.purgeFired()
       val request = gameApp.createPlayerActionRequest(simTime,reorientation, projectiles)
       gameClient.sendUDP(request)
       lastSentUpdate = System.currentTimeMillis()

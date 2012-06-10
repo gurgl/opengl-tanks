@@ -79,7 +79,7 @@ class VisualSimulationPrediction(gameWorldUpdates:Queue[Server.ServerGameWorld],
     pp
   }
 
-  def interpolate(simTime:Long, playerInput:PlayerInput) : List[AbstractOwnedGameObject with Savable] = {
+  def interpolateNonPlayerObjects(simTime:Long) : List[AbstractOwnedGameObject with Savable] = {
     val lastServerSimInstants = gameWorldUpdates.map(_.timeStamp).toSeq
     val lastServerSimToClientSimDurations = lastServerSimInstants.map(simTime - _)
     //println(gameWorldUpdates.last.all.map(_.position).mkString(","))
@@ -89,17 +89,14 @@ class VisualSimulationPrediction(gameWorldUpdates:Queue[Server.ServerGameWorld],
         val orderedObjectSnapshots = snapshotsUT.asInstanceOf[List[AbstractOwnedGameObject with Savable]]
 
         val estimate:Option[AbstractOwnedGameObject with Savable] = if(orderedObjectSnapshots.size < 2) {
-          //println("unable to interpolate")
+          //println("unable to interpolateNonPlayerObjects")
           None
         } else {
             orderedObjectSnapshots.last match {
             case p:PlayerGO =>
 
               if(id._2 == playerId) {
-                val newP = new PlayerGO(p)
-
-                newP.orientation = recalculateFrom(p.sentToServerByClient,lastServerSimInstants.last,p)
-                Some(newP)
+                None
                 //Some(p)
               } else {
                 Some(simulatePlayer(p,simTime, orderedObjectSnapshots))
@@ -112,61 +109,5 @@ class VisualSimulationPrediction(gameWorldUpdates:Queue[Server.ServerGameWorld],
         estimate.getOrElse(orderedObjectSnapshots.last)
     }
     res
-  }
-
-  def diff(client:Orientation,server:Orientation) = {
-    val transDiff = client.position.subtract(server.position)
-
-    //println(client.position + " " + server.position + " " + transDiff + " " + transDiff.length())
-    //new Quaternion(client.direction).subtract(server.direction)
-
-    //val rotDiff = Quaternion.IDENTITY.clone().slerp(client.direction,server.direction,1.0f)
-    //transDiff.length() < 0.1 && rotDiff.getW < FastMath.PI / 80
-    //math.sqrt(client.direction.dot(server.direction))
-    val deltaQ: Quaternion = client.direction.subtract(server.direction)
-    val sqrt = math.sqrt(deltaQ.dot(deltaQ))
-    (transDiff.length(),math.abs(sqrt))
-  }
-
-  def recalculateFrom(serverSnapshotSentByPlayerTime:Long,serverSimTime:Long, server:Orientation) : Orientation = {
-
-
-    Client.spel.playerInput.lock.synchronized {
-
-      val(discarded, newSaved) = Client.spel.playerInput.saved.partition ( _._1 < serverSnapshotSentByPlayerTime)
-      var saved = newSaved
-      //saved = if(discarded.size > 0) discarded.last +: newSaved else newSaved
-      if(saved.size == 0) {
-        //server
-        new Orientation(Vector3f.ZERO.clone(), MathUtil.noRotation)
-      } else {
-        val diffHeur = diff(saved.head._2,server)
-        //val newPos =
-          if(diffHeur._1 > 1.0 || diffHeur._2 > FastMath.PI / 45) {
-
-          val newSavedPos = saved.foldLeft(Queue(server)) {
-            case (recalculatedPositions,(time,orientationBeforeReorientation, reorient)) =>
-              recalculatedPositions :+ recalculatedPositions.last.reorientate(reorient)
-          }
-          println("Bad " + saved.head._2.position + " " + server.position + " " + serverSimTime + " " + diffHeur._1 + " " + serverSnapshotSentByPlayerTime)
-          saved = newSavedPos.tail.zip(saved).map {case (np, (ts, _ , reor)) => (ts, np, reor) }
-          //println("Bad " + saved.head._2.position+ " " + server.position + " " + diffHeur._1) // + " " + newSavedPos.last)
-          //println("Bad " + diffHeur)
-          //newSavedPos.last
-            val control: CharacterControl = Client.spel.gameWorld.player.getControl(classOf[CharacterControl])
-            control.setPhysicsLocation(saved.last._2.position)
-            //Client.spel.gameWorld.player.setLocalRotation(saved.last._2.direction)
-            //control.setViewDirection(saved.last._2.direction.getRotationColumn(0))
-        } /*else {
-          //println("Good " + diffHeur)
-          //println("using " + saved.last._2)
-          saved.last._2
-        } */
-        //saved.map{ case (a,b,c) => a + " p" + b._1 + " t" + a._1 }.
-        //newPos
-        Client.spel.playerInput.saved = saved
-        new Orientation(saved.last._3._1,saved.last._2.direction)
-      }
-    }
   }
 }

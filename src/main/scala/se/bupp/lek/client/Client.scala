@@ -91,7 +91,7 @@ class Client extends SimpleApplication {
 
   var playerInput:PlayerInput = _
 
-  var gameWorld:VisualWorldSimulation = _
+  var visualWorldSimulation:VisualWorldSimulation = _
 
   val actionListener = new AnalogListener() with ActionListener {
 
@@ -99,7 +99,7 @@ class Client extends SimpleApplication {
 
       if (name.equals("Fire")) {
         if(value == true) {
-          val p = gameWorld.fireProjectile(gameWorld.player.getLocalTranslation,gameWorld.player.getLocalRotation)
+          val p = visualWorldSimulation.fireProjectile(visualWorldSimulation.player.getLocalTranslation,visualWorldSimulation.player.getLocalRotation)
           //rootNode.attachChild(p)
         }
       }
@@ -120,12 +120,12 @@ class Client extends SimpleApplication {
 
         case "Forward" =>
 
-          val v = gameWorld.player.getLocalRotation.toRotationMatrix;
+          val v = visualWorldSimulation.player.getLocalRotation.toRotationMatrix;
           playerInput.translation = v.getColumn(0).mult(speed*tpf)
 
         case "Back" =>
 
-          val v = gameWorld.player.getLocalRotation.toRotationMatrix;
+          val v = visualWorldSimulation.player.getLocalRotation.toRotationMatrix;
           playerInput.translation = v.getColumn(0).mult(-speed*tpf)
         case "Fire" =>
       }
@@ -180,10 +180,10 @@ class Client extends SimpleApplication {
 
     val bulletAppState = new BulletAppState();
     stateManager.attach(bulletAppState);
-    gameWorld = new VisualWorldSimulation(rootNode,assetManager,() => playerIdOpt,playerInput, viewPort, bulletAppState);
+    visualWorldSimulation = new VisualWorldSimulation(rootNode,assetManager,() => playerIdOpt,playerInput, viewPort, bulletAppState);
 
     val playerStartPosition = new Orientation(Vector3f.ZERO.clone().setY(0.5f), Quaternion.IDENTITY.clone())
-    gameWorld.init(playerStartPosition)
+    visualWorldSimulation.init(playerStartPosition)
 
     playerInput = new PlayerInput(playerStartPosition)
 
@@ -194,7 +194,7 @@ class Client extends SimpleApplication {
 
   override def simpleUpdate(tpf: Float) {
 
-    val (pos,rot) = gameWorld.getCamPosition
+    val (pos,rot) = visualWorldSimulation.getCamPosition
     getCamera.setFrame(pos,rot)
 
   }

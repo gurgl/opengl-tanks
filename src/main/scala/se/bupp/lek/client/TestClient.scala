@@ -31,7 +31,7 @@ object TestClient {
            println("rec " + obj.getClass.getName)
            obj match {
               case response:ServerGameWorld=>
-                //syncGameWorld(response)
+                //syncNonPlayerGameWorld(response)
 
 
               case response:PlayerJoinResponse =>
