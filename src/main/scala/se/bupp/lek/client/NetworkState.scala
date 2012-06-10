@@ -55,23 +55,24 @@ class NetworkState extends AbstractAppState {
   override def update(tpf: Float) {
     if(gameApp.playerIdOpt.isEmpty) return
 
+    val simTime = System.currentTimeMillis()
+
+    val physicalSimCorrection = gameApp.visualWorldSimulation.player.getLocalTranslation.subtract(gameApp.playerInput.saved.last._2.position)
+    gameApp.playerInput.saveReorientation(simTime,(physicalSimCorrection, MathUtil.noRotation))
+
+    gameApp.playerInput.saveInput(simTime)
     var currentGameWorldUpdates:Queue[ServerGameWorld] = null
+    //    }
+
 //    lock.synchronized {
     currentGameWorldUpdates = gameWorldUpdatesQueue
-//    }
 
-    val simTime = System.currentTimeMillis()
 
     if(currentGameWorldUpdates.size > 0) {
       gameApp.visualWorldSimulation.update(simTime,currentGameWorldUpdates, gameApp.playerIdOpt.get)
 
     }
 
-
-    val physicalSimCorrection = gameApp.visualWorldSimulation.player.getLocalTranslation.subtract(gameApp.playerInput.saved.last._2.position)
-    gameApp.playerInput.saveReorientation(simTime,(physicalSimCorrection, MathUtil.noRotation))
-
-    gameApp.playerInput.saveInput(simTime)
 
     if(System.currentTimeMillis() - lastSentUpdate > 1000/15 ) {
 
