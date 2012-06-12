@@ -1,10 +1,10 @@
 package se.bupp.lek.client
 
 import collection.immutable.Queue
-import se.bupp.lek.server.Server
+import se.bupp.lek.server.Model
 import collection.immutable
 import com.jme3.export.Savable
-import se.bupp.lek.server.Server._
+import se.bupp.lek.server.Model._
 import com.jme3.math.{FastMath, Vector3f, Quaternion}
 import com.jme3.bullet.control.CharacterControl
 
@@ -17,7 +17,7 @@ import com.jme3.bullet.control.CharacterControl
  */
 
 
-class VisualSimulationPrediction(gameWorldUpdates:Queue[Server.ServerGameWorld], val playerId:Int) {
+class VisualSimulationPrediction(gameWorldUpdates:Queue[Model.ServerGameWorld], val playerId:Int) {
   def projectGameHistoryByGameObjectId() : immutable.Map[OwnedGameObjectId,List[ _ <: AbstractOwnedGameObject with Savable]] = {
     val slots = gameWorldUpdates.last.all.map(_.id).toSet
 

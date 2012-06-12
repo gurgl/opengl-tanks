@@ -5,13 +5,13 @@ import com.jme3.input.KeyInput
 import com.jme3.input.controls.{AnalogListener, ActionListener, KeyTrigger}
 import com.jme3.scene.{Node, Mesh, Spatial, Geometry}
 import com.jme3.bounding.{BoundingSphere, BoundingBox}
-import se.bupp.lek.server.Server
+import se.bupp.lek.server.Model
 import MathUtil._
 import com.jme3.system.AppSettings
 import collection.immutable.{HashSet, Queue}
 import se.bupp.lek.client.VisualWorldSimulation._
 import collection.JavaConversions
-import se.bupp.lek.server.Server._
+import se.bupp.lek.server.Model._
 import com.jme3.math._
 import com.jme3.bullet.BulletAppState
 import com.jme3.bullet.control.CharacterControl
@@ -110,7 +110,7 @@ class Client extends SimpleApplication {
   };
 
   var seqId = 0
-  def createPlayerActionRequest(lastRecordedActionTime:Long, reorientation:Reorientation,projectiles:List[ProjectileFireGO]): Server.PlayerActionRequest = {
+  def createPlayerActionRequest(lastRecordedActionTime:Long, reorientation:Reorientation,projectiles:List[ProjectileFireGO]): Model.PlayerActionRequest = {
       val request: PlayerActionRequest = new PlayerActionRequest
 
 

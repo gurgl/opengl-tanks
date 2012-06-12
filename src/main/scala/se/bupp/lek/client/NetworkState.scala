@@ -13,8 +13,8 @@ import com.jme3.export.Savable
 import com.jme3.math.{Quaternion, Vector3f}
 import collection.{JavaConversions, immutable}
 import scala.Option
-import se.bupp.lek.server.Server
-import se.bupp.lek.server.Server._
+import se.bupp.lek.server.Model._
+import se.bupp.lek.server.{Server, Model}
 
 
 /**
@@ -55,7 +55,7 @@ class NetworkState extends AbstractAppState {
   var lastSentUpdate = 0L
 
 
-  var gameWorldUpdatesQueue:Queue[Server.ServerGameWorld] = Queue()
+  var gameWorldUpdatesQueue:Queue[Model.ServerGameWorld] = Queue()
 
 
   //var predictions:Map[Long,Map[OwnedGameObjectId,Vector3f]] = Map[Long,Map[OwnedGameObjectId,Vector3f]]()

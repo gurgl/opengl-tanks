@@ -2,8 +2,8 @@ package se.bupp.lek.client
 
 import com.esotericsoftware.kryonet.{Connection, Listener, Client => KryoClient}
 import management.ManagementFactory
-import se.bupp.lek.server.Server
-import se.bupp.lek.server.Server.{PlayerActionRequest, PlayerJoinRequest, PlayerJoinResponse, ServerGameWorld}
+import se.bupp.lek.server.Model.{PlayerActionRequest, PlayerJoinRequest, PlayerJoinResponse, ServerGameWorld}
+import se.bupp.lek.server.{Server, Model}
 
 
 /**

@@ -8,7 +8,7 @@ import com.jme3.renderer.queue.RenderQueue.ShadowMode
 import com.jme3.scene.{Spatial, Node}
 import org.specs2.mutable.Specification
 import se.bupp.lek.client.MathUtil
-import se.bupp.lek.server.Server.Orientation
+import se.bupp.lek.server.Model.Orientation
 import com.jme3.system.{JmeContext, AppSettings, JmeSystem}
 import com.jme3.bullet.control.CharacterControl
 import com.jme3.bullet.collision.shapes.CapsuleCollisionShape
@@ -82,6 +82,13 @@ class PhysicsTest extends Specification {
       pSpace.update(tpf * 1.0f)
             pSpace.distributeEvents()
 
+      playerControl.getPhysicsLocation should be equalTo(pd.position.add(0.6f,0f,0f))
+
+      playerControl.setWalkDirection(new Vector3f(.0f,0f,8f))
+      pSpace.update(tpf * 1.0f)
+            pSpace.distributeEvents()
+
+      playerControl.getPhysicsLocation should be equalTo(pd.position.add(0.6f,0f,8f))
 
 
       1 should be equalTo (1)

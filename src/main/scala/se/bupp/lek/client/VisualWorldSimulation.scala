@@ -14,7 +14,7 @@ import com.jme3.light.{AmbientLight, DirectionalLight}
 import com.jme3.post.FilterPostProcessor
 import com.jme3.post.ssao.SSAOFilter
 import com.jme3.util.TangentBinormalGenerator
-import se.bupp.lek.server.Server._
+import se.bupp.lek.server.Model._
 import com.jme3.bullet.util.CollisionShapeFactory
 import com.jme3.bullet.BulletAppState
 import com.jme3.bullet.collision.shapes.CapsuleCollisionShape

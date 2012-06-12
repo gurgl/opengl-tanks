@@ -2,7 +2,7 @@ package se.bupp.lek.server
 
 import collection.mutable.{HashMap, ArrayBuffer}
 import com.jme3.math.{Quaternion, Vector3f}
-import se.bupp.lek.server.Server._
+import se.bupp.lek.server.Model._
 import collection.JavaConversions
 import JavaConversions.asScalaBuffer
 import com.jme3.scene.Node
@@ -103,7 +103,7 @@ class WorldSimulator(world:ServerWorld) {
 
       }
       */
-      
+
       
       players.foreach {
         case (d,s) => 
