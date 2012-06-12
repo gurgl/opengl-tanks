@@ -106,7 +106,7 @@ class NetworkState extends AbstractAppState {
 
       val reorientation = MessageQueue.flushAccumulated()
       val projectiles = gameApp.visualWorldSimulation.flushFired()
-      val request = gameApp.createPlayerActionRequest(simTime,reorientation, projectiles)
+      val request = gameApp.createPlayerActionRequest(simTime, reorientation, projectiles)
       gameClient.sendUDP(request)
       lastSentUpdate = System.currentTimeMillis()
     }

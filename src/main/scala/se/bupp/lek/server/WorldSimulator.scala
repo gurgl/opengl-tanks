@@ -76,11 +76,14 @@ class WorldSimulator(world:ServerWorld) {
 
   var projectiles = List[ProjectileGO]()
 
+  var simulatedUntil:Option[Long] = None
 
   //enemy.asInstanceOf[Geometry].collideWith(f.geometry.getWorldBound,res)
 
   //var projectiles = new ArrayBuffer[ProjectileGO]()
 
+  
+  
   def getGameWorld():  ServerGameWorld = {
     val gameWorld = new ServerGameWorld
     import scala.collection.JavaConversions.seqAsJavaList
@@ -90,6 +93,17 @@ class WorldSimulator(world:ServerWorld) {
       
       val players = world.players
       val simTime: Long = System.currentTimeMillis()
+      
+      val oldestPlayerUpdate = players.foldLeft(Long.MaxValue ){ case (least, (st,sp)) =>
+        math.min(st.state.sentToServerByClient,least)
+      }
+
+      /*
+      if(simulatedUntil < oldestPlayerUpdate) {
+
+      }
+      */
+      
       
       players.foreach {
         case (d,s) => 

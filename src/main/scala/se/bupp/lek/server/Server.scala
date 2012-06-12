@@ -12,10 +12,10 @@ import se.bupp.lek.server.Server._
 import JavaConversions.asScalaBuffer
 import collection.mutable.{HashMap, ArrayBuffer}
 import se.bupp.lek.server.Server._
-import com.jme3.scene.Geometry
 import scala.None
 import com.jme3.app.{FlyCamAppState, SimpleApplication}
 import com.jme3.bullet.{PhysicsSpace, PhysicsTickListener, BulletAppState}
+import com.jme3.scene.{Node, Geometry}
 
 /**
  * Created by IntelliJ IDEA.
@@ -50,7 +50,8 @@ class Server extends SimpleApplication with PhysicsTickListener {
     stateManager.attach(bulletAppState);
     flyCam.setEnabled(false)
 
-    val serverWorld = new ServerWorld(rootNode,assetManager,bulletAppState)
+    val leRoot = new Node()
+    val serverWorld = new ServerWorld(leRoot,assetManager,bulletAppState)
     serverWorld.initEmpty()
     worldSimulator = new WorldSimulator(serverWorld)
 

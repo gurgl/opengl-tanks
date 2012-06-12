@@ -62,6 +62,7 @@ object MyBuild extends Build {
       "com.esotericsoftware" % "jsonbeans" % "0.2",
       "com.esotericsoftware" % "reflectasm" % "1.03",
       "org.ow2.asm" % "asm" % "4.0",
+      "org.specs2" %% "specs2" % "1.11" % "test",
 
       "org.objenesis" % "objenesis" % "1.2"
 //      "org.objectweb" % "asm" % "4.0"
