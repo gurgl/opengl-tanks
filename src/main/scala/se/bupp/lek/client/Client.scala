@@ -37,50 +37,27 @@ object MathUtil {
 object PlayerInput {
   val noPlayerInput = noMotion
   type Reorientation = (Vector3f,Quaternion)
-  val LocalInputLogSize = 20
 }
 
 class PlayerInput(startPosition:Orientation) {
   import PlayerInput._
+
   var translation:Vector3f = noPlayerInput._1
   var rotation:Quaternion = noPlayerInput._2
 
   def lastInput:Reorientation = (translation,rotation)
-  var accTranslation = Vector3f.ZERO.clone()
-  var accRotation = noRotation
 
-  var saved = Queue.empty[(Long, Orientation, Reorientation)] + (System.currentTimeMillis(),startPosition, noMotion)
-
-  val lock:AnyRef = new Object
-  def flushAccumulated() : Reorientation = {
-    val r = (accTranslation,accRotation)
-    accTranslation = Vector3f.ZERO.clone()
-    accRotation = noRotation
-    r
-  }
 
   def resetInput() {
     translation = noPlayerInput._1
     rotation = noPlayerInput._2
   }
 
-  def saveReorientation(timeStamp:Long, reorientation:Reorientation) {
-    lock.synchronized {
-      while(saved.size >= LocalInputLogSize) {
-        saved = saved.dequeue._2
-      }
 
-      val orientation = saved.last._2.reorientate(reorientation)
-      saved =  saved + (timeStamp, orientation, reorientation)
-
-      accTranslation = accTranslation.add(reorientation._1)
-      accRotation = reorientation._2.mult(accRotation)
-    }
-  }
-  def saveInput(timeStamp:Long) {
-    saveReorientation(timeStamp, lastInput)
+  def pollInput() = {
+    val r = lastInput
     resetInput()
-
+    r
   }
 }
 
@@ -138,7 +115,7 @@ class Client extends SimpleApplication {
 
 
       import JavaConversions.seqAsJavaList
-      request.projectilesFired = new java.util.ArrayList[ProjectileFireGO](projectiles)//gameWorld.purgeFired)
+      request.projectilesFired = new java.util.ArrayList[ProjectileFireGO](projectiles)//gameWorld.flushFired)
       request.timeStamp = lastRecordedActionTime
       request.playerId = playerIdOpt.get
       request.seqId = seqId

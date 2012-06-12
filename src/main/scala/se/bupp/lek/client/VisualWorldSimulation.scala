@@ -251,11 +251,36 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
   import SceneGraphWorld._
 
 
+  var saved = Queue.empty[(Long, Orientation, Reorientation)] //:+ ((System.currentTimeMillis(),startPosition, MathUtil.noMotion))
+
 
   var projectileSeqId = 0
 
   var fired = Stack[ProjectileFireGO]()
 
+  val LocalInputLogSize = 20
+
+  val lock:AnyRef = new Object
+
+
+  def storePlayerLastInputAndOutput(simTime:Long, input:Reorientation) = {
+
+    val physicalPosition = player.getLocalTranslation
+    val physicalRotation = player.getLocalRotation //.subtract(gameApp.playerInput.saved.last._2.position)
+    saveReorientation(simTime, new Orientation(physicalPosition, physicalRotation), input)
+  }
+
+  def saveReorientation(timeStamp:Long, orientation: Orientation, reorientation:Reorientation) {
+    lock.synchronized {
+      while(saved.size >= LocalInputLogSize) {
+        saved = saved.dequeue._2
+      }
+
+      //val orientation = saved.last._2.reorientate(reorientation)
+      saved =  saved + (timeStamp, orientation, reorientation)
+
+    }
+  }
 
 
   def init(playerPosition:Orientation) {
@@ -297,7 +322,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
     //rootNode.setShadowMode(ShadowMode.CastAndReceive);
   }
 
-  def purgeFired() : List[ProjectileFireGO] = {
+  def flushFired() : List[ProjectileFireGO] = {
 
     val res = fired.toList
     fired = Stack[ProjectileFireGO]()
@@ -395,13 +420,13 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
     }
   }
 
-  def update(simTime: Long,currentGameWorldUpdates:Queue[ServerGameWorld], playerId:Int) {
+  def update(simTime: Long,currentGameWorldUpdates:Queue[ServerGameWorld], playerId:Int, reorientation:Reorientation) {
     val predictor: VisualSimulationPrediction = new VisualSimulationPrediction(currentGameWorldUpdates, playerId)
     val nonPlayerPredictons = predictor.interpolateNonPlayerObjects(simTime)
 
     syncNonPlayerGameWorld(nonPlayerPredictons.distinct.toSet)
 
-    applyPlayerInput(currentGameWorldUpdates);
+    applyPlayerInput(currentGameWorldUpdates,reorientation);
   }
 
 
@@ -419,20 +444,22 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
     (transDiff.length(),math.abs(sqrt))
   }
 
-  def recalculateFrom(serverSnapshotSentByPlayerTime:Long,serverSimTime:Long, server:Orientation) : Orientation = {
+  def applyCorrectionIfDiffers(serverSnapshotSentByPlayerTime:Long,serverSimTime:Long, server:Orientation) {
 
-    Client.spel.playerInput.lock.synchronized {
+    lock.synchronized {
 
-      val(discarded, newSaved) = Client.spel.playerInput.saved.partition ( _._1 < serverSnapshotSentByPlayerTime)
-      var saved = newSaved
+      val(discarded, newSaved) = saved.partition ( _._1 < serverSnapshotSentByPlayerTime)
+      saved = newSaved
       //saved = if(discarded.size > 0) discarded.last +: newSaved else newSaved
       if(saved.size == 0) {
         //server
-        new Orientation(Vector3f.ZERO.clone(), MathUtil.noRotation)
+        println("Inga ")
+
       } else {
+
         val diffHeur = diff(saved.head._2,server)
         //val newPos =
-          if(diffHeur._1 > 1.0 || diffHeur._2 > FastMath.PI / 45) {
+        if(diffHeur._1 > 1.0 || diffHeur._2 > FastMath.PI / 45) {
 
           val newSavedPos = saved.foldLeft(Queue(server)) {
             case (recalculatedPositions,(time,orientationBeforeReorientation, reorient)) =>
@@ -443,8 +470,9 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
           //println("Bad " + saved.head._2.position+ " " + server.position + " " + diffHeur._1) // + " " + newSavedPos.last)
           //println("Bad " + diffHeur)
           //newSavedPos.last
-            val control: CharacterControl = Client.spel.visualWorldSimulation.player.getControl(classOf[CharacterControl])
+            val control: CharacterControl = player.getControl(classOf[CharacterControl])
             control.setPhysicsLocation(saved.last._2.position)
+            player.setLocalRotation(saved.last._2.direction)
             //Client.spel.gameWorld.player.setLocalRotation(saved.last._2.direction)
             //control.setViewDirection(saved.last._2.direction.getRotationColumn(0))
         } /*else {
@@ -454,28 +482,29 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
         } */
         //saved.map{ case (a,b,c) => a + " p" + b._1 + " t" + a._1 }.
         //newPos
-        Client.spel.playerInput.saved = saved
-        new Orientation(saved.last._3._1,saved.last._2.direction)
+        //Client.spel.playerInput.saved = saved
+        //new Orientation(saved.last._3._1,saved.last._3.direction)
       }
     }
   }
 
-  def applyPlayerInput(currentGameWorldUpdates:Queue[ServerGameWorld]) {
+  def applyPlayerInput(currentGameWorldUpdates:Queue[ServerGameWorld], reorientation:Reorientation) {
 
 
     currentGameWorldUpdates.last.players.find(_.playerId == playerIdOpt().get).foreach {
       x => 
-      val p = recalculateFrom(x.sentToServerByClient, currentGameWorldUpdates.last.timeStamp, x)
+      applyCorrectionIfDiffers(x.sentToServerByClient, currentGameWorldUpdates.last.timeStamp, x)
+
       //player.move(playerinput.translation)
       //player.rotate(playerinput.rotation)
 
       val control = player.getControl(classOf[CharacterControl])
-      val direction: Vector3f = p.position //.subtract(player.getLocalTranslation).setY(0)
+
       //println(direction + " " + bulletAppState.getSpeed + " " + bulletAppState.getPhysicsSpace.getAccuracy)
-      control.setWalkDirection(direction)
+      control.setWalkDirection(reorientation._1)
       //control.setviewdirection(player.setlocalrotation(p.direction))
       //control.setViewDirection(p.direction.getRotationColumn(0))
-      player.setLocalRotation(p.direction)
+      player.rotate(reorientation._2)
 
 
       //player.setlocaltranslation(p.position)

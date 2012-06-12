@@ -102,10 +102,10 @@ class WorldSimulator(world:ServerWorld) {
             d.state.direction = m.rotation.mult(d.state.direction)
             //d.state.position = ctrl.getPhysicsLocation
             d.state.position = d.state.position.add(m.translation)
-            if(simTime % 100 == 23) {
+            /*if(simTime % 100 == 23) {
               val angle= new Random().nextDouble()
               d.state.position = d.state.position.add(new Vector3f(math.sin(angle).toFloat, 0f, math.cos(angle).toFloat))
-            }
+            }*/
             
             //println("phy " + ctrl.getPhysicsLocation + " reor " + m.translation)
             
@@ -197,7 +197,7 @@ class WorldSimulator(world:ServerWorld) {
       val player = {
         val pd = new PlayerGO
         pd.playerId = playerId
-        pd.position = Vector3f.ZERO.clone().setY(1.5f)
+        pd.position = Vector3f.ZERO.clone().setY(0.13499954f)
         pd.direction = Quaternion.DIRECTION_Z.clone()
         pd
         var ps = new PlayerStatus

@@ -26,6 +26,26 @@ import se.bupp.lek.server.Server._
  */
 
 
+object MessageQueue {
+
+  var accTranslation = Vector3f.ZERO.clone()
+  var accRotation = noRotation
+
+  def accumulate(reorientation:Reorientation) {
+    accTranslation = accTranslation.add(reorientation._1)
+    accRotation = reorientation._2.mult(accRotation)
+  }
+
+  def flushAccumulated() : Reorientation = {
+    val r = (accTranslation,accRotation)
+    accTranslation = Vector3f.ZERO.clone()
+    accRotation = noRotation
+    r
+  }
+
+
+}
+
 class NetworkState extends AbstractAppState {
 
   var gameClient:KryoClient = _
@@ -52,15 +72,23 @@ class NetworkState extends AbstractAppState {
 
 
 
+  var lastUpdate:Option[(Long,Reorientation)] = None
+
   override def update(tpf: Float) {
     if(gameApp.playerIdOpt.isEmpty) return
 
     val simTime = System.currentTimeMillis()
 
-    val physicalSimCorrection = gameApp.visualWorldSimulation.player.getLocalTranslation.subtract(gameApp.playerInput.saved.last._2.position)
-    gameApp.playerInput.saveReorientation(simTime,(physicalSimCorrection, MathUtil.noRotation))
+    val input = gameApp.playerInput.pollInput()
 
-    gameApp.playerInput.saveInput(simTime)
+    lastUpdate.foreach { case (lastSimTime, lastInput) =>
+      gameApp.visualWorldSimulation.storePlayerLastInputAndOutput(lastSimTime, lastInput)
+    }
+    //gameApp.visualWorldSimulation.saveReorientation(simTime, input)
+    MessageQueue.accumulate(input)
+
+    //saveReorientation(timeStamp, lastInput)
+
     var currentGameWorldUpdates:Queue[ServerGameWorld] = null
     //    }
 
@@ -69,19 +97,22 @@ class NetworkState extends AbstractAppState {
 
 
     if(currentGameWorldUpdates.size > 0) {
-      gameApp.visualWorldSimulation.update(simTime,currentGameWorldUpdates, gameApp.playerIdOpt.get)
+      gameApp.visualWorldSimulation.update(simTime,currentGameWorldUpdates, gameApp.playerIdOpt.get, input)
 
     }
 
 
     if(System.currentTimeMillis() - lastSentUpdate > 1000/15 ) {
 
-      val reorientation = gameApp.playerInput.flushAccumulated()
-      val projectiles = gameApp.visualWorldSimulation.purgeFired()
+      val reorientation = MessageQueue.flushAccumulated()
+      val projectiles = gameApp.visualWorldSimulation.flushFired()
       val request = gameApp.createPlayerActionRequest(simTime,reorientation, projectiles)
       gameClient.sendUDP(request)
       lastSentUpdate = System.currentTimeMillis()
     }
+
+    lastUpdate = Some((simTime, input))
+
   }
 
   override def initialize(stateManager: AppStateManager, app: Application) {
