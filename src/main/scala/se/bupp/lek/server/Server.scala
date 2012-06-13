@@ -48,11 +48,12 @@ class Server extends SimpleApplication with PhysicsTickListener {
     stateManager.detach( stateManager.getState(classOf[FlyCamAppState]))
     val bulletAppState = new BulletAppState();
 
-    stateManager.attach(bulletAppState);
+    bulletAppState.startPhysics()
+    //stateManager.attach(bulletAppState);
     flyCam.setEnabled(false)
 
     val leRoot = new Node()
-    val serverWorld = new ServerWorld(leRoot,assetManager,bulletAppState)
+    val serverWorld = new ServerWorld(leRoot, assetManager, bulletAppState)
     serverWorld.initEmpty()
     worldSimulator = new WorldSimulator(serverWorld)
 
@@ -99,7 +100,7 @@ class Server extends SimpleApplication with PhysicsTickListener {
 
 
         val gameWorld = worldSimulator.getGameWorld
-        //println("" + players.size)
+        //println("" + getPlayers.size)
         server.sendToAllUDP(gameWorld)
         lastSentUpdate = System.currentTimeMillis()
 

@@ -162,9 +162,11 @@ object Model {
 
   class MotionGO(
                   var translation: Vector3f,
-                  var rotation: Quaternion
+                  var rotation: Quaternion,
+                  var sentToServer:Long
                   ) {
-    def this() = this(null, null)
+    def this() = this(null, null, -1)
+    override def toString = "(" + translation + ", " + rotation + ", " + sentToServer + ")"
   }
 
   class ProjectileFireGO(

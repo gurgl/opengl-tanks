@@ -63,7 +63,7 @@ object MyBuild extends Build {
       "com.esotericsoftware" % "reflectasm" % "1.03",
       "org.ow2.asm" % "asm" % "4.0",
       "org.specs2" %% "specs2" % "1.11" % "test",
-
+      "org.scalaz" %% "scalaz-core" % "6.0.4",
       "org.objenesis" % "objenesis" % "1.2"
 //      "org.objectweb" % "asm" % "4.0"
 

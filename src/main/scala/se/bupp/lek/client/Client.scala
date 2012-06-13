@@ -120,7 +120,7 @@ class Client extends SimpleApplication {
       request.playerId = playerIdOpt.get
       request.seqId = seqId
       seqId += 1
-      request.motion = new MotionGO(reorientation._1, reorientation._2)
+      request.motion = new MotionGO(reorientation._1, reorientation._2, lastRecordedActionTime)
       request
     }
 

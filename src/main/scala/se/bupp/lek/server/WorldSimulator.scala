@@ -1,18 +1,20 @@
 package se.bupp.lek.server
 
-import collection.mutable.{HashMap, ArrayBuffer}
 import com.jme3.math.{Quaternion, Vector3f}
 import se.bupp.lek.server.Model._
 import collection.JavaConversions
 import JavaConversions.asScalaBuffer
-import com.jme3.scene.Node
 import se.bupp.lek.client.SceneGraphWorld
 import com.jme3.asset.AssetManager
-import com.jme3.bullet.BulletAppState
 import com.jme3.bullet.control.CharacterControl
 import se.bupp.lek.client.SceneGraphWorld.SceneGraphUserDataKeys
 import com.jme3.bullet.collision.shapes.CapsuleCollisionShape
 import util.Random
+import com.jme3.scene.{Spatial, Node}
+import scalaz.NonEmptyList
+import collection.mutable.{Buffer, HashMap, ArrayBuffer}
+import com.jme3.bullet.{PhysicsSpace, BulletAppState}
+
 
 /**
  * Created by IntelliJ IDEA.
@@ -23,24 +25,14 @@ import util.Random
  */
 
 
-class ServerWorld(rootNode: Node, assetManager:AssetManager, bulletAppState:BulletAppState) extends SceneGraphWorld(true,assetManager,bulletAppState,rootNode) {
+class ServerWorld(rootNode: Node, assetManager:AssetManager, bulletAppState:BulletAppState) extends SceneGraphWorld(true,assetManager,bulletAppState,rootNode) with Lallers {
+
   def initEmpty() {
     super.init()
   }
 
-  def players() = projectNodeChildrenByData[PlayerStatus](SceneGraphWorld.SceneGraphNodeKeys.Enemies, SceneGraphWorld.SceneGraphUserDataKeys.Player)
 
-  def projectNodeChildrenByData[U](nodeKey:String, userDataKey:String) = {
-    getNode(nodeKey).getChildren.map(x => (x.getUserData[U](userDataKey),x))
-  }
-    
-  def findPlayer(playerId:Int) = {
-    players().find {
-      case (p, s) => p.state.playerId == playerId
-    }.map(_._1)
-  }
-
-  def addPlayer(ps:PlayerStatus) = {
+  def addPlayer(ps:PlayerStatus) {
     val tank = materializeTank2(ps.state)
     //enemy.setModelBound(new BoundingSphere())
     //enemy.updateModelBound()
@@ -51,7 +43,7 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, bulletAppState:Bull
     /*val capsuleShape = new CapsuleCollisionShape(0.05f, 0.05f, 1)
     val playerControl = new CharacterControl(capsuleShape, 0.1f)
     tank.addControl(playerControl)
-    
+
     bulletAppState.getPhysicsSpace.add(playerControl)
 
 
@@ -61,17 +53,105 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, bulletAppState:Bull
     playerControl.setPhysicsLocation(new Vector3f(0, 2.5f, 0));
     */
     getNode(SceneGraphWorld.SceneGraphNodeKeys.Enemies).attachChild(tank)
-
   }
+
+  def getPhysicsSpace = bulletAppState.getPhysicsSpace
 }
 
-class WorldSimulator(world:ServerWorld) {
+trait Lallers {
+
+  def addPlayer(ps:PlayerStatus) : Unit
+  def getNode(str:String) : Node
+
+  def getPlayers() = projectNodeChildrenByData[PlayerStatus](SceneGraphWorld.SceneGraphNodeKeys.Enemies, SceneGraphWorld.SceneGraphUserDataKeys.Player)
+
+  def projectNodeChildrenByData[U](nodeKey:String, userDataKey:String) = {
+    getNode(nodeKey).getChildren.map(x => (x.getUserData[U](userDataKey),x))
+  }
+    
+  def findPlayer(playerId:Int) = {
+    getPlayers().find {
+      case (p, s) => p.state.playerId == playerId
+    }.map(_._1)
+  }
+
+
+
+  def simulateToLastUpdated(simCurrentTime:Long) {
+
+    import scalaz._
+    import Scalaz._
+
+    val players = getPlayers
+    val oldestPlayerUpdate = getOldestUpdate(players)
+
+
+    if (simCurrentTime < oldestPlayerUpdate) {
+      val updates = getSortedUpdates(players, oldestPlayerUpdate)
+
+      simulateUpdatesUntil(updates, simCurrentTime)
+    }
+  }
+
+
+  def simulateUpdatesUntil(updates: scala.Seq[(Long, NonEmptyList[(Model.PlayerStatus, Spatial, Model.MotionGO)])], simCurrentTime: Long) {
+    updates.foreach {
+      case (t, pus) =>
+        val nextSimDuration =  t - simCurrentTime
+        val changedFromSimClockUntilNextPause = pus.map {
+          case (ps, s, u) =>
+            (s, u)
+        }
+        simulate(changedFromSimClockUntilNextPause.list, nextSimDuration)
+    }
+  }
+
+  def getSortedUpdates(players: Buffer[(Model.PlayerStatus, Spatial)], oldestPlayerUpdate: Long): Seq[(Long, NonEmptyList[(Model.PlayerStatus, Spatial, Model.MotionGO)])] = {
+    import se.bupp.lek.common.FuncUtil._
+    players.map {
+      case (ps, s) =>
+        val (toExecute, left) = ps.reorientation.partition(_.sentToServer <= oldestPlayerUpdate)
+        ps.reorientation = left
+        (ps, s, toExecute)
+      //p._1.state.sentToServerByClient <= oldestPlayerUpdate && p._1.state.sentToServerByClient > simCurrentTime
+    }.flatMap {
+      case (ps, s, ups) => ups.map(u => (ps, s, u))
+    }.map {
+      case (ps, s, u) => (u.sentToServer, (ps, s, u))
+    }.toListMap.toSeq.sortWith(_._1 < _._1)
+  }
+
+  def getOldestUpdate(players: Buffer[(Model.PlayerStatus, Spatial)]): Long = {
+    val oldestPlayerUpdate = players.foldLeft(Long.MaxValue) {
+      case (least, (st, sp)) =>
+        math.min(st.state.sentToServerByClient, least)
+    }
+    oldestPlayerUpdate
+  }
+
+  /**
+   * @param updates Changes to be applied at current simulation time
+   * @param duration How long to run sim until next stop
+   */
+  def simulate(updates:List[(Spatial, MotionGO)], duration:Long) {
+
+    updates.foreach { case (s,u) =>
+      val ctrl: CharacterControl = s.getControl(classOf[CharacterControl])
+      ctrl.setWalkDirection(u.translation)
+    }
+    println("Tjaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    getPhysicsSpace.update(duration.toFloat/1000f)
+  }
+  def getPhysicsSpace : PhysicsSpace
+}
+
+class WorldSimulator(world:Lallers) {
   var connectionSequence = 0
 
   var lock: AnyRef = new Object()
 
   var lastWorldSimTimeStamp:Option[Long] = None
-  //var players = new ArrayBuffer[PlayerStatus]()
+  //var getPlayers = new ArrayBuffer[PlayerStatus]()
   var firedProjectiles = new HashMap[Int, List[ProjectileFireGO]]()
 
   var projectiles = List[ProjectileGO]()
@@ -82,21 +162,24 @@ class WorldSimulator(world:ServerWorld) {
 
   //var projectiles = new ArrayBuffer[ProjectileGO]()
 
-  
-  
-  def getGameWorld():  ServerGameWorld = {
+
+
+  def getGameWorld() :  ServerGameWorld = {
+    val simTime: Long = System.currentTimeMillis()
+
+    getGameWorld(simTime)
+  }
+
+
+  def getGameWorld(simTime:Long):  ServerGameWorld = {
     val gameWorld = new ServerGameWorld
     import scala.collection.JavaConversions.seqAsJavaList
 
     var s = ""
     lock.synchronized {
       
-      val players = world.players
-      val simTime: Long = System.currentTimeMillis()
-      
-      val oldestPlayerUpdate = players.foldLeft(Long.MaxValue ){ case (least, (st,sp)) =>
-        math.min(st.state.sentToServerByClient,least)
-      }
+      val players = world.getPlayers
+
 
       /*
       if(simulatedUntil < oldestPlayerUpdate) {
@@ -132,7 +215,7 @@ class WorldSimulator(world:ServerWorld) {
         case (ps, s)  => ps.state
 
       }
-      /*val playerState = players.map {
+      /*val playerState = getPlayers.map {
         p =>
           p.state
       }*/
@@ -236,6 +319,7 @@ class WorldSimulator(world:ServerWorld) {
           //x.processedUpdate = false
 
           x.state.sentToServerByClient = request.timeStamp
+          request.motion.sentToServer = request.timeStamp
           x.reorientation = x.reorientation :+ request.motion
 
           x.seqId = request.seqId
