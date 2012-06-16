@@ -144,8 +144,9 @@ trait Lallers {
     updates.foreach { case (s,u) =>
       val ctrl: CharacterControl = s.getControl(classOf[CharacterControl])
       ctrl.setWalkDirection(u.translation)
+      println("Setting trans " + u.translation)
     }
-    println("Tjaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    println("Tjaaaaaaaaa " + duration.toFloat/1000f + " aaaaaaaaaaaaaaaa " + duration.toFloat)
     getPhysicsSpace.update(duration.toFloat/1000f)
   }
   def getPhysicsSpace : PhysicsSpace

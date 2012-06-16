@@ -56,12 +56,12 @@ object MyBuild extends Build {
       "org.lwjgl.lwjgl" % "lwjgl" % "2.8.3",
       "org.lwjgl.lwjgl" % "lwjgl_util" % "2.8.3",
       "org.lwjgl.lwjgl" % "lwjgl-platform" % "2.8.3",
-      "com.esotericsoftware" % "kryo" % "2.09",
+      /*"com.esotericsoftware" % "kryo" % "2.09",
       "com.esotericsoftware" % "kryonet" % "2.09",
       "com.esotericsoftware" % "minlog" % "1.2",
       "com.esotericsoftware" % "jsonbeans" % "0.2",
       "com.esotericsoftware" % "reflectasm" % "1.03",
-      "org.ow2.asm" % "asm" % "4.0",
+      "org.ow2.asm" % "asm" % "4.0",*/
       "org.specs2" %% "specs2" % "1.11" % "test",
       "org.scalaz" %% "scalaz-core" % "6.0.4",
       "org.objenesis" % "objenesis" % "1.2"
