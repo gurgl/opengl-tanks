@@ -97,12 +97,12 @@ class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager, bulletA
       mat_default_lgt = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
 
       //mat_default_lgt.setBoolean("UseMaterialColors",true);  // Set some parameters, e.g. blue.
-      mat_default_lgt.setBoolean("m_UseMaterialColors", true);
+      /*mat_default_lgt.setBoolean("m_UseMaterialColors", true);
       mat_default_lgt.setColor("m_Ambient",  ColorRGBA.Orange);
       mat_default_lgt.setColor("m_Diffuse",  ColorRGBA.Orange);
       mat_default_lgt.setColor("m_Specular", ColorRGBA.White);
       mat_default_lgt.setFloat("m_Shininess", 12);
-
+      */
 
 
       mat_default_ush = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");

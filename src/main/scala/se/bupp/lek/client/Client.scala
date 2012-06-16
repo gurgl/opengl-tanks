@@ -196,6 +196,7 @@ object Client {
   def main(arguments: Array[String]): Unit = {
     spel = new Client()
     val settings = new AppSettings(true);
+    settings.setFrameRate(60);
     settings.setResolution(640,480)
     settings.setTitle("Tank Showdown")
     spel.setSettings(settings)

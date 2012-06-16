@@ -75,9 +75,13 @@ trait Lallers {
     }.map(_._1)
   }
 
+  def findPlayerInfo(playerId:Int) = {
+    getPlayers().find {
+      case (p, s) => p.state.playerId == playerId
+    }
+  }
 
-
-  def simulateToLastUpdated(simCurrentTime:Long) {
+  def simulateToLastUpdated(simCurrentTime:Long) : Long = {
 
     import scalaz._
     import Scalaz._
@@ -87,10 +91,12 @@ trait Lallers {
 
 
     if (simCurrentTime < oldestPlayerUpdate) {
-      val updates = getSortedUpdates(players, oldestPlayerUpdate)
+      val updates = popPlayerUpdatesLessOrEqualToTimeSorted(players, oldestPlayerUpdate)
 
       simulateUpdatesUntil(updates, simCurrentTime)
-    }
+
+      oldestPlayerUpdate
+    } else simCurrentTime
   }
 
 
@@ -106,7 +112,7 @@ trait Lallers {
     }
   }
 
-  def getSortedUpdates(players: Buffer[(Model.PlayerStatus, Spatial)], oldestPlayerUpdate: Long): Seq[(Long, NonEmptyList[(Model.PlayerStatus, Spatial, Model.MotionGO)])] = {
+  def popPlayerUpdatesLessOrEqualToTimeSorted(players: Buffer[(Model.PlayerStatus, Spatial)], oldestPlayerUpdate: Long): Seq[(Long, NonEmptyList[(Model.PlayerStatus, Spatial, Model.MotionGO)])] = {
     import se.bupp.lek.common.FuncUtil._
     players.map {
       case (ps, s) =>
@@ -124,7 +130,7 @@ trait Lallers {
   def getOldestUpdate(players: Buffer[(Model.PlayerStatus, Spatial)]): Long = {
     val oldestPlayerUpdate = players.foldLeft(Long.MaxValue) {
       case (least, (st, sp)) =>
-        math.min(st.state.sentToServerByClient, least)
+        math.min(st.reorientation.last.sentToServer, least)
     }
     oldestPlayerUpdate
   }
@@ -225,10 +231,7 @@ class WorldSimulator(world:Lallers) {
       //println("pos " + playerState.map ( p => p.playerId + " " + p.position).mkString(", "))
       s = playerState.map(x => " | " + x.playerId + " " + x.position + " " + x.direction).mkString(",")
 
-
-      
       val maxAgeProjectiles = simTime - 5 * 1000
-
 
       val newProjectiles = firedProjectiles.flatMap {
         case (pid, list) =>
