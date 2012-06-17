@@ -27,6 +27,8 @@ import com.jme3.bullet.{PhysicsSpace, BulletAppState}
 
 class ServerWorld(rootNode: Node, assetManager:AssetManager, bulletAppState:BulletAppState) extends SceneGraphWorld(true,assetManager,bulletAppState,rootNode) with Lallers {
 
+  var simCurrentTime:Long = _
+
   def initEmpty() {
     super.init()
   }
@@ -60,6 +62,7 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, bulletAppState:Bull
 
 trait Lallers {
 
+  var simCurrentTime:Long
   def addPlayer(ps:PlayerStatus) : Unit
   def getNode(str:String) : Node
 
@@ -81,44 +84,55 @@ trait Lallers {
     }
   }
 
-  def simulateToLastUpdated(simCurrentTime:Long) : Long = {
+  def simulateToLastUpdated() : Long = {
 
     import scalaz._
     import Scalaz._
 
     val players = getPlayers
-    val oldestPlayerUpdate = getOldestUpdate(players)
+    val oldestPlayerUpdate = getOldestUpdateTime(players)
 
+    val playerSpatials = players.map {
+      case (playerStatus, s) => s
+    }
 
     if (simCurrentTime < oldestPlayerUpdate) {
       val updates = popPlayerUpdatesLessOrEqualToTimeSorted(players, oldestPlayerUpdate)
 
-      simulateUpdatesUntil(updates, simCurrentTime)
+      simulateUpdatesUntil(updates, playerSpatials)
+    }
 
-      oldestPlayerUpdate
-    } else simCurrentTime
+    simCurrentTime
   }
 
 
-  def simulateUpdatesUntil(updates: scala.Seq[(Long, NonEmptyList[(Model.PlayerStatus, Spatial, Model.MotionGO)])], simCurrentTime: Long) {
+  def simulateUpdatesUntil(updates: scala.Seq[(Long, NonEmptyList[(Model.PlayerStatus, Spatial, Model.MotionGO)])], playerSpatials:Seq[Spatial]) {
     updates.foreach {
-      case (t, pus) =>
-        val nextSimDuration =  t - simCurrentTime
-        val changedFromSimClockUntilNextPause = pus.map {
+      case (time, playerUpdatesAtTime) =>
+        val nextSimDuration =  time - simCurrentTime
+        val changedFromSimClockUntilNextPause = playerUpdatesAtTime.map {
           case (ps, s, u) =>
             (s, u)
         }
-        simulate(changedFromSimClockUntilNextPause.list, nextSimDuration)
+
+        playerSpatials.foreach(_.getControl(classOf[CharacterControl]).setWalkDirection(Vector3f.ZERO.clone()))
+
+        simulateStepSequence(changedFromSimClockUntilNextPause.list, nextSimDuration)
+
+        playerUpdatesAtTime.list.foreach {
+          case (ps, s, u) => ps.lastSimulation = Some(time)
+        }
+        simCurrentTime = time
     }
   }
 
   def popPlayerUpdatesLessOrEqualToTimeSorted(players: Buffer[(Model.PlayerStatus, Spatial)], oldestPlayerUpdate: Long): Seq[(Long, NonEmptyList[(Model.PlayerStatus, Spatial, Model.MotionGO)])] = {
     import se.bupp.lek.common.FuncUtil._
     players.map {
-      case (ps, s) =>
-        val (toExecute, left) = ps.reorientation.partition(_.sentToServer <= oldestPlayerUpdate)
-        ps.reorientation = left
-        (ps, s, toExecute)
+      case (playerStatus, s) =>
+        val (toExecute, left) = playerStatus.reorientation.partition(_.sentToServer <= oldestPlayerUpdate)
+        playerStatus.reorientation = left
+        (playerStatus, s, toExecute)
       //p._1.state.sentToServerByClient <= oldestPlayerUpdate && p._1.state.sentToServerByClient > simCurrentTime
     }.flatMap {
       case (ps, s, ups) => ups.map(u => (ps, s, u))
@@ -127,7 +141,7 @@ trait Lallers {
     }.toListMap.toSeq.sortWith(_._1 < _._1)
   }
 
-  def getOldestUpdate(players: Buffer[(Model.PlayerStatus, Spatial)]): Long = {
+  def getOldestUpdateTime(players: Buffer[(Model.PlayerStatus, Spatial)]): Long = {
     val oldestPlayerUpdate = players.foldLeft(Long.MaxValue) {
       case (least, (st, sp)) =>
         math.min(st.reorientation.last.sentToServer, least)
@@ -139,15 +153,19 @@ trait Lallers {
    * @param updates Changes to be applied at current simulation time
    * @param duration How long to run sim until next stop
    */
-  def simulate(updates:List[(Spatial, MotionGO)], duration:Long) {
+  def simulateStepSequence(updates:List[(Spatial, MotionGO)], duration:Long) {
+
+    val steps:Int = math.round((duration.toFloat/1000f) / getPhysicsSpace.getAccuracy).toInt
 
     updates.foreach { case (s,u) =>
       val ctrl: CharacterControl = s.getControl(classOf[CharacterControl])
-      ctrl.setWalkDirection(u.translation)
-      println("Setting trans " + u.translation)
+      ctrl.setWalkDirection(u.translation.divide(steps.toFloat))
+      //println("Setting trans " + u.translation)
     }
-    println("Tjaaaaaaaaa " + duration.toFloat/1000f + " aaaaaaaaaaaaaaaa " + duration.toFloat)
-    getPhysicsSpace.update(duration.toFloat/1000f)
+
+    val simSteps = if(steps > 1) steps else 1
+    //println("Tjaaaaaaaaa " + duration.toFloat/1000f + " aaaaaaaaaaaaaaaa " + duration.toFloat + " " + simSteps)
+    getPhysicsSpace.update(duration.toFloat/1000f, simSteps)
   }
   def getPhysicsSpace : PhysicsSpace
 }

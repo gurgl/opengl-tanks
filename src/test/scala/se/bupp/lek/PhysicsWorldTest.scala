@@ -52,6 +52,8 @@ class PhysicsWorldTest extends Specification {
 
   class SimpleWorld(accuracy:Float = 1f/60f) extends Lallers {
 
+    var simCurrentTime:Long = _
+
     val settings = new AppSettings(true);
     val context = JmeSystem.newContext(settings, JmeContext.Type.Headless);
     //context.setSystemListener(this);
@@ -136,7 +138,8 @@ class PhysicsWorldTest extends Specification {
         }
         case _ => failure("should be list")
       }
-      myWorld.simulateToLastUpdated(10000)
+      myWorld.simCurrentTime = 10000
+      myWorld.simulateToLastUpdated()
       myWorld.getPlayers().head._2.getControl(classOf[CharacterControl]).getPhysicsLocation should be equalTo(new Vector3f(0.4f,1f,0f))
 
 
@@ -182,14 +185,10 @@ class PhysicsWorldTest extends Specification {
 
 
       myWorld.addPlayerAction(p1.playerId,new MotionGO(new Vector3f(0.4f,0f,0f),MathUtil.noRotation,clock.add(step)), seqGen.next)
-      myWorld.addPlayerAction(p2.playerId,new MotionGO(new Vector3f(0.4f,0f,0f),MathUtil.noRotation,clock.add(step)), seqGen.next)
+      myWorld.addPlayerAction(p2.playerId,new MotionGO(new Vector3f(0.5f,0f,0f),MathUtil.noRotation,clock.add(step)), seqGen.next)
 
       ps1.reorientation.size.shouldEqual(1)
       ps2.reorientation.size.shouldEqual(1)
-
-
-
-
 
       //val su = myWorld.popPlayerUpdatesLessOrEqualToTimeSorted(myWorld.getPlayers(),10030L) // + step)
       //su.size should be equalTo(2)
@@ -197,17 +196,52 @@ class PhysicsWorldTest extends Specification {
       //myWorld.pSpace.update(1f/100f)
       myWorld.pSpace.update(1f/100f)
 
-      val oldestUpdate = myWorld.getOldestUpdate(myWorld.getPlayers)
+      val oldestUpdate = myWorld.getOldestUpdateTime(myWorld.getPlayers)
       oldestUpdate.shouldEqual(10000 + step)
-      val newTime = myWorld.simulateToLastUpdated(10000)
+      myWorld.simCurrentTime = 10000
+      val newTime = myWorld.simulateToLastUpdated()
 
       newTime.shouldEqual(oldestUpdate)
 
+      myWorld.simCurrentTime.shouldEqual(oldestUpdate)
+
 
       myWorld.findPlayerInfo(1).get._2.getControl(classOf[CharacterControl]).getPhysicsLocation should be equalTo(new Vector3f(0.4f,1f,0f))
-      //myWorld.findPlayerInfo(2).get._2.getControl(classOf[CharacterControl]).getPhysicsLocation should be equalTo(new Vector3f(0.4f,1f,0f))
+      myWorld.findPlayerInfo(2).get._2.getControl(classOf[CharacterControl]).getPhysicsLocation should be equalTo(new Vector3f(0.0f,1f,0f))
 
-      1.shouldEqual(1)
+      myWorld.addPlayerAction(p2.playerId,new MotionGO(new Vector3f(0.0f,0f,3f),MathUtil.noRotation,clock.add(step*2)), seqGen.next)
+      myWorld.addPlayerAction(p1.playerId,new MotionGO(new Vector3f(0.0f,4f,0f),MathUtil.noRotation,clock.add(step)), seqGen.next)
+
+      ps1.reorientation.size.shouldEqual(1)
+      ps2.reorientation.size.shouldEqual(2)
+
+      val oldestUpdateRnd2 = myWorld.getOldestUpdateTime(myWorld.getPlayers)
+      oldestUpdateRnd2.shouldEqual(10000 + 4 * step)
+
+
+      val newTimeRnd2 = myWorld.simulateToLastUpdated()
+
+      newTimeRnd2.shouldEqual(oldestUpdateRnd2)
+
+      myWorld.findPlayerInfo(1).get._2.getControl(classOf[CharacterControl]).getPhysicsLocation should be equalTo(new Vector3f(0.4f,1f,0f))
+      myWorld.findPlayerInfo(2).get._2.getControl(classOf[CharacterControl]).getPhysicsLocation should be equalTo(new Vector3f(0.5f,1f,3f))
+
     }
+
+    /*
+        1 2 3 4 5 6 7 8 9 0 1 2 3 4
+    A     x         x       x
+    B         x   x   x
+
+
+
+
+    all movement in cycle => choppy
+
+    stepped simulation
+
+    linear : (simtime - simtime)
+
+     */
   }
 }

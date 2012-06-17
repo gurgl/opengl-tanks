@@ -20,6 +20,8 @@ object Model {
 
     var seqId : Int = _
     var reorientation:Seq[MotionGO] = Seq.empty
+
+    var lastSimulation:Option[Long] = None
     //var lastUpdate: Option[PlayerActionRequest] = None
     override def read(reader: JmeImporter) {}
 
