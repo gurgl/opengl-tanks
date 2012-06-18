@@ -25,9 +25,9 @@ import com.jme3.bullet.{PhysicsSpace, BulletAppState}
  */
 
 
-class ServerWorld(rootNode: Node, assetManager:AssetManager, bulletAppState:BulletAppState) extends SceneGraphWorld(true,assetManager,bulletAppState,rootNode) with Lallers {
+class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:PhysicsSpace) extends SceneGraphWorld(true,assetManager,rootNode) with Lallers {
 
-  var simCurrentTime:Long = _
+  var simCurrentTime:Long = System.currentTimeMillis()
 
   def initEmpty() {
     super.init()
@@ -42,22 +42,23 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, bulletAppState:Bull
     tank.setUserData(SceneGraphUserDataKeys.Player, ps)
 
     //tank.attachChild(tankModel)
-    /*val capsuleShape = new CapsuleCollisionShape(0.05f, 0.05f, 1)
+    val capsuleShape = new CapsuleCollisionShape(0.05f, 0.05f, 1)
     val playerControl = new CharacterControl(capsuleShape, 0.1f)
     tank.addControl(playerControl)
 
-    bulletAppState.getPhysicsSpace.add(playerControl)
+    getPhysicsSpace.add(playerControl)
 
+    playerControl.setUseViewDirection(false)
 
     playerControl.setJumpSpeed(0);
     playerControl.setFallSpeed(0.3f);
     playerControl.setGravity(0.3f);
     playerControl.setPhysicsLocation(new Vector3f(0, 2.5f, 0));
-    */
+
     getNode(SceneGraphWorld.SceneGraphNodeKeys.Enemies).attachChild(tank)
   }
 
-  def getPhysicsSpace = bulletAppState.getPhysicsSpace
+  def getPhysicsSpace = physicsSpace
 }
 
 trait Lallers {
@@ -90,16 +91,20 @@ trait Lallers {
     import Scalaz._
 
     val players = getPlayers
-    val oldestPlayerUpdate = getOldestUpdateTime(players)
+    getOldestUpdateTime(players) match {
 
-    val playerSpatials = players.map {
-      case (playerStatus, s) => s
-    }
+      case Some(oldestPlayerUpdate) =>
 
-    if (simCurrentTime < oldestPlayerUpdate) {
-      val updates = popPlayerUpdatesLessOrEqualToTimeSorted(players, oldestPlayerUpdate)
+        val playerSpatials = players.map {
+          case (playerStatus, s) => s
+        }
 
-      simulateUpdatesUntil(updates, playerSpatials)
+        if (simCurrentTime < oldestPlayerUpdate) {
+          val updates = popPlayerUpdatesLessOrEqualToTimeSorted(players, oldestPlayerUpdate)
+
+          simulateUpdatesUntil(updates, playerSpatials)
+        }
+      case None => println("No oldest update")
     }
 
     simCurrentTime
@@ -115,7 +120,10 @@ trait Lallers {
             (s, u)
         }
 
-        playerSpatials.foreach(_.getControl(classOf[CharacterControl]).setWalkDirection(Vector3f.ZERO.clone()))
+        playerSpatials.foreach { s =>
+          val control = s.getControl(classOf[CharacterControl])
+          control.setWalkDirection(Vector3f.ZERO.clone())
+        }
 
         simulateStepSequence(changedFromSimClockUntilNextPause.list, nextSimDuration)
 
@@ -141,12 +149,16 @@ trait Lallers {
     }.toListMap.toSeq.sortWith(_._1 < _._1)
   }
 
-  def getOldestUpdateTime(players: Buffer[(Model.PlayerStatus, Spatial)]): Long = {
-    val oldestPlayerUpdate = players.foldLeft(Long.MaxValue) {
-      case (least, (st, sp)) =>
-        math.min(st.reorientation.last.sentToServer, least)
-    }
-    oldestPlayerUpdate
+  def getOldestUpdateTime(players: Buffer[(Model.PlayerStatus, Spatial)]): Option[Long] = {
+    if(players.forall(_._1.reorientation.size > 0)) {
+      val oldestPlayerUpdate = players.foldLeft(Long.MaxValue) {
+        case (least, (st, sp)) =>
+          if (st.reorientation.size == 0) least else {
+            math.min(st.reorientation.last.sentToServer, least)
+          }
+      }
+      if(oldestPlayerUpdate == Long.MaxValue) None else Some(oldestPlayerUpdate)
+    } else None
   }
 
   /**
@@ -155,16 +167,19 @@ trait Lallers {
    */
   def simulateStepSequence(updates:List[(Spatial, MotionGO)], duration:Long) {
 
-    val steps:Int = math.round((duration.toFloat/1000f) / getPhysicsSpace.getAccuracy).toInt
+    val timeSlots:Int = math.round((duration.toFloat/1000f) / getPhysicsSpace.getAccuracy).toInt
+    val simSteps = if(timeSlots > 1) timeSlots else 1
 
     updates.foreach { case (s,u) =>
       val ctrl: CharacterControl = s.getControl(classOf[CharacterControl])
-      ctrl.setWalkDirection(u.translation.divide(steps.toFloat))
-      //println("Setting trans " + u.translation)
+      ctrl.setWalkDirection(u.translation.divide(simSteps.toFloat))
+      s.setLocalRotation(u.rotation.mult(s.getLocalRotation))
+      val status: PlayerStatus = s.getUserData[PlayerStatus](SceneGraphWorld.SceneGraphUserDataKeys.Player)
+      println("Setting trans " + u.translation + " p " + status.state.playerId + " time " + simCurrentTime + ctrl.getWalkDirection + " " + simSteps)
     }
 
-    val simSteps = if(steps > 1) steps else 1
-    //println("Tjaaaaaaaaa " + duration.toFloat/1000f + " aaaaaaaaaaaaaaaa " + duration.toFloat + " " + simSteps)
+
+    //println("Sim " + " aaaaaaaaaaaaaaaa " + duration.toFloat + " " + simSteps)
     getPhysicsSpace.update(duration.toFloat/1000f, simSteps)
   }
   def getPhysicsSpace : PhysicsSpace
@@ -203,39 +218,20 @@ class WorldSimulator(world:Lallers) {
     var s = ""
     lock.synchronized {
       
+
+
+      world.simulateToLastUpdated()
+
+
+
       val players = world.getPlayers
-
-
-      /*
-      if(simulatedUntil < oldestPlayerUpdate) {
-
-      }
-      */
-
-      
       players.foreach {
-        case (d,s) => 
-          //val ctrl = s.getControl(classOf[CharacterControl])
-          var ss = ""
-          d.reorientation.foreach { m => 
-            //println("seqId " + d.seqId)
-            //ctrl.setWalkDirection(m.translation)
-
-            d.state.direction = m.rotation.mult(d.state.direction)
-            //d.state.position = ctrl.getPhysicsLocation
-            d.state.position = d.state.position.add(m.translation)
-            /*if(simTime % 100 == 23) {
-              val angle= new Random().nextDouble()
-              d.state.position = d.state.position.add(new Vector3f(math.sin(angle).toFloat, 0f, math.cos(angle).toFloat))
-            }*/
-            
-            //println("phy " + ctrl.getPhysicsLocation + " reor " + m.translation)
-            
-            ss += m.translation + " " + d.state.position
-          }
-          //println("sim " + ss + " " + simTime + " " + d.state.sentToServerByClient)
-          d.reorientation = Seq.empty
+        case (ps,s) =>
+          ps.state.position = s.getControl(classOf[CharacterControl]).getPhysicsLocation.clone()
+          ps.state.direction = s.getLocalRotation
       }
+
+
       val playerState = players.map {
         case (ps, s)  => ps.state
 
@@ -299,7 +295,7 @@ class WorldSimulator(world:Lallers) {
       gameWorld.players = new java.util.ArrayList[PlayerGO](playerState)
       gameWorld.projectiles = new java.util.ArrayList[ProjectileGO](projectiles)
       gameWorld.timeStamp = simTime
-      lastWorldSimTimeStamp = Some(simTime)
+      lastWorldSimTimeStamp = Some(world.simCurrentTime)
     }
 
     //println(s)

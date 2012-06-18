@@ -7,6 +7,7 @@ import com.jme3.export.Savable
 import se.bupp.lek.server.Model._
 import com.jme3.math.{FastMath, Vector3f, Quaternion}
 import com.jme3.bullet.control.CharacterControl
+import java.lang
 
 /**
  * Created by IntelliJ IDEA.
@@ -40,25 +41,42 @@ class VisualSimulationPrediction(gameWorldUpdates:Queue[Model.ServerGameWorld], 
     //println("ugl " + end.position + " " + end.direction + " " + end.sentToServerByClient + " " + end.id + " " + snapDeltaTime + " " + timeSinceLast)
     if(snapDeltaTime == 0) {
       p
+    } else {
+
+
+      var velocity = end.position.subtract(start.position).divide(snapDeltaTime)
+
+      val extrapolTranslation = velocity.mult(timeSinceLast)
+
+      var startAngle = start.direction
+      var endAngle = snapshots.last.direction
+
+
+
+
+      val interpolationFactor: Float = (timeSinceLast + snapDeltaTime).toFloat / snapDeltaTime.toFloat
+
+      val exptrapolRotation = Quaternion.IDENTITY.clone().slerp(startAngle,endAngle, interpolationFactor)
+
+      val pNew = new PlayerGO(p)
+      pNew.direction = exptrapolRotation
+      pNew.position = p.position.add(extrapolTranslation)
+
+      if(pNew.position.getX.equals(Float.NaN)) {
+        println("snapDeltaTime" +    snapDeltaTime +
+          "timeSinceLast" +   timeSinceLast+
+          "interpolationFactor" +  interpolationFactor +
+          "startAngle" + startAngle +
+          "endAngle" +   endAngle+
+          "timeSinceLast" +   timeSinceLast+
+          "end.position" + end.position +
+          "start.position" + start.position
+        )
+
+      }
+
+      pNew
     }
-
-
-    var velocity = end.position.subtract(start.position).divide(snapDeltaTime)
-
-    val extrapolTranslation = velocity.mult(timeSinceLast)
-
-    var startAngle = start.direction
-    var endAngle = snapshots.last.direction
-
-
-    val interpolationFactor: Float = (timeSinceLast + snapDeltaTime).toFloat / snapDeltaTime.toFloat
-
-    val exptrapolRotation = Quaternion.IDENTITY.clone().slerp(startAngle,endAngle, interpolationFactor)
-
-    val pNew = new PlayerGO(p)
-    pNew.direction = exptrapolRotation
-    pNew.position = p.position.add(extrapolTranslation)
-    pNew
 
   }
   def simulateProjectile(lastServerSimToSimTimes:Seq[Long],snapshots:List[AbstractOwnedGameObject with Savable]) = {

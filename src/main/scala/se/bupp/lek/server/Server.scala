@@ -46,14 +46,15 @@ class Server extends SimpleApplication with PhysicsTickListener {
   override def simpleInitApp() {
 
     stateManager.detach( stateManager.getState(classOf[FlyCamAppState]))
-    val bulletAppState = new BulletAppState();
+    //val bulletAppState = new BulletAppState();
 
-    bulletAppState.startPhysics()
+    //bulletAppState.startPhysics()
     //stateManager.attach(bulletAppState);
     flyCam.setEnabled(false)
 
     val leRoot = new Node()
-    val serverWorld = new ServerWorld(leRoot, assetManager, bulletAppState)
+    val physicsSpace = new PhysicsSpace()
+    val serverWorld = new ServerWorld(leRoot, assetManager, physicsSpace)
     serverWorld.initEmpty()
     worldSimulator = new WorldSimulator(serverWorld)
 

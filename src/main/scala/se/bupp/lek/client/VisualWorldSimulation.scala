@@ -16,7 +16,7 @@ import com.jme3.post.ssao.SSAOFilter
 import com.jme3.util.TangentBinormalGenerator
 import se.bupp.lek.server.Model._
 import com.jme3.bullet.util.CollisionShapeFactory
-import com.jme3.bullet.BulletAppState
+import com.jme3.bullet.{PhysicsSpace, BulletAppState}
 import com.jme3.bullet.collision.shapes.CapsuleCollisionShape
 import com.jme3.bullet.control.{CharacterControl, RigidBodyControl}
 import com.jme3.asset.plugins.ZipLocator
@@ -71,7 +71,9 @@ object SceneGraphWorld {
     type GOWithSavable = AbstractOwnedGameObject with Savable
 }
 
-class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager, bulletAppState:BulletAppState, rootNode:Node) {
+abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager, rootNode:Node) {
+
+  def getPhysicsSpace : PhysicsSpace
 
   var playerControl:CharacterControl = _
   var player:Spatial = _
@@ -132,7 +134,7 @@ class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager, bulletA
     val landscape = new RigidBodyControl(sceneCollisionShape, 0)
     level.addControl(landscape);
 
-    bulletAppState.getPhysicsSpace.add(landscape)
+    getPhysicsSpace.add(landscape)
 
     //val wall = new Geometry("Box", box);
     //val matLevel = new MaterialList()
@@ -201,7 +203,7 @@ class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager, bulletA
     playerControl.setUseViewDirection(false)
     player.addControl(playerControl)
 
-    bulletAppState.getPhysicsSpace.add(playerControl)
+    getPhysicsSpace.add(playerControl)
 
 
     playerControl.setJumpSpeed(0);
@@ -246,10 +248,11 @@ class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager, bulletA
 
 }
 
-class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:() => Option[Int],val playerInput:PlayerInput, viewPort:ViewPort, val bulletAppState:BulletAppState) extends SceneGraphWorld(false,assetManager,bulletAppState,rootNode) {
+class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:() => Option[Int],val playerInput:PlayerInput, viewPort:ViewPort, val bulletAppState:BulletAppState) extends SceneGraphWorld(false,assetManager,rootNode) {
   import VisualWorldSimulation._
   import SceneGraphWorld._
 
+  override def getPhysicsSpace = bulletAppState.getPhysicsSpace
 
   var saved = Queue.empty[(Long, Orientation, Reorientation)] //:+ ((System.currentTimeMillis(),startPosition, MathUtil.noMotion))
 
@@ -390,6 +393,10 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
 
     }
 
+    // if (k.position.getX == Float.NaN)
+    //enemyMap.foreach {  case (k,v) => println( "pos " +  k.position + " " + v.getLocalTranslation()) }
+
+
     newInUpdate.foreach {
       case p:PlayerGO =>
         if(p.playerId == playerIdOpt.apply().get) {
@@ -459,13 +466,13 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
 
         val diffHeur = diff(saved.head._2,server)
         //val newPos =
-        if(diffHeur._1 > 1.0 || diffHeur._2 > FastMath.PI / 45) {
+        if(diffHeur._1 > 0.2 || diffHeur._2 > FastMath.PI / 90) {
 
           val newSavedPos = saved.foldLeft(Queue(server)) {
             case (recalculatedPositions,(time,orientationBeforeReorientation, reorient)) =>
               recalculatedPositions :+ recalculatedPositions.last.reorientate(reorient)
           }
-          println("Bad " + saved.head._2.position + " " + server.position + " " + serverSimTime + " " + diffHeur._1 + " " + serverSnapshotSentByPlayerTime)
+          println("Bad " + saved.head._2.position + " " + server.position + " " + serverSimTime + " " + diffHeur + " " + serverSnapshotSentByPlayerTime)
           saved = newSavedPos.tail.zip(saved).map {case (np, (ts, _ , reor)) => (ts, np, reor) }
           //println("Bad " + saved.head._2.position+ " " + server.position + " " + diffHeur._1) // + " " + newSavedPos.last)
           //println("Bad " + diffHeur)
