@@ -33,51 +33,53 @@ class VisualSimulationPrediction(gameWorldUpdates:Queue[Model.ServerGameWorld], 
 
   def simulatePlayer(p:PlayerGO, simTime:Long, snapshots:List[AbstractOwnedGameObject with Savable]) : PlayerGO = {
 
-    var start = snapshots.reverse.tail.head
+    var previous = snapshots.reverse.tail
     var end = snapshots.last
 
-    var snapDeltaTime = (end.sentToServerByClient - start.sentToServerByClient)
-    val timeSinceLast = simTime - end.sentToServerByClient
-    //println("ugl " + end.position + " " + end.direction + " " + end.sentToServerByClient + " " + end.id + " " + snapDeltaTime + " " + timeSinceLast)
-    if(snapDeltaTime == 0) {
-      p
-    } else {
+    val startOpt = previous.find( prev => (end.sentToServerByClient - prev.sentToServerByClient) > 0)
 
-
-      var velocity = end.position.subtract(start.position).divide(snapDeltaTime)
-
-      val extrapolTranslation = velocity.mult(timeSinceLast)
-
-      var startAngle = start.direction
-      var endAngle = snapshots.last.direction
+    startOpt match {
+      case Some(start) =>
+        var snapDeltaTime = (end.sentToServerByClient - start.sentToServerByClient)
+        val timeSinceLast = simTime - end.sentToServerByClient
+        //println("ugl " + end.position + " " + end.direction + " " + end.sentToServerByClient + " " + end.id + " " + snapDeltaTime + " " + timeSinceLast)
 
 
 
+        var velocity = end.position.subtract(start.position).divide(snapDeltaTime)
 
-      val interpolationFactor: Float = (timeSinceLast + snapDeltaTime).toFloat / snapDeltaTime.toFloat
+        val extrapolTranslation = velocity.mult(timeSinceLast)
 
-      val exptrapolRotation = Quaternion.IDENTITY.clone().slerp(startAngle,endAngle, interpolationFactor)
+        var startAngle = start.direction
+        var endAngle = snapshots.last.direction
 
-      val pNew = new PlayerGO(p)
-      pNew.direction = exptrapolRotation
-      pNew.position = p.position.add(extrapolTranslation)
 
-      if(pNew.position.getX.equals(Float.NaN)) {
-        println("snapDeltaTime" +    snapDeltaTime +
-          "timeSinceLast" +   timeSinceLast+
-          "interpolationFactor" +  interpolationFactor +
-          "startAngle" + startAngle +
-          "endAngle" +   endAngle+
-          "timeSinceLast" +   timeSinceLast+
-          "end.position" + end.position +
-          "start.position" + start.position
-        )
 
-      }
 
-      pNew
+        val interpolationFactor: Float = (timeSinceLast + snapDeltaTime).toFloat / snapDeltaTime.toFloat
+
+        val exptrapolRotation = Quaternion.IDENTITY.clone().slerp(startAngle,endAngle, interpolationFactor)
+
+        val pNew = new PlayerGO(p)
+        pNew.direction = exptrapolRotation
+        pNew.position = p.position.add(extrapolTranslation)
+
+        if(pNew.position.getX.equals(Float.NaN)) {
+          println("snapDeltaTime" +    snapDeltaTime +
+            "timeSinceLast" +   timeSinceLast+
+            "interpolationFactor" +  interpolationFactor +
+            "startAngle" + startAngle +
+            "endAngle" +   endAngle+
+            "timeSinceLast" +   timeSinceLast+
+            "end.position" + end.position +
+            "start.position" + start.position
+          )
+
+        }
+
+        pNew
+      case None => p
     }
-
   }
   def simulateProjectile(lastServerSimToSimTimes:Seq[Long],snapshots:List[AbstractOwnedGameObject with Savable]) = {
 

@@ -128,7 +128,7 @@ trait Lallers {
         simulateStepSequence(changedFromSimClockUntilNextPause.list, nextSimDuration)
 
         playerUpdatesAtTime.list.foreach {
-          case (ps, s, u) => ps.lastSimulation = Some(time)
+          case (ps, s, u) => ps.lastSimulation = time
         }
         simCurrentTime = time
     }
@@ -233,8 +233,10 @@ class WorldSimulator(world:Lallers) {
 
 
       val playerState = players.map {
-        case (ps, s)  => ps.state
-
+        case (ps, s)  =>
+          val p = new PlayerGO(ps.state)
+          p.sentToServerByClient = ps.lastSimulation
+          p
       }
       /*val playerState = getPlayers.map {
         p =>
