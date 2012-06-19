@@ -12,7 +12,7 @@ import com.jme3.system.{JmeContext, AppSettings, JmeSystem}
 import com.jme3.bullet.control.CharacterControl
 import com.jme3.bullet.collision.shapes.CapsuleCollisionShape
 import server.Model._
-import server.{Lallers, WorldSimulator}
+import server.{PhysicsSpaceSimAdapter, WorldSimulator}
 import com.jme3.math.{Vector3f, Quaternion}
 import scalaz.NonEmptyList
 

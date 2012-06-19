@@ -25,7 +25,7 @@ import com.jme3.bullet.{PhysicsSpace, BulletAppState}
  */
 
 
-class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:PhysicsSpace) extends SceneGraphWorld(true,assetManager,rootNode) with Lallers {
+class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:PhysicsSpace) extends SceneGraphWorld(true,assetManager,rootNode) with PhysicsSpaceSimAdapter {
 
   var simCurrentTime:Long = System.currentTimeMillis()
 
@@ -61,131 +61,9 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
   def getPhysicsSpace = physicsSpace
 }
 
-trait Lallers {
-
-  var simCurrentTime:Long
-  def addPlayer(ps:PlayerStatus) : Unit
-  def getNode(str:String) : Node
-
-  def getPlayers() = projectNodeChildrenByData[PlayerStatus](SceneGraphWorld.SceneGraphNodeKeys.Enemies, SceneGraphWorld.SceneGraphUserDataKeys.Player)
-
-  def projectNodeChildrenByData[U](nodeKey:String, userDataKey:String) = {
-    getNode(nodeKey).getChildren.map(x => (x.getUserData[U](userDataKey),x))
-  }
-    
-  def findPlayer(playerId:Int) = {
-    getPlayers().find {
-      case (p, s) => p.state.playerId == playerId
-    }.map(_._1)
-  }
-
-  def findPlayerInfo(playerId:Int) = {
-    getPlayers().find {
-      case (p, s) => p.state.playerId == playerId
-    }
-  }
-
-  def simulateToLastUpdated() : Long = {
-
-    import scalaz._
-    import Scalaz._
-
-    val players = getPlayers
-    getOldestUpdateTime(players) match {
-
-      case Some(oldestPlayerUpdate) =>
-
-        val playerSpatials = players.map {
-          case (playerStatus, s) => s
-        }
-
-        if (simCurrentTime < oldestPlayerUpdate) {
-          val updates = popPlayerUpdatesLessOrEqualToTimeSorted(players, oldestPlayerUpdate)
-
-          simulateUpdatesUntil(updates, playerSpatials)
-        }
-      case None => println("No oldest update")
-    }
-
-    simCurrentTime
-  }
 
 
-  def simulateUpdatesUntil(updates: scala.Seq[(Long, NonEmptyList[(Model.PlayerStatus, Spatial, Model.MotionGO)])], playerSpatials:Seq[Spatial]) {
-    updates.foreach {
-      case (time, playerUpdatesAtTime) =>
-        val nextSimDuration =  time - simCurrentTime
-        val changedFromSimClockUntilNextPause = playerUpdatesAtTime.map {
-          case (ps, s, u) =>
-            (s, u)
-        }
-
-        playerSpatials.foreach { s =>
-          val control = s.getControl(classOf[CharacterControl])
-          control.setWalkDirection(Vector3f.ZERO.clone())
-        }
-
-        simulateStepSequence(changedFromSimClockUntilNextPause.list, nextSimDuration)
-
-        playerUpdatesAtTime.list.foreach {
-          case (ps, s, u) => ps.lastSimulation = time
-        }
-        simCurrentTime = time
-    }
-  }
-
-  def popPlayerUpdatesLessOrEqualToTimeSorted(players: Buffer[(Model.PlayerStatus, Spatial)], oldestPlayerUpdate: Long): Seq[(Long, NonEmptyList[(Model.PlayerStatus, Spatial, Model.MotionGO)])] = {
-    import se.bupp.lek.common.FuncUtil._
-    players.map {
-      case (playerStatus, s) =>
-        val (toExecute, left) = playerStatus.reorientation.partition(_.sentToServer <= oldestPlayerUpdate)
-        playerStatus.reorientation = left
-        (playerStatus, s, toExecute)
-      //p._1.state.sentToServerByClient <= oldestPlayerUpdate && p._1.state.sentToServerByClient > simCurrentTime
-    }.flatMap {
-      case (ps, s, ups) => ups.map(u => (ps, s, u))
-    }.map {
-      case (ps, s, u) => (u.sentToServer, (ps, s, u))
-    }.toListMap.toSeq.sortWith(_._1 < _._1)
-  }
-
-  def getOldestUpdateTime(players: Buffer[(Model.PlayerStatus, Spatial)]): Option[Long] = {
-    if(players.forall(_._1.reorientation.size > 0)) {
-      val oldestPlayerUpdate = players.foldLeft(Long.MaxValue) {
-        case (least, (st, sp)) =>
-          if (st.reorientation.size == 0) least else {
-            math.min(st.reorientation.last.sentToServer, least)
-          }
-      }
-      if(oldestPlayerUpdate == Long.MaxValue) None else Some(oldestPlayerUpdate)
-    } else None
-  }
-
-  /**
-   * @param updates Changes to be applied at current simulation time
-   * @param duration How long to run sim until next stop
-   */
-  def simulateStepSequence(updates:List[(Spatial, MotionGO)], duration:Long) {
-
-    val timeSlots:Int = math.round((duration.toFloat/1000f) / getPhysicsSpace.getAccuracy).toInt
-    val simSteps = if(timeSlots > 1) timeSlots else 1
-
-    updates.foreach { case (s,u) =>
-      val ctrl: CharacterControl = s.getControl(classOf[CharacterControl])
-      ctrl.setWalkDirection(u.translation.divide(simSteps.toFloat))
-      s.setLocalRotation(u.rotation.mult(s.getLocalRotation))
-      val status: PlayerStatus = s.getUserData[PlayerStatus](SceneGraphWorld.SceneGraphUserDataKeys.Player)
-      println("Setting trans " + u.translation + " p " + status.state.playerId + " time " + simCurrentTime + ctrl.getWalkDirection + " " + simSteps)
-    }
-
-
-    //println("Sim " + " aaaaaaaaaaaaaaaa " + duration.toFloat + " " + simSteps)
-    getPhysicsSpace.update(duration.toFloat/1000f, simSteps)
-  }
-  def getPhysicsSpace : PhysicsSpace
-}
-
-class WorldSimulator(world:Lallers) {
+class WorldSimulator(world:PhysicsSpaceSimAdapter) {
   var connectionSequence = 0
 
   var lock: AnyRef = new Object()

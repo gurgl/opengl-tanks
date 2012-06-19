@@ -2,7 +2,7 @@ package se.bupp.lek
 
 import client.SceneGraphWorld.SceneGraphUserDataKeys
 import client.{SceneGraphWorld, MathUtil}
-import server.Lallers
+import server.PhysicsSpaceSimAdapter
 import server.Model.{Orientation, MotionGO, PlayerGO, PlayerStatus}
 import com.jme3.math.{Quaternion, Vector3f}
 import com.jme3.bullet.control.CharacterControl
@@ -50,7 +50,7 @@ class PhysicsWorldTest extends Specification {
   }
 
 
-  class SimpleWorld(accuracy:Float = 1f/60f) extends Lallers {
+  class SimpleWorld(accuracy:Float = 1f/60f) extends PhysicsSpaceSimAdapter {
 
     var simCurrentTime:Long = _
 
@@ -92,6 +92,7 @@ class PhysicsWorldTest extends Specification {
         }
       }
     }
+    override def isTest = true
     override def getPhysicsSpace = pSpace
   }
 
@@ -196,7 +197,7 @@ class PhysicsWorldTest extends Specification {
       //myWorld.pSpace.update(1f/100f)
       myWorld.pSpace.update(1f/100f)
 
-      val oldestUpdate = myWorld.getOldestUpdateTime(myWorld.getPlayers)
+      val oldestUpdate = myWorld.getOldestUpdateTimeLastReceived(myWorld.getPlayers)
       oldestUpdate.shouldEqual(10000 + step)
       myWorld.simCurrentTime = 10000
       val newTime = myWorld.simulateToLastUpdated()
@@ -215,7 +216,7 @@ class PhysicsWorldTest extends Specification {
       ps1.reorientation.size.shouldEqual(1)
       ps2.reorientation.size.shouldEqual(2)
 
-      val oldestUpdateRnd2 = myWorld.getOldestUpdateTime(myWorld.getPlayers)
+      val oldestUpdateRnd2 = myWorld.getOldestUpdateTimeLastReceived(myWorld.getPlayers)
       oldestUpdateRnd2.shouldEqual(10000 + 4 * step)
 
 
@@ -243,5 +244,97 @@ class PhysicsWorldTest extends Specification {
     linear : (simtime - simtime)
 
      */
+  }
+
+  "time independence" should {
+    "handle multi player" in {
+
+
+      val tpf = 1f/60f
+
+      val myWorld = new SimpleWorld(tpf)
+
+      var seqGen = new SeqGen(1)
+      var clock = new Clock(10000)
+
+      val ps1 = new PlayerStatus()
+      val p1 = new PlayerGO()
+      ps1.state = p1
+      p1.position = new Vector3f(0f,0f,0f)
+      p1.direction = Quaternion.DIRECTION_Z.clone()
+      p1.sentToServerByClient = clock.time
+      p1.playerId = 1
+      p1.clientSeqId = 2
+
+      val ps2 = new PlayerStatus()
+      val p2 = new PlayerGO()
+      ps2.state = p2
+      p2.position = new Vector3f(0f,0f,0f)
+      p2.direction = Quaternion.DIRECTION_Z.clone()
+      p2.sentToServerByClient = clock.time
+      p2.playerId = 2
+      p2.clientSeqId = 2
+
+
+      myWorld.addPlayer(ps1)
+      myWorld.addPlayer(ps2)
+      val step = 10L
+      //clock.add(step)
+
+      myWorld.findPlayerInfo(1).get._2.getControl(classOf[CharacterControl]).getPhysicsLocation should be equalTo(new Vector3f(0.0f,0f,0f))
+      myWorld.findPlayerInfo(2).get._2.getControl(classOf[CharacterControl]).getPhysicsLocation should be equalTo(new Vector3f(0.0f,0f,0f))
+
+
+      val startTime = System.currentTimeMillis()
+
+      myWorld.simCurrentTime = startTime
+      val rnd = new scala.util.Random()
+
+
+
+      val span = tpf * 8
+      val min = span / 2f
+
+      var playerSimData = Map.empty[Int,(Long,Vector3f)] ++ myWorld.getPlayers.map( x =>  (x._1.state.playerId, (startTime, Vector3f.ZERO.clone())))
+
+
+      //val nextSim = Map[Int,Long]()
+      for( i <- 0 until 100) {
+        playerSimData = playerSimData.map { case (p, (t, a)) =>
+          val additionSeconds: Float = (rnd.nextFloat * span) + min
+          val additionMillis: Long = math.round((additionSeconds * 1000).toDouble)
+          println(additionMillis)
+          val newTime = t + additionMillis
+          (p, (newTime, a)) }
+
+        try {
+
+        }
+        playerSimData.toList.sortWith { case (a,b) => a._2._1 < b._2._1 }.foreach {
+
+          case (pid, (t, acc)) =>
+          val translation: Vector3f = new Vector3f(0.4f, 0f, 0f)
+          myWorld.addPlayerAction(pid,new MotionGO(translation,MathUtil.noRotation,t), seqGen.next)
+          acc.set(acc.add(translation))
+
+        }
+
+
+      }
+      var loops = 0
+      var lastSimTime = 0L
+      do {
+        lastSimTime = myWorld.simCurrentTime
+        myWorld.simulateToLastUpdated()
+        loops += 1
+      } while(lastSimTime < myWorld.simCurrentTime)
+
+      //loops.shouldEqual(100)
+
+      //startTime.shouldEqual(myWorld.simCurrentTime)
+      myWorld.findPlayerInfo(1).get._2.getControl(classOf[CharacterControl]).getPhysicsLocation should be equalTo(playerSimData(1)._2)
+      myWorld.findPlayerInfo(2).get._2.getControl(classOf[CharacterControl]).getPhysicsLocation should be equalTo(playerSimData(2)._2)
+
+    }
   }
 }
