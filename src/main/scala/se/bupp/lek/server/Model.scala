@@ -146,11 +146,12 @@ object Model {
   }
 
 
-  class ServerGameWorld {
-    var timeStamp: Long = _
-    var players: java.util.ArrayList[PlayerGO] = _
-    var projectiles: java.util.ArrayList[ProjectileGO] = _
+  class ServerGameWorld(
+    var timeStamp: Long,
+    var players: java.util.ArrayList[PlayerGO],
+    var projectiles: java.util.ArrayList[ProjectileGO]) {
 
+    def this() = this(0,null,null)
     def all = players.toList ++ projectiles.toList
   }
 

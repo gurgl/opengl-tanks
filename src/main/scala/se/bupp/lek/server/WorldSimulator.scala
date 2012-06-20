@@ -90,7 +90,7 @@ class WorldSimulator(world:PhysicsSpaceSimAdapter) {
 
 
   def getGameWorld(simTime:Long):  ServerGameWorld = {
-    val gameWorld = new ServerGameWorld
+
     import scala.collection.JavaConversions.seqAsJavaList
 
     var s = ""
@@ -172,14 +172,13 @@ class WorldSimulator(world:PhysicsSpaceSimAdapter) {
       }
       */
 
-      gameWorld.players = new java.util.ArrayList[PlayerGO](playerState)
-      gameWorld.projectiles = new java.util.ArrayList[ProjectileGO](projectiles)
-      gameWorld.timeStamp = simTime
       lastWorldSimTimeStamp = Some(world.simCurrentTime)
+      new ServerGameWorld(
+        players = new java.util.ArrayList[PlayerGO](playerState),
+        projectiles = new java.util.ArrayList[ProjectileGO](projectiles),
+        timeStamp = simTime
+      )
     }
-
-    //println(s)
-    gameWorld
   }
 
   def addPlayer(pjr: PlayerJoinRequest): Int = {

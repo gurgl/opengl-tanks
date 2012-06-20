@@ -92,17 +92,15 @@ class NetworkState extends AbstractAppState {
     var currentGameWorldUpdates:Queue[ServerGameWorld] = null
     //    }
 
-//    lock.synchronized {
-    currentGameWorldUpdates = gameWorldUpdatesQueue
+    currentGameWorldUpdates = Queue(gameWorldUpdatesQueue:_*)
 
 
-    if(currentGameWorldUpdates.size > 0) {
-      gameApp.visualWorldSimulation.update(simTime,currentGameWorldUpdates, gameApp.playerIdOpt.get, input)
-
+    if(gameWorldUpdatesQueue.size > 0) {
+      gameApp.visualWorldSimulation.update(simTime, currentGameWorldUpdates, gameApp.playerIdOpt.get, input)
     }
 
 
-    if(System.currentTimeMillis() - lastSentUpdate > 1000/15 ) {
+    if((System.currentTimeMillis() - lastSentUpdate).toFloat > 1000f/15f ) {
 
       val reorientation = MessageQueue.flushAccumulated()
       val projectiles = gameApp.visualWorldSimulation.flushFired()

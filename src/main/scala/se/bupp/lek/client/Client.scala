@@ -15,6 +15,8 @@ import se.bupp.lek.server.Model._
 import com.jme3.math._
 import com.jme3.bullet.BulletAppState
 import com.jme3.bullet.control.CharacterControl
+import com.jme3.renderer.RenderManager
+import com.jme3.bullet.BulletAppState.ThreadingType
 
 
 /**
@@ -155,7 +157,18 @@ class Client extends SimpleApplication {
     stateManager.detach( stateManager.getState(classOf[FlyCamAppState]))
     stateManager.attach(new NetworkState)
 
-    val bulletAppState = new BulletAppState();
+    val bulletAppState = new BulletAppState() {
+      override def render(rm:RenderManager) {
+        if (!active) {
+
+        } else if (threadingType == ThreadingType.PARALLEL) {
+          //physicsFuture = executor.submit(parallelPhysicsUpdate);
+        } else if (threadingType == ThreadingType.SEQUENTIAL) {
+          pSpace.update(tpf * 1.00000001f, 1);
+        } else {
+        }
+      }
+    }
     stateManager.attach(bulletAppState);
     visualWorldSimulation = new VisualWorldSimulation(rootNode,assetManager,() => playerIdOpt,playerInput, viewPort, bulletAppState);
 
@@ -196,7 +209,7 @@ object Client {
   def main(arguments: Array[String]): Unit = {
     spel = new Client()
     val settings = new AppSettings(true);
-    settings.setFrameRate(60);
+    settings.setFrameRate(58)
     settings.setResolution(640,480)
     settings.setTitle("Tank Showdown")
     spel.setSettings(settings)

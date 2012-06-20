@@ -279,7 +279,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
         saved = saved.dequeue._2
       }
 
-      //val orientation = saved.last._2.reorientate(reorientation)
+      //val orientation = saved.last._2.reorientate(input)
       saved =  saved + (timeStamp, orientation, reorientation)
 
     }
@@ -400,7 +400,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
     newInUpdate.foreach {
       case p:PlayerGO =>
         if(p.playerId == playerIdOpt.apply().get) {
-
+          // TODO (player spawn etc)
         } else {
           materializeEnemy(p)
         }
@@ -427,13 +427,28 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
     }
   }
 
+  var dbgLastPlayerPos:Vector3f = _
+
   def update(simTime: Long,currentGameWorldUpdates:Queue[ServerGameWorld], playerId:Int, reorientation:Reorientation) {
+
     val predictor: VisualSimulationPrediction = new VisualSimulationPrediction(currentGameWorldUpdates, playerId)
     val nonPlayerPredictons = predictor.interpolateNonPlayerObjects(simTime)
 
     syncNonPlayerGameWorld(nonPlayerPredictons.distinct.toSet)
 
-    applyPlayerInput(currentGameWorldUpdates,reorientation);
+    val lastGameWorldUpdate: ServerGameWorld = currentGameWorldUpdates.last
+
+    applyPlayerInput(lastGameWorldUpdate,reorientation);
+    val dbgPlayerPos = player.getControl(classOf[CharacterControl]).getPhysicsLocation.clone()
+
+    if (dbgLastPlayerPos != null) {
+      val dist: Float = dbgLastPlayerPos.subtract(dbgPlayerPos).length()
+      if (math.abs(dist) < 0.001 ) {
+        println("Zero dist" + dist + dbgLastPlayerPos + " " + dbgPlayerPos)
+      }
+    }
+    dbgLastPlayerPos = dbgPlayerPos
+
   }
 
 
@@ -494,24 +509,28 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
       }
     }
   }
+  var lastSynchedGameWorldUpdate:ServerGameWorld = _
+  def applyPlayerInput(lastGameWorldUpdate: ServerGameWorld, input:Reorientation) {
 
-  def applyPlayerInput(currentGameWorldUpdates:Queue[ServerGameWorld], reorientation:Reorientation) {
+    lastGameWorldUpdate.players.find(_.playerId == playerIdOpt().get).foreach {
+      x =>
 
-
-    currentGameWorldUpdates.last.players.find(_.playerId == playerIdOpt().get).foreach {
-      x => 
-      applyCorrectionIfDiffers(x.sentToServerByClient, currentGameWorldUpdates.last.timeStamp, x)
+      if(lastSynchedGameWorldUpdate != lastGameWorldUpdate) {
+        applyCorrectionIfDiffers(x.sentToServerByClient, lastGameWorldUpdate.timeStamp, x)
+        lastSynchedGameWorldUpdate = lastGameWorldUpdate
+      }
 
       //player.move(playerinput.translation)
       //player.rotate(playerinput.rotation)
 
       val control = player.getControl(classOf[CharacterControl])
 
+
       //println(direction + " " + bulletAppState.getSpeed + " " + bulletAppState.getPhysicsSpace.getAccuracy)
-      control.setWalkDirection(reorientation._1)
+      control.setWalkDirection(input._1)
       //control.setviewdirection(player.setlocalrotation(p.direction))
       //control.setViewDirection(p.direction.getRotationColumn(0))
-      player.rotate(reorientation._2)
+      player.rotate(input._2)
 
 
       //player.setlocaltranslation(p.position)
