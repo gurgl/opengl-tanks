@@ -58,7 +58,7 @@ trait PhysicsSpaceSimAdapter {
 
           simulateUpdatesUntil(updates, playerSpatials)
         }
-      case None => println("No oldest update")
+      case None => //println("No oldest update")
     }
 
     simCurrentTime

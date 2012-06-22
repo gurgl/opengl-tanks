@@ -6,7 +6,7 @@ import collection.JavaConversions
 import JavaConversions.asScalaBuffer
 import se.bupp.lek.client.SceneGraphWorld
 import com.jme3.asset.AssetManager
-import com.jme3.bullet.control.CharacterControl
+import com.jme3.bullet.control.{RigidBodyControl, CharacterControl}
 import se.bupp.lek.client.SceneGraphWorld.SceneGraphUserDataKeys
 import com.jme3.bullet.collision.shapes.CapsuleCollisionShape
 import util.Random
@@ -31,6 +31,12 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
 
   def initEmpty() {
     super.init()
+  }
+
+  def getProjectiles() = projectNodeChildrenByData[ProjectileGO](SceneGraphWorld.SceneGraphNodeKeys.Projectiles, SceneGraphWorld.SceneGraphUserDataKeys.Projectile)
+
+  def addProjectile(pr:ProjectileGO) {
+    materializeProjectile2(pr)
   }
 
 
@@ -63,7 +69,7 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
 
 
 
-class WorldSimulator(world:PhysicsSpaceSimAdapter) {
+class WorldSimulator(world:ServerWorld) {
   var connectionSequence = 0
 
   var lock: AnyRef = new Object()
@@ -72,7 +78,7 @@ class WorldSimulator(world:PhysicsSpaceSimAdapter) {
   //var getPlayers = new ArrayBuffer[PlayerStatus]()
   var firedProjectiles = new HashMap[Int, List[ProjectileFireGO]]()
 
-  var projectiles = List[ProjectileGO]()
+  //var projectiles = List[ProjectileGO]()
 
   var simulatedUntil:Option[Long] = None
 
@@ -143,14 +149,29 @@ class WorldSimulator(world:PhysicsSpaceSimAdapter) {
           }
       }
 
+      newProjectiles.foreach {
+        world.addProjectile(_)
+      }
+
 
       firedProjectiles = HashMap.empty
-      projectiles = projectiles ++ newProjectiles
-
-      projectiles = projectiles.filter(_.timeSpawned > maxAgeProjectiles)
 
 
-      lastWorldSimTimeStamp.foreach { lastSimTime =>
+      //projectiles = projectiles ++ newProjectiles
+
+      val projectiles: Buffer[(ProjectileGO, Spatial)] = world.getProjectiles()
+
+      val (toPreserve, toRemove)  = projectiles.partition { _._1.timeSpawned > maxAgeProjectiles }
+
+      toRemove.foreach {
+        case (p,s) => world.getNode(SceneGraphWorld.SceneGraphNodeKeys.Projectiles).detachChild(s)
+      }
+
+
+
+
+
+      /*lastWorldSimTimeStamp.foreach { lastSimTime =>
         projectiles.foreach {
           pf =>
           //pf.
@@ -158,7 +179,7 @@ class WorldSimulator(world:PhysicsSpaceSimAdapter) {
             //println("translate " + translate + translate.length)
             pf.orientation.position = pf.orientation.position.add(translate)
         }
-      }
+      }*/
 
       //println("projectiles.size" + projectiles.size + " newProjectiles " + newProjectiles.size)
 
@@ -172,10 +193,22 @@ class WorldSimulator(world:PhysicsSpaceSimAdapter) {
       }
       */
 
+      toPreserve.foreach {
+        case (p,s) =>
+
+          p.position = s.getControl(classOf[RigidBodyControl]).getPhysicsLocation
+          println(p.position)
+      }
+      val simulatedProjectiles = toPreserve.map {
+        case (p,s) =>
+          p
+      }
+
+
       lastWorldSimTimeStamp = Some(world.simCurrentTime)
       new ServerGameWorld(
         players = new java.util.ArrayList[PlayerGO](playerState),
-        projectiles = new java.util.ArrayList[ProjectileGO](projectiles),
+        projectiles = new java.util.ArrayList[ProjectileGO](simulatedProjectiles),
         timeStamp = simTime
       )
     }

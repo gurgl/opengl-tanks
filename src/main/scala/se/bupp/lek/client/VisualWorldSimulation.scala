@@ -17,7 +17,7 @@ import com.jme3.util.TangentBinormalGenerator
 import se.bupp.lek.server.Model._
 import com.jme3.bullet.util.CollisionShapeFactory
 import com.jme3.bullet.{PhysicsSpace, BulletAppState}
-import com.jme3.bullet.collision.shapes.CapsuleCollisionShape
+import com.jme3.bullet.collision.shapes.{SphereCollisionShape, CapsuleCollisionShape}
 import com.jme3.bullet.control.{CharacterControl, RigidBodyControl}
 import com.jme3.asset.plugins.ZipLocator
 import com.jme3.math.{FastMath, ColorRGBA, Quaternion, Vector3f}
@@ -90,8 +90,8 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
   
   def init() {
     projectileGeometry = new Box(Vector3f.ZERO.clone(), 0.1f, 0.1f, 0.1f)
-    projectileGeometry.setBound(new BoundingSphere())
-    projectileGeometry.updateBound()
+    //projectileGeometry.setBound(new BoundingSphere())
+    //projectileGeometry.updateBound()
 
 
     if(!isHeadLess) {
@@ -135,6 +135,8 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
     level.addControl(landscape);
 
     getPhysicsSpace.add(landscape)
+
+    getPhysicsSpace.setGravity(Vector3f.ZERO.clone());
 
     //val wall = new Geometry("Box", box);
     //val matLevel = new MaterialList()
@@ -227,6 +229,38 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
     //player.setMaterial(mat_default);
 
     rootNode.attachChild(player);
+  }
+
+  def materializeProjectile2(p:ProjectileGO) {
+
+    println("adding projectile " + p.position + "" + p.id)
+    val instance = new Geometry("Box", projectileGeometry);
+
+    val sphereShape =
+      new SphereCollisionShape(0.1f)
+    val control = new RigidBodyControl(sphereShape,0.1f)
+    //instance.setModelBound(new BoundingSphere())
+    //instance.updateModelBound()
+    instance.setLocalTranslation(p.position.clone())
+    control.setLinearVelocity(p.direction.getRotationColumn(0).mult(p.speed))
+    //control.setPhysicsRotation(p.direction);
+    //control.setAngularVelocity(Vector3f.ZERO.clone())
+    control.setMass(0.1f)
+    control.setGravity(Vector3f.ZERO.clone())
+
+    //control.setLinearDamping(0f)
+    control.setKinematic(false)
+
+    instance.addControl(control)
+    getPhysicsSpace.add(control)
+    instance.setUserData(SceneGraphUserDataKeys.Projectile,p)
+
+    if(!isHeadLess) {
+      instance.setShadowMode(ShadowMode.Off)
+      instance.setMaterial(mat_default)
+    }
+
+    rootNode.getChild(SceneGraphNodeKeys.Projectiles).asInstanceOf[Node].attachChild(instance)
   }
 
   def materializeProjectile(p:ProjectileGO) {

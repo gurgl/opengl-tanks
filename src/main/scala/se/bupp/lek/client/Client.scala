@@ -78,7 +78,7 @@ class Client extends SimpleApplication {
 
       if (name.equals("Fire")) {
         if(value == true) {
-          val p = visualWorldSimulation.fireProjectile(visualWorldSimulation.player.getLocalTranslation,visualWorldSimulation.player.getLocalRotation)
+          val p = visualWorldSimulation.fireProjectile(visualWorldSimulation.player.getControl(classOf[CharacterControl]).getPhysicsLocation.clone(),visualWorldSimulation.player.getLocalRotation)
           //rootNode.attachChild(p)
         }
       }
@@ -159,7 +159,7 @@ class Client extends SimpleApplication {
     stateManager.attach(networkState)
 
 
-    val bulletAppState = new BulletAppState() /*{
+    val bulletAppState = new BulletAppState() {
       override def render(rm:RenderManager) {
         if (!active) {
 
@@ -170,7 +170,7 @@ class Client extends SimpleApplication {
         } else {
         }
       }
-    }                                */
+    }
     stateManager.attach(bulletAppState);
 
     bulletAppState.getPhysicsSpace.addTickListener(networkState)

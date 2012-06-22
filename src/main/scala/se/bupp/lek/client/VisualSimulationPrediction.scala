@@ -81,26 +81,53 @@ class VisualSimulationPrediction(gameWorldUpdates:Queue[Model.ServerGameWorld], 
       case None => p
     }
   }
-  def simulateProjectile(lastServerSimToSimTimes:Seq[Long],snapshots:List[AbstractOwnedGameObject with Savable]) = {
+  def simulateProjectile(lastServerSimToSimTimes:Seq[Long],snapshots:List[AbstractOwnedGameObject with Savable], reversedServerSimTimes:Seq[Long]) = {
 
     //buffer.append(snapshots.map(_.position).mkString(", ") + "\n")
-    val (p:ProjectileGO,lastServerSimToSimTime) =  if(lastServerSimToSimTimes.last > 25) {
-      (snapshots.last,lastServerSimToSimTimes.last)
+    val (sequence,lastServerSimToSimTime, simDelta) = if(lastServerSimToSimTimes.last > 25) {
+      (snapshots.reverse, lastServerSimToSimTimes.last, reversedServerSimTimes.head)
     } else {
-      (snapshots.reverse.tail.head, lastServerSimToSimTimes.reverse.tail.head)
+      (snapshots.reverse.tail, lastServerSimToSimTimes.reverse.tail.head, reversedServerSimTimes.tail.head)
     }
-    val pp = new ProjectileGO(p)
 
-    val translation = pp.direction.getRotationColumn(0).mult(pp.speed * lastServerSimToSimTime.toFloat/1000f)
 
-    pp.position = pp.position.add(translation)
 
-    //Client.buffer.append("moving " + translation + " " + translation.length() + " " + lastServerSimToSimTime + " " + p.speed + " " + pp.position + System.currentTimeMillis() + "\n")
-    pp
+    val p:ProjectileGO = sequence match {
+        case List(end:ProjectileGO,start:ProjectileGO,_*)  =>
+
+          /*
+
+          val velocity = dist.clone().divide(simDelta.toFloat)
+
+          //println(velocity.length() + " " + end.speed * lastServerSimToSimTime.toFloat/1000f + end.position)
+          val translation = velocity.mult(lastServerSimToSimTime.toFloat/1000f)
+
+           */
+
+          val dist = end.position.subtaact(start.position)
+
+          val dir = dist.clone().normalizeLocal()
+
+          println(end.speed + " " + end.speed * lastServerSimToSimTime.toFloat/1000f + end.position)
+          val translation = dir.mult(end.speed * lastServerSimToSimTime.toFloat/1000f)
+
+          val n = new ProjectileGO(end)
+          n.position = end.position.add(translation)
+          n
+
+        case  List(end:ProjectileGO) => new ProjectileGO(end)
+        case _ => throw new RuntimeException("fan")
+      //Client.buffer.append("moving " + translation + " " + translation.length() + " " + lastServerSimToSimTime + " " + p.speed + " " + pp.position + System.currentTimeMillis() + "\n")
+    }
+    p
   }
 
   def interpolateNonPlayerObjects(simTime:Long) : List[AbstractOwnedGameObject with Savable] = {
     val lastServerSimInstants = gameWorldUpdates.map(_.timeStamp).toSeq
+
+    val reversedLastServerSimInstants = lastServerSimInstants.reverse
+    val serverSimsDelta = reversedLastServerSimInstants.zip(reversedLastServerSimInstants.tail).map( t => t._1 - t._2)
+
     val lastServerSimToClientSimDurations = lastServerSimInstants.map(simTime - _)
     //println(gameWorldUpdates.last.all.map(_.position).mkString(","))
     val res = projectGameHistoryByGameObjectId.toList.map {
@@ -123,7 +150,7 @@ class VisualSimulationPrediction(gameWorldUpdates:Queue[Model.ServerGameWorld], 
               }
 
             case p:ProjectileGO =>
-              Some(simulateProjectile(lastServerSimToClientSimDurations, orderedObjectSnapshots))
+              Some(simulateProjectile(lastServerSimToClientSimDurations, orderedObjectSnapshots, serverSimsDelta))
           }
         }
         estimate.getOrElse(orderedObjectSnapshots.last)
