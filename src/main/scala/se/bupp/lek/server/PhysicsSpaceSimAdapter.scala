@@ -156,6 +156,7 @@ trait PhysicsSpaceSimAdapter {
 
     //println("Sim " + " aaaaaaaaaaaaaaaa " + duration.toFloat + " " + simSteps)
     getPhysicsSpace.update(duration.toFloat / 1000f, simSteps)
+    getPhysicsSpace.distributeEvents()
 
     if (isTest)
     updates.foreach {

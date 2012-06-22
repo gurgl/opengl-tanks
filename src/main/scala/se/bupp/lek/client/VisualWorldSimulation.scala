@@ -23,6 +23,9 @@ import com.jme3.asset.plugins.ZipLocator
 import com.jme3.math.{FastMath, ColorRGBA, Quaternion, Vector3f}
 import collection.immutable.Queue._
 import collection.immutable.{Queue, Stack, HashSet}
+import com.jme3.effect.{ParticleMesh, ParticleEmitter}
+import scala.Tuple3
+import scala.Some
 
 
 /**
@@ -231,28 +234,14 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
     rootNode.attachChild(player);
   }
 
-  def materializeProjectile2(p:ProjectileGO) {
+
+
+  def materializeProjectile2(p:ProjectileGO) = {
 
     println("adding projectile " + p.position + "" + p.id)
     val instance = new Geometry("Box", projectileGeometry);
-
-    val sphereShape =
-      new SphereCollisionShape(0.1f)
-    val control = new RigidBodyControl(sphereShape,0.1f)
-    //instance.setModelBound(new BoundingSphere())
-    //instance.updateModelBound()
     instance.setLocalTranslation(p.position.clone())
-    control.setLinearVelocity(p.direction.getRotationColumn(0).mult(p.speed))
-    //control.setPhysicsRotation(p.direction);
-    //control.setAngularVelocity(Vector3f.ZERO.clone())
-    control.setMass(0.1f)
-    control.setGravity(Vector3f.ZERO.clone())
 
-    //control.setLinearDamping(0f)
-    control.setKinematic(false)
-
-    instance.addControl(control)
-    getPhysicsSpace.add(control)
     instance.setUserData(SceneGraphUserDataKeys.Projectile,p)
 
     if(!isHeadLess) {
@@ -261,6 +250,8 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
     }
 
     rootNode.getChild(SceneGraphNodeKeys.Projectiles).asInstanceOf[Node].attachChild(instance)
+
+    instance
   }
 
   def materializeProjectile(p:ProjectileGO) {
@@ -475,7 +466,20 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
 
     syncNonPlayerGameWorld(nonPlayerPredictons)
 
-    applyPlayerInput(lastGameWorldUpdate,reorientation);
+    val newWorldUpdate = if(lastSynchedGameWorldUpdate != lastGameWorldUpdate) {
+      lastSynchedGameWorldUpdate = lastGameWorldUpdate
+      Some(lastGameWorldUpdate)
+    } else None
+
+    newWorldUpdate.foreach {
+      wu => wu.explodedProjectiles.foreach {
+        p => println("explosiion")
+          explosion(p.position.clone())
+      }
+
+    }
+
+    applyPlayerInput(lastGameWorldUpdate,reorientation, newWorldUpdate);
     val dbgPlayerPos = player.getControl(classOf[CharacterControl]).getPhysicsLocation.clone()
 
     /*
@@ -550,7 +554,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
   }
   var lastSynchedGameWorldUpdate:ServerGameWorld = _
 
-  def applyPlayerInput(lastGameWorldUpdate: ServerGameWorld, input:Reorientation) {
+  def applyPlayerInput(lastGameWorldUpdate: ServerGameWorld, input:Reorientation, newServerState:Option[ServerGameWorld]) {
 
     lastGameWorldUpdate.players.find(_.playerId == playerIdOpt().get).foreach {
       x =>
@@ -576,6 +580,32 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
       //player.setlocaltranslation(p.position)
       //player.setLocalRotation(p.direction)
     }
+
+
+  }
+
+  def explosion(pos:Vector3f) {
+    val fire =
+      new ParticleEmitter("Emitter", ParticleMesh.Type.Triangle, 30);
+    val mat_red = new Material(assetManager,
+      "Common/MatDefs/Misc/Particle.j3md");
+    mat_red.setTexture("Texture", assetManager.loadTexture(
+      "Effects/Explosion/flame.png"));
+    fire.setMaterial(mat_red);
+    fire.setImagesX(2);
+    fire.setImagesY(2); // 2x2 texture animation
+    fire.setEndColor(  new ColorRGBA(1f, 0f, 0f, 1f));   // red
+    fire.setStartColor(new ColorRGBA(1f, 1f, 0f, 0.5f)); // yellow
+    fire.getParticleInfluencer().setInitialVelocity(new Vector3f(0, 2, 0));
+    fire.setStartSize(0.3f);
+    fire.setEndSize(0.1f);
+    fire.setGravity(0, 0, 0);
+    fire.setLowLife(1f);
+    fire.setHighLife(3f);
+    fire.getParticleInfluencer().setVelocityVariation(0.3f);
+    fire.setLocalTranslation(pos)
+    rootNode.attachChild(fire)
+    fire
   }
 
 }

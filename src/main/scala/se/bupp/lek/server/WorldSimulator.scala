@@ -8,12 +8,15 @@ import se.bupp.lek.client.SceneGraphWorld
 import com.jme3.asset.AssetManager
 import com.jme3.bullet.control.{RigidBodyControl, CharacterControl}
 import se.bupp.lek.client.SceneGraphWorld.SceneGraphUserDataKeys
-import com.jme3.bullet.collision.shapes.CapsuleCollisionShape
+import com.jme3.bullet.collision.shapes.{CollisionShape, SphereCollisionShape, CapsuleCollisionShape}
 import util.Random
 import com.jme3.scene.{Spatial, Node}
 import scalaz.NonEmptyList
 import collection.mutable.{Buffer, HashMap, ArrayBuffer}
 import com.jme3.bullet.{PhysicsSpace, BulletAppState}
+import com.jme3.scene.control.Control
+import com.jme3.bullet.collision.{PhysicsCollisionEvent, PhysicsCollisionListener}
+import com.jme3.bounding.BoundingSphere
 
 
 /**
@@ -24,6 +27,29 @@ import com.jme3.bullet.{PhysicsSpace, BulletAppState}
  * To change this template use File | Settings | File Templates.
  */
 
+
+class ProjectileCollisionControl(cs:CollisionShape) extends RigidBodyControl(cs) with PhysicsCollisionListener {
+
+  def extractUserData(s:Spatial) : Option[_] = {
+    var proj = (Option[ProjectileGO](s.getUserData(SceneGraphWorld.SceneGraphUserDataKeys.Projectile)),Option[PlayerStatus](s.getUserData(SceneGraphWorld.SceneGraphUserDataKeys.Player)))
+    proj match {
+      case (Some(pro),None) => Some(pro)
+      case (None, Some(pro))  => Some(pro)
+      case _ => None
+    }
+  }
+
+  def collision(p1: PhysicsCollisionEvent) {
+    //println("collision")
+    (extractUserData(p1.getNodeA),extractUserData(p1.getNodeB)) match {
+      case (Some(proj:ProjectileGO),Some(player:PlayerStatus)) => println("unknown collision p")
+      case (Some(player:PlayerStatus),Some(proj:ProjectileGO)) => println("unknown collision p ")
+      case (Some(proj:ProjectileGO),None) => println("Projectile lvl")
+      case (None, Some(proj:ProjectileGO)) => println("Projectile lvl")
+      case _ => //println("unknown collision")
+    }
+  }
+}
 
 class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:PhysicsSpace) extends SceneGraphWorld(true,assetManager,rootNode) with PhysicsSpaceSimAdapter {
 
@@ -36,7 +62,30 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
   def getProjectiles() = projectNodeChildrenByData[ProjectileGO](SceneGraphWorld.SceneGraphNodeKeys.Projectiles, SceneGraphWorld.SceneGraphUserDataKeys.Projectile)
 
   def addProjectile(pr:ProjectileGO) {
-    materializeProjectile2(pr)
+    val instance = materializeProjectile2(pr)
+
+    //val ctrl = new ProjectileCollisionControl()
+
+
+    val sphereShape =
+      new SphereCollisionShape(0.1f)
+    val control = new RigidBodyControl(sphereShape)
+    instance.setModelBound(new BoundingSphere())
+    instance.updateModelBound()
+    control.setLinearVelocity(pr.direction.getRotationColumn(0).mult(pr.speed))
+    //control.setPhysicsRotation(p.direction);
+    //control.setAngularVelocity(Vector3f.ZERO.clone())
+    control.setMass(0.1f)
+    control.setGravity(Vector3f.ZERO.clone())
+
+    //control.setLinearDamping(0f)
+    control.setKinematic(false)
+
+    instance.addControl(control)
+    getPhysicsSpace.add(control)
+
+
+    //getPhysicsSpace.addCollisionListener(control)
   }
 
 
@@ -69,7 +118,39 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
 
 
 
-class WorldSimulator(world:ServerWorld) {
+class WorldSimulator(world:ServerWorld) extends  PhysicsCollisionListener {
+
+  world.getPhysicsSpace.addCollisionListener(this)
+
+  def extractUserData(s:Spatial) : Option[_] = {
+    var proj = (Option[ProjectileGO](s.getUserData(SceneGraphWorld.SceneGraphUserDataKeys.Projectile)),Option[PlayerStatus](s.getUserData(SceneGraphWorld.SceneGraphUserDataKeys.Player)))
+    proj match {
+    case (Some(pro),None) => Some(pro)
+    case (None, Some(pro))  => Some(pro)
+    case _ => None
+    }
+  }
+
+  def collision(p1: PhysicsCollisionEvent) {
+  //println("collision")
+    (extractUserData(p1.getNodeA),extractUserData(p1.getNodeB)) match {
+    case (Some(proj:ProjectileGO),Some(player:PlayerStatus)) => println("unknown collision p")
+    case (Some(player:PlayerStatus),Some(proj:ProjectileGO)) => println("unknown collision p ")
+    case (Some(proj:ProjectileGO), None) => explodeProjectile(p1.getNodeA,proj)
+    case (None, Some(proj:ProjectileGO)) => explodeProjectile(p1.getNodeB,proj)
+
+    case _ => //println("unknown collision")
+    }
+  }
+
+  var exloadedSinceLastUpdate = Seq.empty[ProjectileGO]
+
+  def explodeProjectile(s:Spatial,proj:ProjectileGO) {
+    world.getNode(SceneGraphWorld.SceneGraphNodeKeys.Projectiles).detachChild(s)
+    proj.position = s.getControl(classOf[RigidBodyControl]).getPhysicsLocation
+    exloadedSinceLastUpdate = exloadedSinceLastUpdate :+ proj
+  }
+
   var connectionSequence = 0
 
   var lock: AnyRef = new Object()
@@ -197,18 +278,24 @@ class WorldSimulator(world:ServerWorld) {
         case (p,s) =>
 
           p.position = s.getControl(classOf[RigidBodyControl]).getPhysicsLocation
-          println(p.position)
+          //println(p.position)
       }
       val simulatedProjectiles = toPreserve.map {
         case (p,s) =>
           p
       }
 
+      if(exloadedSinceLastUpdate.size > 0) {
+        println(exloadedSinceLastUpdate.size + " exploaded ")
+      }
+      val exploaded = exloadedSinceLastUpdate
+      exloadedSinceLastUpdate = Seq.empty[ProjectileGO]
 
       lastWorldSimTimeStamp = Some(world.simCurrentTime)
       new ServerGameWorld(
         players = new java.util.ArrayList[PlayerGO](playerState),
         projectiles = new java.util.ArrayList[ProjectileGO](simulatedProjectiles),
+        explodedProjectiles = new java.util.ArrayList[ProjectileGO](exploaded),
         timeStamp = simTime
       )
     }

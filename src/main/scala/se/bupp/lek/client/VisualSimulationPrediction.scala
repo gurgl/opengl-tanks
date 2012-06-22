@@ -104,11 +104,11 @@ class VisualSimulationPrediction(gameWorldUpdates:Queue[Model.ServerGameWorld], 
 
            */
 
-          val dist = end.position.subtaact(start.position)
+          val dist = end.position.subtract(start.position)
 
           val dir = dist.clone().normalizeLocal()
 
-          println(end.speed + " " + end.speed * lastServerSimToSimTime.toFloat/1000f + end.position)
+          //println(end.speed + " " + end.speed * lastServerSimToSimTime.toFloat/1000f + end.position)
           val translation = dir.mult(end.speed * lastServerSimToSimTime.toFloat/1000f)
 
           val n = new ProjectileGO(end)
