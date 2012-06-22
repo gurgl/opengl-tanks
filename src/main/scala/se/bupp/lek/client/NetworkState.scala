@@ -15,6 +15,7 @@ import collection.{JavaConversions, immutable}
 import scala.Option
 import se.bupp.lek.server.Model._
 import se.bupp.lek.server.{Server, Model}
+import com.jme3.bullet.{PhysicsSpace, PhysicsTickListener}
 
 
 /**
@@ -46,7 +47,7 @@ object MessageQueue {
 
 }
 
-class NetworkState extends AbstractAppState {
+class NetworkState extends AbstractAppState with PhysicsTickListener {
 
   var gameClient:KryoClient = _
 
@@ -74,39 +75,52 @@ class NetworkState extends AbstractAppState {
 
   var lastUpdate:Option[(Long,Reorientation)] = None
 
+
+  var currentGameWorldUpdates:Queue[ServerGameWorld] = null
+
   override def update(tpf: Float) {
     if(gameApp.playerIdOpt.isEmpty) return
 
     val simTime = System.currentTimeMillis()
 
-    val input = gameApp.playerInput.pollInput()
+    var input = gameApp.playerInput.pollInput()
 
     lastUpdate.foreach { case (lastSimTime, lastInput) =>
       gameApp.visualWorldSimulation.storePlayerLastInputAndOutput(lastSimTime, lastInput)
     }
-    //gameApp.visualWorldSimulation.saveReorientation(simTime, input)
+
     MessageQueue.accumulate(input)
+
+    //gameApp.visualWorldSimulation.saveReorientation(simTime, input)
 
     //saveReorientation(timeStamp, lastInput)
 
-    var currentGameWorldUpdates:Queue[ServerGameWorld] = null
+
     //    }
 
     currentGameWorldUpdates = Queue(gameWorldUpdatesQueue:_*)
 
 
-    if(gameWorldUpdatesQueue.size > 0) {
-      gameApp.visualWorldSimulation.update(simTime, currentGameWorldUpdates, gameApp.playerIdOpt.get, input)
+    if(currentGameWorldUpdates.size > 0) {
+      val prediction: Set[AbstractOwnedGameObject with Savable] = gameApp.visualWorldSimulation.calculatePrediction(simTime, currentGameWorldUpdates, gameApp.playerIdOpt.get)
+
+      val lastGameWorldUpdate: ServerGameWorld = currentGameWorldUpdates.last
+      gameApp.visualWorldSimulation.updateGameWorld(prediction, lastGameWorldUpdate, input)
     }
 
+    lastUpdate match {
+      case Some((simTime, input)) =>
 
-    if((System.currentTimeMillis() - lastSentUpdate).toFloat > 1000f/15f ) {
 
-      val reorientation = MessageQueue.flushAccumulated()
-      val projectiles = gameApp.visualWorldSimulation.flushFired()
-      val request = gameApp.createPlayerActionRequest(simTime, reorientation, projectiles)
-      gameClient.sendUDP(request)
-      lastSentUpdate = System.currentTimeMillis()
+      if((System.currentTimeMillis() - lastSentUpdate).toFloat > 1000f/15f ) {
+
+        val reorientation = MessageQueue.flushAccumulated()
+        val projectiles = gameApp.visualWorldSimulation.flushFired()
+        val request = gameApp.createPlayerActionRequest(simTime, reorientation, projectiles)
+        gameClient.sendUDP(request)
+        lastSentUpdate = System.currentTimeMillis()
+      }
+      case None =>
     }
 
     lastUpdate = Some((simTime, input))
@@ -119,6 +133,7 @@ class NetworkState extends AbstractAppState {
   }
 
   val lock : AnyRef = new Object()
+
   def initClient() {
     gameClient = new KryoClient();
 
@@ -138,11 +153,11 @@ class NetworkState extends AbstractAppState {
                     ).head.enqueue(response)
   //              }
               } else {
-                println("Getting world wo player received")
+                println("Getting world wo player received.")
               }
 
             case response:PlayerJoinResponse =>
-              println("join resp received" + response.playerId)
+              println("join resp received " + response.playerId)
               gameApp.playerIdOpt = Some(response.playerId)
 
             case _ =>
@@ -156,5 +171,13 @@ class NetworkState extends AbstractAppState {
     val playerJoinRequest = new PlayerJoinRequest()
     playerJoinRequest.clientLabel = ManagementFactory.getRuntimeMXBean().getName()
     gameClient.sendTCP(playerJoinRequest);
+  }
+
+  def prePhysicsTick(p1: PhysicsSpace, tpf: Float) {
+
+  }
+
+  def physicsTick(p1: PhysicsSpace, p2: Float) {
+
   }
 }

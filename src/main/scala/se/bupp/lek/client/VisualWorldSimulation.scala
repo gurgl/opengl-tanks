@@ -429,27 +429,32 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
 
   var dbgLastPlayerPos:Vector3f = _
 
-  def update(simTime: Long,currentGameWorldUpdates:Queue[ServerGameWorld], playerId:Int, reorientation:Reorientation) {
+  def calculatePrediction(simTime: Long,currentGameWorldUpdates:Queue[ServerGameWorld], playerId:Int) = {
 
     val predictor: VisualSimulationPrediction = new VisualSimulationPrediction(currentGameWorldUpdates, playerId)
     val nonPlayerPredictons = predictor.interpolateNonPlayerObjects(simTime)
 
-    syncNonPlayerGameWorld(nonPlayerPredictons.distinct.toSet)
+    nonPlayerPredictons.distinct.toSet
+  }
 
-    val lastGameWorldUpdate: ServerGameWorld = currentGameWorldUpdates.last
+  def updateGameWorld(nonPlayerPredictons:Set[AbstractOwnedGameObject with Savable], lastGameWorldUpdate: ServerGameWorld, reorientation:Reorientation) {
+
+    syncNonPlayerGameWorld(nonPlayerPredictons)
 
     applyPlayerInput(lastGameWorldUpdate,reorientation);
     val dbgPlayerPos = player.getControl(classOf[CharacterControl]).getPhysicsLocation.clone()
 
+    /*
     if (dbgLastPlayerPos != null) {
       val dist: Float = dbgLastPlayerPos.subtract(dbgPlayerPos).length()
       if (math.abs(dist) < 0.001 ) {
         println("Zero dist" + dist + dbgLastPlayerPos + " " + dbgPlayerPos)
       }
-    }
+    }*/
     dbgLastPlayerPos = dbgPlayerPos
 
   }
+
 
 
   def diff(client:Orientation,server:Orientation) = {
@@ -510,6 +515,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
     }
   }
   var lastSynchedGameWorldUpdate:ServerGameWorld = _
+
   def applyPlayerInput(lastGameWorldUpdate: ServerGameWorld, input:Reorientation) {
 
     lastGameWorldUpdate.players.find(_.playerId == playerIdOpt().get).foreach {

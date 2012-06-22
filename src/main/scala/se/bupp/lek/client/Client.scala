@@ -155,9 +155,11 @@ class Client extends SimpleApplication {
     setShowSettings(false)
 
     stateManager.detach( stateManager.getState(classOf[FlyCamAppState]))
-    stateManager.attach(new NetworkState)
+    val networkState: NetworkState = new NetworkState
+    stateManager.attach(networkState)
 
-    val bulletAppState = new BulletAppState() {
+
+    val bulletAppState = new BulletAppState() /*{
       override def render(rm:RenderManager) {
         if (!active) {
 
@@ -168,8 +170,11 @@ class Client extends SimpleApplication {
         } else {
         }
       }
-    }
+    }                                */
     stateManager.attach(bulletAppState);
+
+    bulletAppState.getPhysicsSpace.addTickListener(networkState)
+
     visualWorldSimulation = new VisualWorldSimulation(rootNode,assetManager,() => playerIdOpt,playerInput, viewPort, bulletAppState);
 
     val playerStartPosition = new Orientation(Vector3f.ZERO.clone().setY(0.5f), Quaternion.IDENTITY.clone())
@@ -181,6 +186,8 @@ class Client extends SimpleApplication {
     setupInput()
   }
   
+
+
 
   override def simpleUpdate(tpf: Float) {
 

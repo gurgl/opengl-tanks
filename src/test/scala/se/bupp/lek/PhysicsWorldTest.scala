@@ -12,7 +12,7 @@ import com.jme3.bullet.PhysicsSpace
 import com.jme3.asset.{ModelKey, AssetManager}
 import com.jme3.bullet.collision.shapes.CapsuleCollisionShape
 import org.specs2.mutable.Specification
-import com.bulletphysics.linearmath
+
 
 /**
  * Created with IntelliJ IDEA.

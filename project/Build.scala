@@ -70,13 +70,13 @@ object MyBuild extends Build {
 
 
 "com.jme3" % "eventbus" % "3.0.0.20120512-SNAPSHOT",
-"com.jme3" % "jbullet" % "3.0.0.20120512-SNAPSHOT",
+//"com.jme3" % "jbullet" % "3.0.0.20120512-SNAPSHOT",
 "com.jme3" % "jinput" % "3.0.0.20120512-SNAPSHOT",
 "com.jme3" % "jME3-blender" % "3.0.0.20120512-SNAPSHOT",
 "com.jme3" % "jME3-core" % "3.0.0.20120512-SNAPSHOT",
 "com.jme3" % "jME3-desktop" % "3.0.0.20120512-SNAPSHOT",
 "com.jme3" % "jME3-effects" % "3.0.0.20120512-SNAPSHOT",
-"com.jme3" % "jME3-jbullet" % "3.0.0.20120512-SNAPSHOT",
+//"com.jme3" % "jME3-jbullet" % "3.0.0.20120512-SNAPSHOT",
 "com.jme3" % "jME3-jogg" % "3.0.0.20120512-SNAPSHOT",
 "com.jme3" % "jME3-lwjgl" % "3.0.0.20120512-SNAPSHOT",
 "com.jme3" % "jME3-lwjgl-natives" % "3.0.0.20120512-SNAPSHOT",
