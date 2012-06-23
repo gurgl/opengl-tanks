@@ -8,7 +8,7 @@ import com.jme3.export.Savable
 import scala.collection.JavaConversions.asScalaBuffer
 import com.jme3.material.{MaterialDef, MaterialList, Material}
 import com.jme3.shadow.BasicShadowRenderer
-import com.jme3.renderer.ViewPort
+import com.jme3.renderer.{RenderManager, ViewPort}
 import com.jme3.renderer.queue.RenderQueue.ShadowMode
 import com.jme3.light.{AmbientLight, DirectionalLight}
 import com.jme3.post.FilterPostProcessor
@@ -26,6 +26,7 @@ import collection.immutable.{Queue, Stack, HashSet}
 import com.jme3.effect.{ParticleMesh, ParticleEmitter}
 import scala.Tuple3
 import scala.Some
+import com.jme3.scene.control.AbstractControl
 
 
 /**
@@ -50,6 +51,7 @@ object SceneGraphWorld {
   object SceneGraphNodeKeys {
     val Projectiles = "Projectiles"
     val Enemies= "Enemies"
+    val Particles = "Particles"
   }
 
   def setMatch[A,B](left:Set[A],right:Set[B],comp:Function2[A,B,Boolean]) : Tuple3[Set[A],Set[B],Set[(A,B)]] = {
@@ -203,7 +205,7 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
     player = materializeTank(orientation)
 
 
-    val capsuleShape = new CapsuleCollisionShape(0.05f, 0.05f, 1)
+    val capsuleShape = new CapsuleCollisionShape(0.3f, 0.3f, 1)
     val playerControl = new CharacterControl(capsuleShape, 0.1f)
     playerControl.setUseViewDirection(false)
     player.addControl(playerControl)
@@ -334,6 +336,9 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
     val al = new AmbientLight();
     al.setColor(ColorRGBA.White.mult(1.3f));
     rootNode.addLight(al);
+
+    var particles = new Node(SceneGraphNodeKeys.Particles)
+    rootNode.attachChild(particles)
 
     /*val bsr = new BasicShadowRenderer(assetManager, 1024);
     bsr.setDirection(sunDirection.clone()); // light direction
@@ -554,14 +559,16 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
   }
   var lastSynchedGameWorldUpdate:ServerGameWorld = _
 
-  def applyPlayerInput(lastGameWorldUpdate: ServerGameWorld, input:Reorientation, newServerState:Option[ServerGameWorld]) {
+  def applyPlayerInput(lastGameWorldUpdate: ServerGameWorld, input:Reorientation, newServerStateOpt:Option[ServerGameWorld]) {
 
+    // Only check if we're in (TODO: Rewrite for readablity)
     lastGameWorldUpdate.players.find(_.playerId == playerIdOpt().get).foreach {
       x =>
 
-      if(lastSynchedGameWorldUpdate != lastGameWorldUpdate) {
-        applyCorrectionIfDiffers(x.sentToServerByClient, lastGameWorldUpdate.timeStamp, x)
-        lastSynchedGameWorldUpdate = lastGameWorldUpdate
+      newServerStateOpt.foreach {
+        newServerState =>
+
+        applyCorrectionIfDiffers(x.sentToServerByClient, newServerState.timeStamp, x)
       }
 
       //player.move(playerinput.translation)
@@ -584,6 +591,38 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
 
   }
 
+  class DestroyControl extends AbstractControl
+  {
+    val time = System.currentTimeMillis();
+    var killed = false
+
+    override def controlUpdate(tpf:Float)
+    {
+      if(!killed && System.currentTimeMillis() - time < 500)
+      {
+        val emitter: ParticleEmitter = this.getSpatial().asInstanceOf[ParticleEmitter]
+        //println("emit all")
+        emitter.emitAllParticles()
+      }
+      else if(!killed && (System.currentTimeMillis() - time) > 1000)
+      {
+        val emitter: ParticleEmitter = this.getSpatial().asInstanceOf[ParticleEmitter]
+        emitter.killAllParticles()
+        //println("kill")
+        killed = true
+      } else if(killed && System.currentTimeMillis() - time > 3000)
+      {
+        //println("detach")
+        this.getSpatial().getParent.detachChild(this.getSpatial())
+      }
+    }
+
+    def cloneForSpatial(p1: Spatial) = null
+
+    def controlRender(p1: RenderManager, p2: ViewPort) {}
+  }
+
+
   def explosion(pos:Vector3f) {
     val fire =
       new ParticleEmitter("Emitter", ParticleMesh.Type.Triangle, 30);
@@ -604,8 +643,29 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
     fire.setHighLife(3f);
     fire.getParticleInfluencer().setVelocityVariation(0.3f);
     fire.setLocalTranslation(pos)
+    fire.emitAllParticles()
     rootNode.attachChild(fire)
-    fire
+    fire.killAllParticles()
+    fire.addControl(new DestroyControl)
+    fire.setParticlesPerSec(0)
+
+    /*
+    val explosion = new ParticleEmitter(
+      "My explosion effect", ParticleMesh.Type.Triangle, 30);
+    //val the emitter to the rootNode and position it in the scene:
+    rootNode.attachChild(explosion);
+
+    val mat_red = new Material(assetManager,"Common/MatDefs/Misc/Particle.j3md")
+    mat_red.setTexture("Texture", assetManager.loadTexture("Effects/Explosion/flame.png"));
+    explosion.setMaterial(mat_red)
+    explosion.setLocalTranslation(pos);
+    //Trigger the effect by calling
+    explosion.emitAllParticles()
+    //End the effect by calling
+    explosion.killAllParticles
+    //rootNode.attachChild(explosion)
+    */
+
   }
 
 }

@@ -3,7 +3,7 @@ package se.bupp.lek.server
 import com.esotericsoftware.kryonet.{Connection, Listener, Server => KryoServer}
 import scala.Predef._
 import management.ManagementFactory
-import com.jme3.math.{Quaternion, Vector3f}
+import com.jme3.math.{ColorRGBA, Quaternion, Vector3f}
 import com.jme3.export.{JmeExporter, JmeImporter, Savable}
 import com.jme3.system.JmeContext
 import collection.JavaConversions
@@ -16,6 +16,7 @@ import scala.None
 import com.jme3.app.{FlyCamAppState, SimpleApplication}
 import com.jme3.bullet.{PhysicsSpace, PhysicsTickListener, BulletAppState}
 import com.jme3.scene.{Node, Geometry}
+import com.jme3.light.DirectionalLight
 
 /**
  * Created by IntelliJ IDEA.
@@ -43,16 +44,27 @@ class Server extends SimpleApplication with PhysicsTickListener {
 
   var server:KryoServer = _
 
+  var leRoot:Node = null
+
   override def simpleInitApp() {
 
-    stateManager.detach( stateManager.getState(classOf[FlyCamAppState]))
+
     //val bulletAppState = new BulletAppState();
 
     //bulletAppState.startPhysics()
     //stateManager.attach(bulletAppState);
-    flyCam.setEnabled(false)
 
-    val leRoot = new Node()
+
+    if (getContext.getType != JmeContext.Type.Headless) {
+      createDebug()
+      leRoot = rootNode
+      setPauseOnLostFocus(false)
+    } else {
+      stateManager.detach( stateManager.getState(classOf[FlyCamAppState]))
+      flyCam.setEnabled(false)
+      leRoot = new Node()
+    }
+
     val physicsSpace = new PhysicsSpace()
     val serverWorld = new ServerWorld(leRoot, assetManager, physicsSpace)
     serverWorld.initEmpty()
@@ -91,8 +103,22 @@ class Server extends SimpleApplication with PhysicsTickListener {
       }
     });
 
+
+
   }
 
+
+  def createDebug() {
+    //val rot = Quaternion.IDENTITY.clone()
+    //rot.lookAt(dir, new Vector3f(0, 1, 0))
+
+    val sun = new DirectionalLight();
+    //sun.setColor(ColorRGBA.White)
+    val sunDirection: Vector3f = new Vector3f(-1, -1, -1).normalizeLocal()
+    sun.setDirection(sunDirection);
+    sun.setColor(ColorRGBA.Green)
+    rootNode.addLight(sun);
+  }
 
   var lastSentUpdate = 0L
   override def simpleUpdate(tpf: Float) {
@@ -106,6 +132,11 @@ class Server extends SimpleApplication with PhysicsTickListener {
         lastSentUpdate = System.currentTimeMillis()
 
     }
+
+    leRoot.updateLogicalState(tpf);
+
+
+    leRoot.updateGeometricState();
   }
 }
 

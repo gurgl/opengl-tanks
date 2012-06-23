@@ -17,6 +17,7 @@ import com.jme3.bullet.BulletAppState
 import com.jme3.bullet.control.CharacterControl
 import com.jme3.renderer.RenderManager
 import com.jme3.bullet.BulletAppState.ThreadingType
+import com.jme3.audio.AudioNode
 
 
 /**
@@ -72,6 +73,8 @@ class Client extends SimpleApplication {
 
   var visualWorldSimulation:VisualWorldSimulation = _
 
+  var audio_gun:AudioNode = _
+
   val actionListener = new AnalogListener() with ActionListener {
 
     def onAction(name:String, value:Boolean, tpf:Float) {
@@ -79,6 +82,7 @@ class Client extends SimpleApplication {
       if (name.equals("Fire")) {
         if(value == true) {
           val p = visualWorldSimulation.fireProjectile(visualWorldSimulation.player.getControl(classOf[CharacterControl]).getPhysicsLocation.clone(),visualWorldSimulation.player.getLocalRotation)
+          audio_gun.playInstance()
           //rootNode.attachChild(p)
         }
       }
@@ -148,6 +152,23 @@ class Client extends SimpleApplication {
     guiNode.attachChild(helloText);
   }*/
 
+  def initAudio() {
+    /* gun shot sound is to be triggered by a mouse click. */
+    audio_gun = new AudioNode(assetManager, "Sound/Effects/Bang.wav", false);
+    audio_gun.setLooping(false);
+    audio_gun.setVolume(2);
+    rootNode.attachChild(audio_gun);
+
+    val audio_nature = new AudioNode(assetManager, "Sound/Environment/Nature.ogg", false);
+    audio_nature.setLooping(true);  // activate continuous playing
+    audio_nature.setPositional(true);
+    audio_nature.setLocalTranslation(Vector3f.ZERO.clone());
+    audio_nature.setVolume(3);
+    //rootNode.attachChild(audio_nature);
+    //audio_nature.play(); // play continuously!
+  }
+
+
   override def simpleInitApp() {
 
     settings.setTitle("Tank Showdown")
@@ -160,7 +181,8 @@ class Client extends SimpleApplication {
 
 
     val bulletAppState = new BulletAppState() {
-      override def render(rm:RenderManager) {
+      override
+      def render(rm:RenderManager) {
         if (!active) {
 
         } else if (threadingType == ThreadingType.PARALLEL) {
@@ -182,6 +204,7 @@ class Client extends SimpleApplication {
 
     playerInput = new PlayerInput(playerStartPosition)
 
+    initAudio()
 
     setupInput()
   }

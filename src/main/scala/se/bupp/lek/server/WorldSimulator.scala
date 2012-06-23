@@ -6,7 +6,7 @@ import collection.JavaConversions
 import JavaConversions.asScalaBuffer
 import se.bupp.lek.client.SceneGraphWorld
 import com.jme3.asset.AssetManager
-import com.jme3.bullet.control.{RigidBodyControl, CharacterControl}
+import com.jme3.bullet.control.{GhostControl, RigidBodyControl, CharacterControl}
 import se.bupp.lek.client.SceneGraphWorld.SceneGraphUserDataKeys
 import com.jme3.bullet.collision.shapes.{CollisionShape, SphereCollisionShape, CapsuleCollisionShape}
 import util.Random
@@ -42,8 +42,8 @@ class ProjectileCollisionControl(cs:CollisionShape) extends RigidBodyControl(cs)
   def collision(p1: PhysicsCollisionEvent) {
     //println("collision")
     (extractUserData(p1.getNodeA),extractUserData(p1.getNodeB)) match {
-      case (Some(proj:ProjectileGO),Some(player:PlayerStatus)) => println("unknown collision p")
-      case (Some(player:PlayerStatus),Some(proj:ProjectileGO)) => println("unknown collision p ")
+      case (Some(proj:ProjectileGO),Some(player:PlayerStatus)) => println("Player " + player.state.playerId + " died.")
+      case (Some(player:PlayerStatus),Some(proj:ProjectileGO)) => println("Player " + player.state.playerId + " died.")
       case (Some(proj:ProjectileGO),None) => println("Projectile lvl")
       case (None, Some(proj:ProjectileGO)) => println("Projectile lvl")
       case _ => //println("unknown collision")
@@ -68,14 +68,14 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
 
 
     val sphereShape =
-      new SphereCollisionShape(0.1f)
+      new SphereCollisionShape(0.3f)
     val control = new RigidBodyControl(sphereShape)
     instance.setModelBound(new BoundingSphere())
     instance.updateModelBound()
     control.setLinearVelocity(pr.direction.getRotationColumn(0).mult(pr.speed))
     //control.setPhysicsRotation(p.direction);
     //control.setAngularVelocity(Vector3f.ZERO.clone())
-    control.setMass(0.1f)
+    control.setMass(1.0f)
     control.setGravity(Vector3f.ZERO.clone())
 
     //control.setLinearDamping(0f)
@@ -90,14 +90,21 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
 
 
   def addPlayer(ps:PlayerStatus) {
-    val tank = materializeTank2(ps.state)
+    val tankGeo = materializeTank2(ps.state)
     //enemy.setModelBound(new BoundingSphere())
     //enemy.updateModelBound()
     //val tank = new Node("Bupp")
+    val tank = new Node("Tank")
+
+
+    tank.attachChild(tankGeo)
+    tankGeo.setLocalTranslation(Vector3f.ZERO.setY(-0.3f))
     tank.setUserData(SceneGraphUserDataKeys.Player, ps)
 
     //tank.attachChild(tankModel)
-    val capsuleShape = new CapsuleCollisionShape(0.05f, 0.05f, 1)
+    val capsuleShape = new CapsuleCollisionShape(0.3f, 0.3f, 1)
+    val capsuleShapeGhost = new CapsuleCollisionShape(0.5f, 0.5f, 1)
+
     val playerControl = new CharacterControl(capsuleShape, 0.1f)
     tank.addControl(playerControl)
 
@@ -109,6 +116,34 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
     playerControl.setFallSpeed(0.3f);
     playerControl.setGravity(0.3f);
     playerControl.setPhysicsLocation(new Vector3f(0, 2.5f, 0));
+
+    val ghost: GhostControl = new GhostControl(capsuleShapeGhost) /*{
+      override def update(tpf:Float) {
+
+        if (!enabled) {
+          return;
+        }
+        val vectorf: Vector3f = {
+          if (applyLocal) {
+            spatial.getLocalTranslation()
+          } else spatial.getWorldTranslation()
+
+        }
+        setPhysicsLocation(vectorf);
+        val quaternion: Quaternion = {
+          if (applyLocal) {
+            spatial.getLocalRotation();
+          } else spatial.getWorldRotation()
+        }
+        setPhysicsRotation(quaternion);
+
+        //println("ghost update" + vectorf + " " + quaternion)
+      }
+    }*/
+
+    //ghost.setApplyPhysicsLocal(true)
+    tank.addControl(ghost);
+    //getPhysicsSpace.add(ghost)
 
     getNode(SceneGraphWorld.SceneGraphNodeKeys.Enemies).attachChild(tank)
   }
@@ -134,8 +169,8 @@ class WorldSimulator(world:ServerWorld) extends  PhysicsCollisionListener {
   def collision(p1: PhysicsCollisionEvent) {
   //println("collision")
     (extractUserData(p1.getNodeA),extractUserData(p1.getNodeB)) match {
-    case (Some(proj:ProjectileGO),Some(player:PlayerStatus)) => println("unknown collision p")
-    case (Some(player:PlayerStatus),Some(proj:ProjectileGO)) => println("unknown collision p ")
+    case (Some(proj:ProjectileGO),Some(player:PlayerStatus)) => println("Player " + player.state.playerId + " died.")
+    case (Some(player:PlayerStatus),Some(proj:ProjectileGO)) => println("Player " + player.state.playerId + " died.")
     case (Some(proj:ProjectileGO), None) => explodeProjectile(p1.getNodeA,proj)
     case (None, Some(proj:ProjectileGO)) => explodeProjectile(p1.getNodeB,proj)
 
@@ -146,9 +181,12 @@ class WorldSimulator(world:ServerWorld) extends  PhysicsCollisionListener {
   var exloadedSinceLastUpdate = Seq.empty[ProjectileGO]
 
   def explodeProjectile(s:Spatial,proj:ProjectileGO) {
-    world.getNode(SceneGraphWorld.SceneGraphNodeKeys.Projectiles).detachChild(s)
-    proj.position = s.getControl(classOf[RigidBodyControl]).getPhysicsLocation
-    exloadedSinceLastUpdate = exloadedSinceLastUpdate :+ proj
+
+    if (exloadedSinceLastUpdate.forall(_.id != proj.id)) {
+      world.getNode(SceneGraphWorld.SceneGraphNodeKeys.Projectiles).detachChild(s)
+      proj.position = s.getControl(classOf[RigidBodyControl]).getPhysicsLocation
+      exloadedSinceLastUpdate = exloadedSinceLastUpdate :+ proj
+    }
   }
 
   var connectionSequence = 0
