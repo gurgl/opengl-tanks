@@ -36,7 +36,7 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
 
 
     val sphereShape =
-      new SphereCollisionShape(0.3f)
+      new SphereCollisionShape(0.1f)
     val control = new RigidBodyControl(sphereShape)
     instance.setModelBound(new BoundingSphere())
     instance.updateModelBound()
@@ -85,12 +85,14 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
 
 
     tank.attachChild(tankGeo)
-    tankGeo.setLocalTranslation(Vector3f.ZERO.setY(-0.3f))
+    //tankGeo.setLocalTranslation(Vector3f.ZERO.setY(0.5f))
     tank.setUserData(SceneGraphUserDataKeys.Player, ps)
 
+
     //tank.attachChild(tankModel)
-    val capsuleShape = new CapsuleCollisionShape(0.3f, 0.3f, 1)
-    val capsuleShapeGhost = new CapsuleCollisionShape(0.5f, 0.5f, 1)
+    val capsuleShape = tankCollisionShape
+
+    val capsuleShapeGhost = new CapsuleCollisionShape(0.4f, 0.4f, 1)
 
     val playerControl = new CharacterControl(capsuleShape, 0.1f)
     tank.addControl(playerControl)

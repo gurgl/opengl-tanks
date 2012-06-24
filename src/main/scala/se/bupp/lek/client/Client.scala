@@ -154,18 +154,18 @@ class Client extends SimpleApplication {
 
   def initAudio() {
     /* gun shot sound is to be triggered by a mouse click. */
-    audio_gun = new AudioNode(assetManager, "Sound/Effects/Bang.wav", false);
+    audio_gun = new AudioNode(assetManager, "39023__wildweasel__dual-neutron-disruptor.wav", false);
     audio_gun.setLooping(false);
     audio_gun.setVolume(2);
     rootNode.attachChild(audio_gun);
 
-    val audio_nature = new AudioNode(assetManager, "Sound/Environment/Nature.ogg", false);
+    val audio_nature = new AudioNode(assetManager, "33703__yewbic__ambience02.wav", false);
     audio_nature.setLooping(true);  // activate continuous playing
     audio_nature.setPositional(true);
     audio_nature.setLocalTranslation(Vector3f.ZERO.clone());
     audio_nature.setVolume(3);
-    //rootNode.attachChild(audio_nature);
-    //audio_nature.play(); // play continuously!
+    rootNode.attachChild(audio_nature);
+    audio_nature.play(); // play continuously!
   }
 
 

@@ -158,6 +158,8 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
     tank
   }
 
+  def tankCollisionShape = new CapsuleCollisionShape(0.35f, 0.45f, 0)
+
   def materializeTank2(pd: Orientation): Spatial = {
     val tank = assetManager.loadModel(new ModelKey("tank2.blend"))
     //enemy.setMaterial(mat_default)
@@ -186,7 +188,7 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
     player = materializeTank(orientation)
 
 
-    val capsuleShape = new CapsuleCollisionShape(0.3f, 0.3f, 1)
+    val capsuleShape = tankCollisionShape
     val playerControl = new CharacterControl(capsuleShape, 0.1f)
     playerControl.setUseViewDirection(false)
     player.addControl(playerControl)
