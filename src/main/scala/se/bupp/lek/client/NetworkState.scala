@@ -180,13 +180,12 @@ class NetworkState extends AbstractAppState with PhysicsTickListener {
         } else {
           x
         }
-      ).head.enqueue(serverUpdate)
+      ).head.enqueue(serverUpdate);
 
-    serverUpdate.deadPlayers.toList match {
-      case Nil =>
-      case toKill =>
+    val toKill = serverUpdate.deadPlayers.toList
+    if (toKill.size > 0) {
+        println("killing")
         gameApp.visualWorldSimulation.handleKilledPlayers(toKill)
-
     }
   }
 

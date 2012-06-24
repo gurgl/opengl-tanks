@@ -17,6 +17,7 @@ import com.jme3.app.{FlyCamAppState, SimpleApplication}
 import com.jme3.bullet.{PhysicsSpace, PhysicsTickListener, BulletAppState}
 import com.jme3.scene.{Node, Geometry}
 import com.jme3.light.DirectionalLight
+import java.util.logging.{Logger, Level}
 
 /**
  * Created by IntelliJ IDEA.
@@ -159,6 +160,7 @@ object Server {
       classOf[ServerGameWorld]
     )
   def main(args: Array[String]) {
+    Logger.getLogger("com.jme3").setLevel(Level.SEVERE)
     new Server().start(JmeContext.Type.Headless)
   }
 }

@@ -18,6 +18,7 @@ import com.jme3.scene.control.Control
 import com.jme3.bullet.collision.{PhysicsCollisionEvent, PhysicsCollisionListener}
 import com.jme3.bounding.BoundingSphere
 import se.bupp.lek.common.model.{Playing, Dead}
+import java.util
 
 
 /**
@@ -184,13 +185,14 @@ class WorldSimulator(world:ServerWorld) extends  PhysicsCollisionListener {
   def playerDied(s: Spatial, player: Model.PlayerConnection) {
     println("Player " + player.gameState.playerId + " died.")
 
+    deadSinceLastUpdate = deadSinceLastUpdate :+ player.playerId
     player.state = Dead(System.currentTimeMillis())
     world.getNode(SceneGraphWorld.SceneGraphNodeKeys.Enemies).detachChild(s)
 
   }
 
   var exloadedSinceLastUpdate = Seq.empty[ProjectileGO]
-
+  var deadSinceLastUpdate = Seq.empty[Int]
   def explodeProjectile(s:Spatial,proj:ProjectileGO) {
 
     if (exloadedSinceLastUpdate.forall(_.id != proj.id)) {
@@ -231,7 +233,7 @@ class WorldSimulator(world:ServerWorld) extends  PhysicsCollisionListener {
     connectedPlayers.foreach {
       cp => cp.state match {
         case Dead(since) => if(System.currentTimeMillis() - since > RespawnTime) {
-          world.spawnPlayer(cp)
+          respawnDeadPlayer(cp)
         }
         case Playing() =>
       }
@@ -239,6 +241,13 @@ class WorldSimulator(world:ServerWorld) extends  PhysicsCollisionListener {
 
   }
 
+
+  def respawnDeadPlayer(cp: Model.PlayerConnection) {
+    println("Respawning dead player " + cp.playerId)
+
+    cp.state = Playing()
+    world.spawnPlayer(cp)
+  }
 
   def getGameWorld(simTime:Long):  ServerGameWorld = {
 
@@ -330,15 +339,24 @@ class WorldSimulator(world:ServerWorld) extends  PhysicsCollisionListener {
       exloadedSinceLastUpdate = Seq.empty[ProjectileGO]
 
       lastWorldSimTimeStamp = Some(world.simCurrentTime)
-      new ServerGameWorld(
+      val deadPlayers = purgeDeadPlayersSinceLastUpdate
+      val res: ServerGameWorld = new ServerGameWorld(
 
-        deadPlayers = new java.util.ArrayList[Int]( connectedPlayers.filter( cp => playerState.exists(_.playerId == cp.gameState.playerId)).map(_.gameState.playerId)),
-        alivePlayers = new java.util.ArrayList[PlayerGO](playerState),
+        deadPlayers = new java.util.ArrayList[Int](deadPlayers),
+        alivePlayers = new util.ArrayList[PlayerGO](playerState),
         projectiles = new java.util.ArrayList[ProjectileGO](simulatedProjectiles),
         explodedProjectiles = new java.util.ArrayList[ProjectileGO](exploaded),
         timeStamp = simTime
       )
+      res
     }
+  }
+
+
+  def purgeDeadPlayersSinceLastUpdate: List[Int] = {
+    val res = deadSinceLastUpdate
+    deadSinceLastUpdate = Seq.empty[Int]
+    res.toList
   }
 
   def connectPlayer(pjr: PlayerJoinRequest): Int = {

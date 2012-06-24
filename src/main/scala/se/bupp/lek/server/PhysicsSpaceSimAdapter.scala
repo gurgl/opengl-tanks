@@ -86,7 +86,6 @@ trait PhysicsSpaceSimAdapter extends SceneGraphAccessors {
 
         val changedFromSimClockUntilNextPause = playerUpdatesAtTime.map {
           case (ps, s, u) =>
-            println("Change " + u)
             (s, u)
         }
 
