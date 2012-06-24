@@ -57,7 +57,7 @@ object TestClient {
         Thread.sleep(1000 / 15)
         if(playerIdOpt.isDefined) {
 
-          val gameWorld = new ServerGameWorld(0,null,null,null)
+          val gameWorld = new ServerGameWorld()
           import scala.collection.JavaConversions.seqAsJavaList
           //gameWorld.getPlayers = new java.FuncUtil$.ArrayList[PlayerGO](getPlayers)
           println("sendin update")

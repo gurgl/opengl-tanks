@@ -1,0 +1,8 @@
+/.idea/
+/.idea_modules/
+/bin/
+/target/
+/OpenAL64.dll
+/*.classpath
+/.project
+/*.dll

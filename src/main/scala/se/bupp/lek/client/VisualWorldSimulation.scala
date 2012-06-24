@@ -27,6 +27,7 @@ import com.jme3.effect.{ParticleMesh, ParticleEmitter}
 import scala.Tuple3
 import scala.Some
 import com.jme3.scene.control.AbstractControl
+import se.bupp.lek.server.SceneGraphAccessors
 
 
 /**
@@ -275,7 +276,7 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
 
 }
 
-class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:() => Option[Int],val playerInput:PlayerInput, viewPort:ViewPort, val bulletAppState:BulletAppState) extends SceneGraphWorld(false,assetManager,rootNode) {
+class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:() => Option[Int],val playerInput:PlayerInput, viewPort:ViewPort, val bulletAppState:BulletAppState) extends SceneGraphWorld(false,assetManager,rootNode) with SceneGraphAccessors {
   import VisualWorldSimulation._
   import SceneGraphWorld._
 
@@ -387,16 +388,34 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
     (camPos,rot)
   }
 
+  def handleKilledPlayers(playersToKill:List[Int]) {
+
+    playersToKill.foreach {
+      playerId =>
+        if (playerId == playerIdOpt().get) {
+          rootNode.detachChild(player)
+        } else {
+          val enemies = projectNodeChildrenByData[PlayerGO](SceneGraphNodeKeys.Enemies, SceneGraphUserDataKeys.Player).toMap
+          enemies.foreach {
+            case (p, s) => if (p.playerId == playerId) {
+              getNode(SceneGraphNodeKeys.Enemies).detachChild(s)
+            }
+          }
+        }
+    }
+  }
+
+
 
 
 
   def syncNonPlayerGameWorld(allUpdates:Set[_ <: AbstractOwnedGameObject with Savable]) {
 
     import scala.collection.JavaConversions.asScalaBuffer
-    val enemyNodes = rootNode.getChild(SceneGraphNodeKeys.Enemies).asInstanceOf[Node].getChildren
-    val projectileNodes = rootNode.getChild(SceneGraphNodeKeys.Projectiles).asInstanceOf[Node].getChildren
-    val enemyMap = enemyNodes.map( e => (e.getUserData[PlayerGO](SceneGraphUserDataKeys.Player),e).ensuring(_._1 != null) ).toMap
-    val projectileMap = projectileNodes.map( e => (e.getUserData[ProjectileGO](SceneGraphUserDataKeys.Projectile),e).ensuring(_._1 != null) ).toMap
+    //val enemyNodes = rootNode.getChild(SceneGraphNodeKeys.Enemies).asInstanceOf[Node].getChildren
+    //val projectileNodes = rootNode.getChild(SceneGraphNodeKeys.Projectiles).asInstanceOf[Node].getChildren
+    val enemyMap = projectNodeChildrenByData[PlayerGO](SceneGraphNodeKeys.Enemies, SceneGraphUserDataKeys.Player).toMap //enemyNodes.map( e => (e.getUserData[PlayerGO](SceneGraphUserDataKeys.Player),e).ensuring(_._1 != null) ).toMap
+    val projectileMap = projectNodeChildrenByData[ProjectileGO](SceneGraphNodeKeys.Projectiles, SceneGraphUserDataKeys.Projectile).toMap  //projectileNodes.map( e => (e.getUserData[ProjectileGO](SceneGraphUserDataKeys.Projectile),e).ensuring(_._1 != null) ).toMap
 
     var allExisting = enemyMap.toSet ++ projectileMap.toSet
 
@@ -562,7 +581,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
   def applyPlayerInput(lastGameWorldUpdate: ServerGameWorld, input:Reorientation, newServerStateOpt:Option[ServerGameWorld]) {
 
     // Only check if we're in (TODO: Rewrite for readablity)
-    lastGameWorldUpdate.players.find(_.playerId == playerIdOpt().get).foreach {
+    lastGameWorldUpdate.alivePlayers.find(_.playerId == playerIdOpt().get).foreach {
       x =>
 
       newServerStateOpt.foreach {

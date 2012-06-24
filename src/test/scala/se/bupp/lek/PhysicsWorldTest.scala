@@ -3,7 +3,7 @@ package se.bupp.lek
 import client.SceneGraphWorld.SceneGraphUserDataKeys
 import client.{SceneGraphWorld, MathUtil}
 import server.PhysicsSpaceSimAdapter
-import server.Model.{Orientation, MotionGO, PlayerGO, PlayerStatus}
+import server.Model.{Orientation, MotionGO, PlayerGO, PlayerConnection}
 import com.jme3.math.{Quaternion, Vector3f}
 import com.jme3.bullet.control.CharacterControl
 import com.jme3.system.{JmeContext, JmeSystem, AppSettings}
@@ -71,8 +71,8 @@ class PhysicsWorldTest extends Specification {
         .getResource("com/jme3/asset/Desktop.cfg"))
 
 
-    def addPlayer(ps: PlayerStatus) = {
-      val p = Physics.addPlayerBare(pSpace,ps.state, rootNode, assetManager)
+    def spawnPlayer(ps: PlayerConnection) = {
+      val p = Physics.addPlayerBare(pSpace,ps.gameState, rootNode, assetManager)
       p.setUserData(SceneGraphUserDataKeys.Player, ps)
       getNode(SceneGraphWorld.SceneGraphNodeKeys.Enemies).attachChild(p)
 
@@ -84,8 +84,8 @@ class PhysicsWorldTest extends Specification {
       findPlayer(playerId).foreach {
         x => {
 
-          x.state.sentToServerByClient = motion.sentToServer
-          x.reorientation = x.reorientation :+ motion
+          x.gameState.sentToServerByClient = motion.sentToServer
+          x.updates = x.updates :+ motion
 
           x.seqId = seqId
 
@@ -105,9 +105,9 @@ class PhysicsWorldTest extends Specification {
 
       var clock: Long = 10000
 
-      val ps1 = new PlayerStatus()
+      val ps1 = new PlayerConnection()
       val p1 = new PlayerGO()
-      ps1.state = p1
+      ps1.gameState = p1
       p1.position = new Vector3f(0f,1f,0f)
       p1.direction = Quaternion.DIRECTION_Z.clone()
       p1.sentToServerByClient = clock
@@ -115,7 +115,7 @@ class PhysicsWorldTest extends Specification {
       p1.clientSeqId = 2
 
 
-      myWorld.addPlayer(ps1)
+      myWorld.spawnPlayer(ps1)
       val step: Int = 16
       clock += step
       myWorld.addPlayerAction(p1.playerId,new MotionGO(new Vector3f(0.4f,0f,0f),MathUtil.noRotation,clock), 2)
@@ -155,18 +155,18 @@ class PhysicsWorldTest extends Specification {
       var seqGen = new SeqGen(1)
       var clock = new Clock(10000)
 
-      val ps1 = new PlayerStatus()
+      val ps1 = new PlayerConnection()
       val p1 = new PlayerGO()
-      ps1.state = p1
+      ps1.gameState = p1
       p1.position = new Vector3f(0f,1f,0f)
       p1.direction = Quaternion.DIRECTION_Z.clone()
       p1.sentToServerByClient = clock.time
       p1.playerId = 1
       p1.clientSeqId = 2
 
-      val ps2 = new PlayerStatus()
+      val ps2 = new PlayerConnection()
       val p2 = new PlayerGO()
-      ps2.state = p2
+      ps2.gameState = p2
       p2.position = new Vector3f(0f,1f,0f)
       p2.direction = Quaternion.DIRECTION_Z.clone()
       p2.sentToServerByClient = clock.time
@@ -174,8 +174,8 @@ class PhysicsWorldTest extends Specification {
       p2.clientSeqId = 2
 
 
-      myWorld.addPlayer(ps1)
-      myWorld.addPlayer(ps2)
+      myWorld.spawnPlayer(ps1)
+      myWorld.spawnPlayer(ps2)
       val step = 10L
       //clock.add(step)
 
@@ -188,8 +188,8 @@ class PhysicsWorldTest extends Specification {
       myWorld.addPlayerAction(p1.playerId,new MotionGO(new Vector3f(0.4f,0f,0f),MathUtil.noRotation,clock.add(step)), seqGen.next)
       myWorld.addPlayerAction(p2.playerId,new MotionGO(new Vector3f(0.5f,0f,0f),MathUtil.noRotation,clock.add(step)), seqGen.next)
 
-      ps1.reorientation.size.shouldEqual(1)
-      ps2.reorientation.size.shouldEqual(1)
+      ps1.updates.size.shouldEqual(1)
+      ps2.updates.size.shouldEqual(1)
 
       //val su = myWorld.popPlayerUpdatesLessOrEqualToTimeSorted(myWorld.getPlayers(),10030L) // + step)
       //su.size should be equalTo(2)
@@ -213,8 +213,8 @@ class PhysicsWorldTest extends Specification {
       myWorld.addPlayerAction(p2.playerId,new MotionGO(new Vector3f(0.0f,0f,3f),MathUtil.noRotation,clock.add(step*2)), seqGen.next)
       myWorld.addPlayerAction(p1.playerId,new MotionGO(new Vector3f(0.0f,4f,0f),MathUtil.noRotation,clock.add(step)), seqGen.next)
 
-      ps1.reorientation.size.shouldEqual(1)
-      ps2.reorientation.size.shouldEqual(2)
+      ps1.updates.size.shouldEqual(1)
+      ps2.updates.size.shouldEqual(2)
 
       val oldestUpdateRnd2 = myWorld.getOldestUpdateTimeLastReceived(myWorld.getPlayers)
       oldestUpdateRnd2.shouldEqual(10000 + 4 * step)
@@ -257,18 +257,18 @@ class PhysicsWorldTest extends Specification {
       var seqGen = new SeqGen(1)
       var clock = new Clock(10000)
 
-      val ps1 = new PlayerStatus()
+      val ps1 = new PlayerConnection()
       val p1 = new PlayerGO()
-      ps1.state = p1
+      ps1.gameState = p1
       p1.position = new Vector3f(0f,0f,0f)
       p1.direction = Quaternion.DIRECTION_Z.clone()
       p1.sentToServerByClient = clock.time
       p1.playerId = 1
       p1.clientSeqId = 2
 
-      val ps2 = new PlayerStatus()
+      val ps2 = new PlayerConnection()
       val p2 = new PlayerGO()
-      ps2.state = p2
+      ps2.gameState = p2
       p2.position = new Vector3f(0f,0f,0f)
       p2.direction = Quaternion.DIRECTION_Z.clone()
       p2.sentToServerByClient = clock.time
@@ -276,8 +276,8 @@ class PhysicsWorldTest extends Specification {
       p2.clientSeqId = 2
 
 
-      myWorld.addPlayer(ps1)
-      myWorld.addPlayer(ps2)
+      myWorld.spawnPlayer(ps1)
+      myWorld.spawnPlayer(ps2)
       val step = 10L
       //clock.add(step)
 
@@ -295,7 +295,7 @@ class PhysicsWorldTest extends Specification {
       val span = tpf * 8
       val min = span / 2f
 
-      var playerSimData = Map.empty[Int,(Long,Vector3f)] ++ myWorld.getPlayers.map( x =>  (x._1.state.playerId, (startTime, Vector3f.ZERO.clone())))
+      var playerSimData = Map.empty[Int,(Long,Vector3f)] ++ myWorld.getPlayers.map( x =>  (x._1.gameState.playerId, (startTime, Vector3f.ZERO.clone())))
 
 
       //val nextSim = Map[Int,Long]()

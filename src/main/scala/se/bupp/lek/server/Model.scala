@@ -3,6 +3,7 @@ package se.bupp.lek.server
 import com.jme3.export.{JmeExporter, JmeImporter, Savable}
 import com.jme3.math.{Quaternion, Vector3f}
 import scala.collection.JavaConversions.asScalaBuffer
+import se.bupp.lek.common.model.{ServerPlayerGO, Playing, PlayerConnectionState}
 
 /**
  * Created with IntelliJ IDEA.
@@ -13,16 +14,23 @@ import scala.collection.JavaConversions.asScalaBuffer
  */
 
 
+
+
 object Model {
 
-  class PlayerStatus extends Savable {
-    var state: PlayerGO = _
+  class PlayerConnection extends Savable {
+    var gameState: PlayerGO = _
+
+    var state:PlayerConnectionState = Playing()
 
     var seqId : Int = _
-    var reorientation:Seq[MotionGO] = Seq.empty
+
+    var updates:Seq[MotionGO] = Seq.empty
 
     var lastSimulation:Long = _
-    //var lastUpdate: Option[PlayerActionRequest] = None
+
+    def playerId = gameState.playerId
+
     override def read(reader: JmeImporter) {}
 
     override def write(writer: JmeExporter) {}
@@ -146,15 +154,18 @@ object Model {
   }
 
 
+
+
   class ServerGameWorld(
     var timeStamp: Long,
-    var players: java.util.ArrayList[PlayerGO],
+    var deadPlayers:java.util.ArrayList[Int],
+    var alivePlayers: java.util.ArrayList[PlayerGO],
     var projectiles: java.util.ArrayList[ProjectileGO],
     var explodedProjectiles: java.util.ArrayList[ProjectileGO]
                          ) {
 
-    def this() = this(0,null,null,null)
-    def all = players.toList ++ projectiles.toList
+    def this() = this(0,null,null,null,null)
+    def all = alivePlayers.toList ++ projectiles.toList
   }
 
   class PlayerJoinRequest {

@@ -12,10 +12,12 @@ import com.jme3.scene.Node
 import com.jme3.export.Savable
 import com.jme3.math.{Quaternion, Vector3f}
 import collection.{JavaConversions, immutable}
+import JavaConversions.asScalaBuffer
 import scala.Option
 import se.bupp.lek.server.Model._
 import se.bupp.lek.server.{Server, Model}
 import com.jme3.bullet.{PhysicsSpace, PhysicsTickListener}
+import java.util
 
 
 /**
@@ -147,10 +149,7 @@ class NetworkState extends AbstractAppState with PhysicsTickListener {
             case response:ServerGameWorld=>
               if(gameApp.playerIdOpt.isDefined) {
 //                lock.synchronized {
-                  gameWorldUpdatesQueue =
-                    Option(gameWorldUpdatesQueue).map(
-                      x => if(x.size >= GW_UPDATES_SIZE) {x.dequeue._2} else {x}
-                    ).head.enqueue(response)
+                  handleWorldUpdate(response)
   //              }
               } else {
                 println("Getting world wo player received.")
@@ -171,6 +170,24 @@ class NetworkState extends AbstractAppState with PhysicsTickListener {
     val playerJoinRequest = new PlayerJoinRequest()
     playerJoinRequest.clientLabel = ManagementFactory.getRuntimeMXBean().getName()
     gameClient.sendTCP(playerJoinRequest);
+  }
+
+  def handleWorldUpdate(serverUpdate: Model.ServerGameWorld) {
+    gameWorldUpdatesQueue =
+      Option(gameWorldUpdatesQueue).map(
+        x => if (x.size >= GW_UPDATES_SIZE) {
+          x.dequeue._2
+        } else {
+          x
+        }
+      ).head.enqueue(serverUpdate)
+
+    serverUpdate.deadPlayers.toList match {
+      case Nil =>
+      case toKill =>
+        gameApp.visualWorldSimulation.handleKilledPlayers(toKill)
+
+    }
   }
 
   def prePhysicsTick(p1: PhysicsSpace, tpf: Float) {

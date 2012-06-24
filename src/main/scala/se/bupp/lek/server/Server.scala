@@ -95,7 +95,7 @@ class Server extends SimpleApplication with PhysicsTickListener {
           case req: PlayerJoinRequest =>
             println("rec " + obj.getClass.getName)
             val resp = new PlayerJoinResponse
-            resp.playerId = worldSimulator.addPlayer(req)
+            resp.playerId = worldSimulator.connectPlayer(req)
 
             connection.sendTCP(resp)
           case _ =>
@@ -125,13 +125,14 @@ class Server extends SimpleApplication with PhysicsTickListener {
 
     if(System.currentTimeMillis() - lastSentUpdate > 1000/16) {
 
-
         val gameWorld = worldSimulator.getGameWorld
         //println("" + getPlayers.size)
         server.sendToAllUDP(gameWorld)
         lastSentUpdate = System.currentTimeMillis()
 
     }
+
+    worldSimulator.handleStateLogic()
 
     leRoot.updateLogicalState(tpf);
 
