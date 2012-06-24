@@ -57,17 +57,21 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
   }
 
   def unspawnPlayer(s: Spatial, p:PlayerConnection) = {
-    getNode(SceneGraphWorld.SceneGraphNodeKeys.Enemies).detachChild(s)
+    println("Unspawning player " + p.playerId)
+
     val characterControl = s.getControl(classOf[CharacterControl])
     getPhysicsSpace.remove(characterControl)
     val ghostControl= s.getControl(classOf[GhostControl])
     getPhysicsSpace.remove(ghostControl)
+    getNode(SceneGraphWorld.SceneGraphNodeKeys.Enemies).detachChild(s)
   }
 
   def unspawnProjectile(s: Spatial, p:ProjectileGO) = {
-    getNode(SceneGraphWorld.SceneGraphNodeKeys.Projectiles).detachChild(s)
+    println("Unspawning projectile" + p.id)
+
     val rigidBodyControl = s.getControl(classOf[RigidBodyControl])
     getPhysicsSpace.remove(rigidBodyControl)
+    getNode(SceneGraphWorld.SceneGraphNodeKeys.Projectiles).detachChild(s)
   }
 
 

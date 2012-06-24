@@ -2,7 +2,7 @@ package se.bupp.lek.server
 
 import com.jme3.math.{Quaternion, Vector3f}
 import se.bupp.lek.server.Model._
-import collection.JavaConversions
+import collection.{immutable, mutable, JavaConversions}
 import JavaConversions.asScalaBuffer
 import se.bupp.lek.client.SceneGraphWorld
 import com.jme3.asset.AssetManager
@@ -56,7 +56,7 @@ class ProjectileCollisionControl(cs:CollisionShape) extends RigidBodyControl(cs)
 
 
 
-class WorldSimulator(world:ServerWorld) extends  PhysicsCollisionListener {
+class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionListener {
 
   world.getPhysicsSpace.addCollisionListener(this)
 
@@ -72,8 +72,8 @@ class WorldSimulator(world:ServerWorld) extends  PhysicsCollisionListener {
   def collision(p1: PhysicsCollisionEvent) {
   //println("collision")
     (extractUserData(p1.getNodeA),extractUserData(p1.getNodeB)) match {
-    case (Some(proj:ProjectileGO),Some(player:PlayerConnection)) => playerDied(p1.getNodeB, player)
-    case (Some(player:PlayerConnection),Some(proj:ProjectileGO)) => playerDied(p1.getNodeA, player)
+    case (Some(proj:ProjectileGO),Some(player:PlayerConnection)) => playerDied(p1.getNodeB, player) ; explodeProjectile(p1.getNodeA,proj)
+    case (Some(player:PlayerConnection),Some(proj:ProjectileGO)) => playerDied(p1.getNodeA, player) ; explodeProjectile(p1.getNodeB,proj)
     case (Some(proj:ProjectileGO), None) => explodeProjectile(p1.getNodeA,proj)
     case (None, Some(proj:ProjectileGO)) => explodeProjectile(p1.getNodeB,proj)
 
@@ -88,22 +88,30 @@ class WorldSimulator(world:ServerWorld) extends  PhysicsCollisionListener {
       case Playing() =>
         println("Player " + player.gameState.playerId + " died.")
 
+        deadSinceLastUpdate
+
         deadSinceLastUpdate = deadSinceLastUpdate :+ player.playerId
         player.state = Dead(System.currentTimeMillis())
-        world.unspawnPlayer(s,player)
+        //world.unspawnPlayer(s,player)
+        spatialsToRemoveInUpdatePhase = spatialsToRemoveInUpdatePhase :+ (s, player)
+
     }
   }
 
   var exloadedSinceLastUpdate = Seq.empty[ProjectileGO]
   var deadSinceLastUpdate = Seq.empty[Int]
 
+  var spatialsToRemoveInUpdatePhase = immutable.Seq.empty[(Spatial,_ <: ScalaObject)]
+
 
   def explodeProjectile(s:Spatial,proj:ProjectileGO) {
 
     if (exloadedSinceLastUpdate.forall(_.id != proj.id)) {
-      world.unspawnProjectile(s,proj)
+      //world.unspawnProjectile(s,proj)
       proj.position = s.getControl(classOf[RigidBodyControl]).getPhysicsLocation
       exloadedSinceLastUpdate = exloadedSinceLastUpdate :+ proj
+
+      spatialsToRemoveInUpdatePhase = spatialsToRemoveInUpdatePhase :+ (s, proj)
     }
   }
 
@@ -135,6 +143,24 @@ class WorldSimulator(world:ServerWorld) extends  PhysicsCollisionListener {
   }
 
   def handleStateLogic() {
+
+    if (spatialsToRemoveInUpdatePhase.size > 0) {
+      println("spatialsToRemoveInUpdatePhase " + spatialsToRemoveInUpdatePhase.size)
+    }
+
+    spatialsToRemoveInUpdatePhase.foreach {
+      case (s:Spatial,pc:PlayerConnection) =>
+        val bef = world.getNode(SceneGraphWorld.SceneGraphNodeKeys.Enemies).getChildren.size
+        world.unspawnPlayer(s,pc)
+        println(world.getNode(SceneGraphWorld.SceneGraphNodeKeys.Enemies).getChildren.size + " " + bef )
+
+      case (s:Spatial,pc:ProjectileGO) => world.unspawnProjectile(s,pc)
+      case _ => throw new IllegalStateException("Unhandled object in remove queue")
+
+    }
+
+    spatialsToRemoveInUpdatePhase = spatialsToRemoveInUpdatePhase.companion.empty
+
     connectedPlayers.foreach {
       cp => cp.state match {
         case Dead(since) => if(System.currentTimeMillis() - since > RespawnTime) {
@@ -160,12 +186,6 @@ class WorldSimulator(world:ServerWorld) extends  PhysicsCollisionListener {
 
     var s = ""
     lock.synchronized {
-      
-
-
-      world.simulateToLastUpdated()
-
-
 
       val players = world.getPlayers
       players.foreach {
@@ -244,7 +264,7 @@ class WorldSimulator(world:ServerWorld) extends  PhysicsCollisionListener {
       exloadedSinceLastUpdate = Seq.empty[ProjectileGO]
 
       lastWorldSimTimeStamp = Some(world.simCurrentTime)
-      val deadPlayers = purgeDeadPlayersSinceLastUpdate
+      val deadPlayers = purgeDeadPlayersSinceLastUpdate.ensuring(_.forall( dp => !playerState.exists(_.playerId == dp)))
       val res: ServerGameWorld = new ServerGameWorld(
 
         deadPlayers = new java.util.ArrayList[Int](deadPlayers),

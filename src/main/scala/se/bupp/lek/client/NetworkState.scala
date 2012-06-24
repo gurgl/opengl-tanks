@@ -184,13 +184,14 @@ class NetworkState extends AbstractAppState with PhysicsTickListener {
 
     val toKill = serverUpdate.deadPlayers.toList
     if (toKill.size > 0) {
-        println("killing")
+        println("handle deaths")
         gameApp.visualWorldSimulation.handleKilledPlayers(toKill)
     }
 
     if (gameApp.visualWorldSimulation.playerDead) {
       serverUpdate.alivePlayers.find( p => p.playerId == gameApp.playerIdOpt.get).foreach {
         p =>
+          println("You respawned")
           gameApp.visualWorldSimulation.playerDead = false
           gameApp.visualWorldSimulation.rootNode.attachChild(gameApp.visualWorldSimulation.player)
       }

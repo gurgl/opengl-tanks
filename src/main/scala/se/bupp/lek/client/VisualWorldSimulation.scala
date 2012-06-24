@@ -167,10 +167,12 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
         if (playerId == playerIdOpt().get) {
           rootNode.detachChild(player)
           playerDead = true
+          println("You died")
         } else {
           val enemies = projectNodeChildrenByData[PlayerGO](SceneGraphNodeKeys.Enemies, SceneGraphUserDataKeys.Player).toMap
           enemies.foreach {
             case (p, s) => if (p.playerId == playerId) {
+              println("Player " + playerId + " died")
               getNode(SceneGraphNodeKeys.Enemies).detachChild(s)
             }
           }

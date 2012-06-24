@@ -103,10 +103,7 @@ class Server extends SimpleApplication with PhysicsTickListener {
         }
       }
     });
-
-
-
-  }
+ }
 
 
   def createDebug() {
@@ -124,19 +121,19 @@ class Server extends SimpleApplication with PhysicsTickListener {
   var lastSentUpdate = 0L
   override def simpleUpdate(tpf: Float) {
 
+    worldSimulator.world.simulateToLastUpdated()
+
+    worldSimulator.handleStateLogic()
+
     if(System.currentTimeMillis() - lastSentUpdate > 1000/16) {
 
         val gameWorld = worldSimulator.getGameWorld
         //println("" + getPlayers.size)
         server.sendToAllUDP(gameWorld)
         lastSentUpdate = System.currentTimeMillis()
-
     }
 
-    worldSimulator.handleStateLogic()
-
     leRoot.updateLogicalState(tpf);
-
 
     leRoot.updateGeometricState();
   }
