@@ -187,6 +187,14 @@ class NetworkState extends AbstractAppState with PhysicsTickListener {
         println("killing")
         gameApp.visualWorldSimulation.handleKilledPlayers(toKill)
     }
+
+    if (gameApp.visualWorldSimulation.playerDead) {
+      serverUpdate.alivePlayers.find( p => p.playerId == gameApp.playerIdOpt.get).foreach {
+        p =>
+          gameApp.visualWorldSimulation.playerDead = false
+          gameApp.visualWorldSimulation.rootNode.attachChild(gameApp.visualWorldSimulation.player)
+      }
+    }
   }
 
   def prePhysicsTick(p1: PhysicsSpace, tpf: Float) {

@@ -160,7 +160,7 @@ object Server {
       classOf[ServerGameWorld]
     )
   def main(args: Array[String]) {
-    Logger.getLogger("com.jme3").setLevel(Level.SEVERE)
+    //Logger.getLogger("com.jme3").setLevel(Level.SEVERE)
     new Server().start(JmeContext.Type.Headless)
   }
 }

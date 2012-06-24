@@ -63,7 +63,7 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
 
   def getProjectiles() = projectNodeChildrenByData[ProjectileGO](SceneGraphWorld.SceneGraphNodeKeys.Projectiles, SceneGraphWorld.SceneGraphUserDataKeys.Projectile)
 
-  def addProjectile(pr:ProjectileGO) {
+  def spawnProjectile(pr:ProjectileGO) {
       val instance = materializeProjectile2(pr)
 
     //val ctrl = new ProjectileCollisionControl()
@@ -88,6 +88,20 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
 
 
     //getPhysicsSpace.addCollisionListener(control)
+  }
+
+  def unspawnPlayer(s: Spatial, p:PlayerConnection) = {
+    getNode(SceneGraphWorld.SceneGraphNodeKeys.Enemies).detachChild(s)
+    val characterControl = s.getControl(classOf[CharacterControl])
+    getPhysicsSpace.remove(characterControl)
+    val ghostControl= s.getControl(classOf[GhostControl])
+    getPhysicsSpace.remove(ghostControl)
+  }
+
+  def unspawnProjectile(s: Spatial, p:ProjectileGO) = {
+    getNode(SceneGraphWorld.SceneGraphNodeKeys.Projectiles).detachChild(s)
+    val rigidBodyControl = s.getControl(classOf[RigidBodyControl])
+    getPhysicsSpace.remove(rigidBodyControl)
   }
 
 
@@ -183,20 +197,25 @@ class WorldSimulator(world:ServerWorld) extends  PhysicsCollisionListener {
 
 
   def playerDied(s: Spatial, player: Model.PlayerConnection) {
-    println("Player " + player.gameState.playerId + " died.")
+    player.state match {
+      case Dead(since) =>
+      case Playing() =>
+        println("Player " + player.gameState.playerId + " died.")
 
-    deadSinceLastUpdate = deadSinceLastUpdate :+ player.playerId
-    player.state = Dead(System.currentTimeMillis())
-    world.getNode(SceneGraphWorld.SceneGraphNodeKeys.Enemies).detachChild(s)
-
+        deadSinceLastUpdate = deadSinceLastUpdate :+ player.playerId
+        player.state = Dead(System.currentTimeMillis())
+        world.unspawnPlayer(s,player)
+    }
   }
 
   var exloadedSinceLastUpdate = Seq.empty[ProjectileGO]
   var deadSinceLastUpdate = Seq.empty[Int]
+
+
   def explodeProjectile(s:Spatial,proj:ProjectileGO) {
 
     if (exloadedSinceLastUpdate.forall(_.id != proj.id)) {
-      world.getNode(SceneGraphWorld.SceneGraphNodeKeys.Projectiles).detachChild(s)
+      world.unspawnProjectile(s,proj)
       proj.position = s.getControl(classOf[RigidBodyControl]).getPhysicsLocation
       exloadedSinceLastUpdate = exloadedSinceLastUpdate :+ proj
     }
@@ -304,7 +323,7 @@ class WorldSimulator(world:ServerWorld) extends  PhysicsCollisionListener {
       }
 
       newProjectiles.foreach {
-        world.addProjectile(_)
+        world.spawnProjectile(_)
       }
 
 
@@ -318,7 +337,7 @@ class WorldSimulator(world:ServerWorld) extends  PhysicsCollisionListener {
       val (toPreserve, toRemove)  = projectiles.partition { _._1.timeSpawned > maxAgeProjectiles }
 
       toRemove.foreach {
-        case (p,s) => world.getNode(SceneGraphWorld.SceneGraphNodeKeys.Projectiles).detachChild(s)
+        case (p,s) => world.unspawnProjectile(s,p)
       }
 
       toPreserve.foreach {
@@ -351,7 +370,6 @@ class WorldSimulator(world:ServerWorld) extends  PhysicsCollisionListener {
       res
     }
   }
-
 
   def purgeDeadPlayersSinceLastUpdate: List[Int] = {
     val res = deadSinceLastUpdate
@@ -391,7 +409,7 @@ class WorldSimulator(world:ServerWorld) extends  PhysicsCollisionListener {
 
 
       connectedPlayers.find(_.playerId == request.playerId).map(_.state) match {
-        case Some(Dead(since)) => println("Discarding dead player " + request.playerId + " update")
+        case Some(Dead(since)) => //println("Discarding dead player " + request.playerId + " update")
         case Some(Playing()) =>
 
         world.findPlayer(request.playerId) match {

@@ -285,6 +285,8 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
   var saved = Queue.empty[(Long, Orientation, Reorientation)] //:+ ((System.currentTimeMillis(),startPosition, MathUtil.noMotion))
 
 
+  var playerDead = false
+
   var projectileSeqId = 0
 
   var fired = Stack[ProjectileFireGO]()
@@ -394,6 +396,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
       playerId =>
         if (playerId == playerIdOpt().get) {
           rootNode.detachChild(player)
+          playerDead = true
         } else {
           val enemies = projectNodeChildrenByData[PlayerGO](SceneGraphNodeKeys.Enemies, SceneGraphUserDataKeys.Player).toMap
           enemies.foreach {
