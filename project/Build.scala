@@ -1,58 +1,42 @@
 import sbt._
-import Keys._
-
+import sbt.Keys._
+import sbt.Package.ManifestAttributes
+import sbt.Defaults._
+import java.util.jar.Attributes.Name._
+import sbt.Package.ManifestAttributes
+import scala.Some
+import WebStartPlugin._
 
 object MyBuild extends Build {
 
 
-  //resolvers += "Local Maven Repository" at "file://" + Path.userHome.absolutePath + "/.m2/repository"
-  //resolvers += Resolver.file("my-test-repo", file(Path.userHome.absolutePath+"/.m2/repository"))
-  //override lazy val settings = super.settings ++ Seq(resolvers := Seq("Local Maven Repository" at "file://" + Path.userHome.absolutePath + "/.m2/repository"))
-  
-  lazy val root = Project(id = "hello",
+
+  lazy val root = Project(id = "server",
                           base = file("."),
-                          settings = Project.defaultSettings ++ projSettings 
+                          settings = Project.defaultSettings ++ projSettings  ++ serverSettings
   )
 
-  /*unmanagedJars in Compile <++= baseDirectory map { base =>
-    	val baseDirectories = (base / "libA") +++ (base / "b" / "lib") +++ (base / "libC")
-    	val customJars = (baseDirectories ** "*.jar") +++ (base / "d" / "my.jar")
-    	customJars.classpath
-    }*/
+  lazy val serverSettings = Seq(
+    mappings in (Compile,packageBin) ~= { (ms: Seq[(File, String)]) =>
+      ms filter { case (file, toPath) =>
+        !toPath.contains("client")
+      }
+    }
+  )
+
+
   unmanagedJars in Compile <++= baseDirectory map { base =>
   	val baseDirectories = (base / "jme3-lib" )
   	val customJars = (baseDirectories ** "*.jar")
   	customJars.classpath
   }
 
-  /*
-  unmanagedJars in Compile <++= baseDirectory map { base =>
-
-    val baseDirectories = base +++ new File("/home/karlw/src/3rdparty/jme3/engine/dist/lib")
-  	val customJars = (baseDirectories ** "*.jar") // +++ (base / "d" / "my.jar")
-    println("Tjao")
-    customJars.classpath
-  }*/
-  /*
-  unmanagedJars in Compile <++= baseDirectory map { base:File =>
-    val lol = new File("/home/karlw/src/3rdparty/jme3/engine/dist/") 
-    val lal = lol / "lib" ** "*.jar"
-    println(lal.classpath)
-    lal.classpath
-  }*/
-  /*{
-      val lol = new File("/home/karlw/src/3rdparty/jme3/dist/lib/") ** "*.jar"
-      lol.classpath
-    }                               */
-
-
   val projSettings = Seq(
-    name := "Lek",
     version := "0.1",
     organization := "se.bupp",
-    resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/public" //Resolver.sonatypeRepo("releases") 
-  ,
-
+    resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/public" //Resolver.sonatypeRepo("releases")
+    ,
+    //publishArtifact in (Compile, packageBin) := false,
     libraryDependencies ++= Seq(
       "org.lwjgl.lwjgl" % "lwjgl" % "2.8.3",
       "org.lwjgl.lwjgl" % "lwjgl_util" % "2.8.3",
@@ -100,8 +84,129 @@ object MyBuild extends Build {
 
       /*"com.jmonkey" % "engine" % "3.0beta" from "file:///home/karlw/src/3rdparty/jme3/engine/dist/lib/jME3-core.jar",
       "com.jmonkey" % "engine-terr" % "3.0beta" from "file:///home/karlw/src/3rdparty/jme3/engine/dist/lib/jME3-terrain.jar"*/
-
-
     )
+  )
+
+
+  // defines a new configuration "samples" that will delegate to "compile"
+  lazy val ClientBuild = config("samples") extend(Compile)
+
+  // defines the project to have the "samples" configuration
+  lazy val serverProject = Project("client", file("."), settings = clientSettings)
+    .configs(ClientBuild)
+
+
+
+
+
+  def clientSettings = Project.defaultSettings ++
+    projSettings ++
+    //oneJarSettings ++
+    webStartSettings ++
+    Seq(
+      unmanagedResourceDirectories in Compile <+=  baseDirectory { dir =>
+        dir/"src/main/blender" // +++ dir/"src/main/resources/reports"
+      },
+      mainClass in (Compile, packageBin)  := Some("se.bupp.lek.client.Client"),
+      mappings in (Compile,packageBin) ~= { (ms: Seq[(File, String)]) =>
+        ms filter { case (file, toPath) =>
+          //System.err.println(toPath)
+          //!toPath.contains("server")
+          true
+        }
+      }
+    )
+
+
+
+  /*def publishArtifact(task: TaskKey[File]): Seq[Setting[_]] =
+    addArtifact(artifact in (ServerBuild, task), task in ServerBuild).settings
+  */
+
+  val getCp = TaskKey[String]("show-cp", "")
+  /*
+  val helloTask = getCp := {
+    import Process._
+
+   //get( fullClasspath in Compile).files foreach println
+  } */
+
+  val oneJar = TaskKey[File]("one-jar", "Create a single executable JAR using One-JAR™")
+  val oneJarRedist = TaskKey[Set[File]]("one-jar-redist", "The redistributable One-JAR™ launcher, unzipped.")
+
+  val oneJarSettings: Seq[Project.Setting[_]] = inTask(oneJar)(Seq(
+    artifactPath <<= artifactPathSetting(artifact),
+    cacheDirectory <<= cacheDirectory / oneJar.key.label
+  )) ++ Seq(
+
+    publishArtifact in oneJar <<= publishMavenStyle,
+    artifact in oneJar <<= moduleName(Artifact(_, "one-jar")),
+    packageOptions in oneJar := Seq(ManifestAttributes((MAIN_CLASS, "com.simontuffs.onejar.Boot"))),
+    mainClass in oneJar <<= mainClass in run in Compile,
+    packageOptions in oneJar <++= (mainClass in oneJar).map {
+      case Some(mainClass) => Seq(ManifestAttributes(("One-Jar-Main-Class", mainClass)))
+      case _ => Seq()
+    },
+    baseDirectory in oneJarRedist <<= (target)(_ / "one-jar-redist"),
+    oneJarRedist <<= (baseDirectory in oneJarRedist).map { (base) =>
+      val oneJarResourceName = "one-jar-boot-0.97.jar"
+      System.err.println("one jar 1")
+      val s = getClass.getClassLoader.getResourceAsStream(oneJarResourceName)
+      if (s == null) sys.error("could not load: " + oneJarResourceName)
+      def include(path: String) = path match {
+        case "META-INF/MANIFEST.MF" => false
+        case x => !x.startsWith("src/")
+      }
+      IO.unzipStream(s, base, include _)
+    },
+    mappings in oneJar <<= (packageBin in Compile, dependencyClasspath in Runtime,
+      oneJarRedist, baseDirectory in oneJarRedist).map {
+      (artifact, classpath, oneJarRedist, oneJarRedistBase) =>
+        val thisArtifactMapping = (artifact, (file("main") / artifact.name).getPath)
+        val deps: Seq[(File, String)] = {
+          val allDeps = Build.data(classpath).map(f => (f, (file("lib") / f.name).getPath))
+          allDeps.filterNot(_._1 == artifact)
+        }
+
+        val redist = oneJarRedist.toSeq x relativeTo(oneJarRedistBase)
+        Seq(thisArtifactMapping) ++ deps ++ redist
+    },
+    oneJar <<= (mappings in oneJar, artifactPath in oneJar, packageOptions in oneJar, cacheDirectory in oneJar, streams) map {
+      (mappings, output, packOpts, cacheDir, s) =>
+        val packageConf = new Package.Configuration(mappings, output, packOpts)
+        Package(packageConf, cacheDir, s.log)
+        output
+    }
+  )
+
+
+  lazy val webStartSettings = WebStartPlugin.allSettings ++ Seq(
+    webstartGenConf := GenConf(
+      dname       = "CN=Snake Oil, OU=An Anonymous Hacker, O=Bad Guys Inc., L=Bielefeld, ST=33641, C=DE",
+      validity    = 365
+    ),
+
+
+    webstartKeyConf := KeyConf(
+      keyStore    = file("testKeys"),
+      storePass   = "asdf1234",
+      alias       = "jdc",
+      keyPass     = "asdf1234"
+    ),
+
+    webstartJnlpConf    := Seq(JnlpConf(
+      mainClass       = "se.bupp.lek.client.Client",
+      fileName        = "Game.jnlp",
+      codeBase        = "http://localhost:8080/game",
+      title           = "My Title",
+      vendor          = "My Company",
+      description     = "My Webstart Project",
+      iconName = None,
+      splashName = None,
+      offlineAllowed  = true,
+      allPermissions  = true,
+      j2seVersion     = "1.6+",
+      maxHeapSize     = 192
+    ))
   )
 }
