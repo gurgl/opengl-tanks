@@ -49,7 +49,7 @@ object MessageQueue {
 
 }
 
-class NetworkState extends AbstractAppState with PhysicsTickListener {
+class NetworkState(val tcpPort: Int, val udpPort: Int) extends AbstractAppState with PhysicsTickListener {
 
   var gameClient:KryoClient = _
 
@@ -72,7 +72,6 @@ class NetworkState extends AbstractAppState with PhysicsTickListener {
   override def cleanup() {
     println(buffer.toString)
   }
-
 
 
   var lastUpdate:Option[(Long,Reorientation)] = None
@@ -165,7 +164,8 @@ class NetworkState extends AbstractAppState with PhysicsTickListener {
     });
 
     gameClient.start();
-    gameClient.connect(5000, "localhost", 54555, 54777);
+    println("tcpPort " + tcpPort + ",  updPort " + udpPort)
+    gameClient.connect(5000, "localhost", tcpPort, udpPort);
 
     val playerJoinRequest = new PlayerJoinRequest()
     playerJoinRequest.clientLabel = ManagementFactory.getRuntimeMXBean().getName()

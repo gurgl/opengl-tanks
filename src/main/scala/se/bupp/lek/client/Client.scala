@@ -30,7 +30,7 @@ import com.jme3.audio.AudioNode
 
 
 object MathUtil {
-  def noRotation = Quaternion.ZERO.fromAngleNormalAxis(0f,Vector3f.UNIT_XYZ.clone())
+  def noRotation = Quaternion.ZERO.clone().fromAngleNormalAxis(0f,Vector3f.UNIT_XYZ.clone())
 
   def noMotion:Reorientation = (Vector3f.ZERO.clone(), noRotation)
 
@@ -64,7 +64,7 @@ class PlayerInput(startPosition:Orientation) {
   }
 }
 
-class Client extends SimpleApplication {
+class Client(tcpPort:Int, udpPort:Int) extends SimpleApplication {
   import Client._
 
   var playerIdOpt:Option[Int] = None
@@ -179,7 +179,7 @@ class Client extends SimpleApplication {
     setShowSettings(false)
 
     stateManager.detach( stateManager.getState(classOf[FlyCamAppState]))
-    val networkState: NetworkState = new NetworkState
+    val networkState: NetworkState = new NetworkState(tcpPort, udpPort)
     stateManager.attach(networkState)
 
 
@@ -240,7 +240,7 @@ object Client {
   var spel:Client = _
 
   def main(arguments: Array[String]): Unit = {
-    spel = new Client()
+    spel = new Client(54555, 54777)
     val settings = new AppSettings(true);
     settings.setFrameRate(58)
     settings.setResolution(640,480)

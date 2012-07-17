@@ -5,7 +5,7 @@ import com.jme3.scene.{Geometry, Spatial, Node}
 import com.jme3.bullet.PhysicsSpace
 import com.jme3.bullet.control.{RigidBodyControl, CharacterControl}
 import com.jme3.material.Material
-import com.jme3.scene.shape.Box
+import com.jme3.scene.shape.{Cylinder, Box}
 import com.jme3.math.{ColorRGBA, Vector3f}
 import com.jme3.bullet.util.CollisionShapeFactory
 import com.jme3.renderer.queue.RenderQueue.ShadowMode
@@ -69,6 +69,7 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
   var mat_default_ush : Material = _
 
   var projectileGeometry:Box = _
+  var flagGeometry : Cylinder = _
 
   import SceneGraphWorld._
 
@@ -76,6 +77,7 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
 
   def init() {
     projectileGeometry = new Box(Vector3f.ZERO.clone(), 0.1f, 0.1f, 0.1f)
+    flagGeometry = new Cylinder(10,10,0.10f,1.0f,true);
     //projectileGeometry.setBound(new BoundingSphere())
     //projectileGeometry.updateBound()
 
@@ -104,8 +106,15 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
 
     var enemyNodes = new Node(SceneGraphNodeKeys.Enemies)
     rootNode.attachChild(enemyNodes)
+
     var projectileNodes = new Node(SceneGraphNodeKeys.Projectiles)
     rootNode.attachChild(projectileNodes)
+
+    var levelItems = new Node("levelItems")
+    rootNode.attachChild(levelItems)
+
+    val flag = materializeFlag(new Orientation(new Vector3f(-2.0f,0.5f,-2.0f),MathUtil.noRotation.fromAngles(math.Pi.toFloat/2,0f,0f)))
+    levelItems.attachChild(flag)
 
   }
 
@@ -156,6 +165,20 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
       tank.setShadowMode(ShadowMode.Off)
     }
     tank
+  }
+
+  def materializeFlag(pd: Orientation): Spatial = {
+    val instance = new Geometry("flag", flagGeometry)
+    //enemy.setMaterial(mat_default)
+
+    //tank.setLocalScale(0.5f)
+    instance.setLocalTranslation(pd.position)
+    instance.setLocalRotation(pd.direction)
+    instance.setShadowMode(ShadowMode.Off)
+    if(!isHeadLess) {
+      instance.setMaterial(mat_default)
+    }
+    instance
   }
 
   def tankCollisionShape = new CapsuleCollisionShape(0.35f, 0.45f, 0)
