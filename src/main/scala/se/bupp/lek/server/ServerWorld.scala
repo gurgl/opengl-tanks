@@ -132,6 +132,7 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
 
     //ghost.setApplyPhysicsLocal(true)
     tank.addControl(ghost);
+
     //getPhysicsSpace.add(ghost)
 
     getNode(SceneGraphWorld.SceneGraphNodeKeys.Enemies).attachChild(tank)

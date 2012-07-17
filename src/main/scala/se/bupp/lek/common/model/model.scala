@@ -25,3 +25,4 @@ case class Dead(time:Long) extends PlayerConnectionState {
 class ServerPlayerGO extends PlayerGO {
 
 }
+

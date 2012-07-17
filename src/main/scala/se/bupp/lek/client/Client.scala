@@ -159,6 +159,7 @@ class Client extends SimpleApplication {
     audio_gun.setVolume(2);
     rootNode.attachChild(audio_gun);
 
+    /*
     val audio_nature = new AudioNode(assetManager, "33703__yewbic__ambience02.wav", false);
     audio_nature.setLooping(true);  // activate continuous playing
     audio_nature.setPositional(true);
@@ -166,6 +167,8 @@ class Client extends SimpleApplication {
     audio_nature.setVolume(3);
     rootNode.attachChild(audio_nature);
     audio_nature.play(); // play continuously!
+
+    */
   }
 
 

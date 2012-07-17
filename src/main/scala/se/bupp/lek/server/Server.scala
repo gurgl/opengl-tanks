@@ -18,6 +18,8 @@ import com.jme3.bullet.{PhysicsSpace, PhysicsTickListener, BulletAppState}
 import com.jme3.scene.{Node, Geometry}
 import com.jme3.light.DirectionalLight
 import java.util.logging.{Logger, Level}
+import se.bupp.lek.server.Server.PortSettings
+import com.jme3.system.JmeContext.Type
 
 /**
  * Created by IntelliJ IDEA.
@@ -28,7 +30,9 @@ import java.util.logging.{Logger, Level}
  */
 
 
-class Server extends SimpleApplication with PhysicsTickListener {
+
+
+class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTickListener {
 
 
 
@@ -73,7 +77,7 @@ class Server extends SimpleApplication with PhysicsTickListener {
 
     server = new KryoServer();
     server.start();
-    server.bind(54555, 54777);
+    server.bind(portSettings.tcpPort, portSettings.udpPort);
 
     val kryo = server.getKryo();
     getNetworkMessages.foreach(kryo.register(_))
@@ -103,8 +107,9 @@ class Server extends SimpleApplication with PhysicsTickListener {
         }
       }
     });
- }
 
+    println("Game Launch Complete")
+ }
 
   def createDebug() {
     //val rot = Quaternion.IDENTITY.clone()
@@ -141,6 +146,8 @@ class Server extends SimpleApplication with PhysicsTickListener {
 
 object Server {
 
+  class PortSettings(val tcpPort:Int, val udpPort:Int)
+
   val getNetworkMessages = List[Class[_ <: AnyRef]](
       classOf[PlayerJoinRequest],
       classOf[PlayerJoinResponse],
@@ -157,8 +164,14 @@ object Server {
       classOf[ServerGameWorld]
     )
   def main(args: Array[String]) {
+
+    val portSettings = args.toList match {
+      case tcpPort :: udpPort :: rest => new PortSettings(tcpPort.toInt, udpPort.toInt)
+      case _ => new PortSettings(54555, 54777)
+    }
+    println(portSettings.tcpPort + " " + portSettings.udpPort)
     //Logger.getLogger("com.jme3").setLevel(Level.SEVERE)
-    new Server().start(JmeContext.Type.Headless)
+    new Server(portSettings).start(JmeContext.Type.Headless)
   }
 }
 

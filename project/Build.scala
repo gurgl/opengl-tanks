@@ -38,9 +38,6 @@ object MyBuild extends Build {
     ,
     //publishArtifact in (Compile, packageBin) := false,
     libraryDependencies ++= Seq(
-      "org.lwjgl.lwjgl" % "lwjgl" % "2.8.3",
-      "org.lwjgl.lwjgl" % "lwjgl_util" % "2.8.3",
-      "org.lwjgl.lwjgl" % "lwjgl-platform" % "2.8.3",
       /*"com.esotericsoftware" % "kryo" % "2.09",
       "com.esotericsoftware" % "kryonet" % "2.09",
       "com.esotericsoftware" % "minlog" % "1.2",
@@ -50,43 +47,36 @@ object MyBuild extends Build {
       "org.specs2" %% "specs2" % "1.11" % "test",
       "org.scalaz" %% "scalaz-core" % "6.0.4",
       "org.objenesis" % "objenesis" % "1.2",
-//      "org.objectweb" % "asm" % "4.0"
-
-
-"com.jme3" % "eventbus" % "3.0.0.20120512-SNAPSHOT",
-//"com.jme3" % "jbullet" % "3.0.0.20120512-SNAPSHOT",
-"com.jme3" % "jinput" % "3.0.0.20120512-SNAPSHOT",
-"com.jme3" % "jME3-blender" % "3.0.0.20120512-SNAPSHOT",
-"com.jme3" % "jME3-core" % "3.0.0.20120512-SNAPSHOT",
-"com.jme3" % "jME3-desktop" % "3.0.0.20120512-SNAPSHOT",
-"com.jme3" % "jME3-effects" % "3.0.0.20120512-SNAPSHOT",
-//"com.jme3" % "jME3-jbullet" % "3.0.0.20120512-SNAPSHOT",
-"com.jme3" % "jME3-jogg" % "3.0.0.20120512-SNAPSHOT",
-"com.jme3" % "jME3-lwjgl" % "3.0.0.20120512-SNAPSHOT",
-"com.jme3" % "jME3-lwjgl-natives" % "3.0.0.20120512-SNAPSHOT",
-"com.jme3" % "jME3-networking" % "3.0.0.20120512-SNAPSHOT",
-"com.jme3" % "jME3-niftygui" % "3.0.0.20120512-SNAPSHOT",
-"com.jme3" % "jME3-plugins" % "3.0.0.20120512-SNAPSHOT",
-"com.jme3" % "jME3-terrain" % "3.0.0.20120512-SNAPSHOT",
-"com.jme3" % "jME3-testdata" % "3.0.0.20120512-SNAPSHOT",
-"com.jme3" % "j-ogg-oggd" % "3.0.0.20120512-SNAPSHOT",
-"com.jme3" % "j-ogg-vorbisd" % "3.0.0.20120512-SNAPSHOT",
-"com.jme3" % "lwjgl" % "3.0.0.20120512-SNAPSHOT",
-"com.jme3" % "nifty" % "3.0.0.20120512-SNAPSHOT",
-"com.jme3" % "nifty-default-controls" % "3.0.0.20120512-SNAPSHOT",
-"com.jme3" % "nifty-examples" % "3.0.0.20120512-SNAPSHOT",
-"com.jme3" % "nifty-style-black" % "3.0.0.20120512-SNAPSHOT",
-"com.jme3" % "stack-alloc" % "3.0.0.20120512-SNAPSHOT",
-"com.jme3" % "vecmath" % "3.0.0.20120512-SNAPSHOT",
-"com.jme3" % "xmlpull-xpp3" % "3.0.0.20120512-SNAPSHOT"
-
-    
-
+      "com.jme3" % "eventbus" % "3.0.0.20120512-SNAPSHOT",
+      //"com.jme3" % "jbullet" % "3.0.0.20120512-SNAPSHOT",
+      "com.jme3" % "jinput" % "3.0.0.20120512-SNAPSHOT",
+      "com.jme3" % "jME3-blender" % "3.0.0.20120512-SNAPSHOT",
+      "com.jme3" % "jME3-core" % "3.0.0.20120512-SNAPSHOT",
+      "com.jme3" % "jME3-desktop" % "3.0.0.20120512-SNAPSHOT",
+      "com.jme3" % "jME3-effects" % "3.0.0.20120512-SNAPSHOT",
+      //"com.jme3" % "jME3-jbullet" % "3.0.0.20120512-SNAPSHOT",
+      "com.jme3" % "jME3-jogg" % "3.0.0.20120512-SNAPSHOT",
+      "com.jme3" % "jME3-lwjgl" % "3.0.0.20120512-SNAPSHOT",
+      "com.jme3" % "jME3-lwjgl-natives" % "3.0.0.20120512-SNAPSHOT",
+      "com.jme3" % "jME3-networking" % "3.0.0.20120512-SNAPSHOT",
+      "com.jme3" % "jME3-niftygui" % "3.0.0.20120512-SNAPSHOT",
+      "com.jme3" % "jME3-plugins" % "3.0.0.20120512-SNAPSHOT",
+      "com.jme3" % "jME3-terrain" % "3.0.0.20120512-SNAPSHOT",
+      "com.jme3" % "jME3-testdata" % "3.0.0.20120512-SNAPSHOT",
+      "com.jme3" % "j-ogg-oggd" % "3.0.0.20120512-SNAPSHOT",
+      "com.jme3" % "j-ogg-vorbisd" % "3.0.0.20120512-SNAPSHOT",
+      "com.jme3" % "lwjgl" % "3.0.0.20120512-SNAPSHOT",
+      "com.jme3" % "nifty" % "3.0.0.20120512-SNAPSHOT",
+      "com.jme3" % "nifty-default-controls" % "3.0.0.20120512-SNAPSHOT",
+      "com.jme3" % "nifty-examples" % "3.0.0.20120512-SNAPSHOT",
+      "com.jme3" % "nifty-style-black" % "3.0.0.20120512-SNAPSHOT",
+      "com.jme3" % "stack-alloc" % "3.0.0.20120512-SNAPSHOT",
+      "com.jme3" % "vecmath" % "3.0.0.20120512-SNAPSHOT",
+      "com.jme3" % "xmlpull-xpp3" % "3.0.0.20120512-SNAPSHOT"
       /*"com.jmonkey" % "engine" % "3.0beta" from "file:///home/karlw/src/3rdparty/jme3/engine/dist/lib/jME3-core.jar",
       "com.jmonkey" % "engine-terr" % "3.0beta" from "file:///home/karlw/src/3rdparty/jme3/engine/dist/lib/jME3-terrain.jar"*/
     )
   )
-
 
   // defines a new configuration "samples" that will delegate to "compile"
   lazy val ClientBuild = config("samples") extend(Compile)
@@ -94,10 +84,6 @@ object MyBuild extends Build {
   // defines the project to have the "samples" configuration
   lazy val serverProject = Project("client", file("."), settings = clientSettings)
     .configs(ClientBuild)
-
-
-
-
 
   def clientSettings = Project.defaultSettings ++
     projSettings ++
