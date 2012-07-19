@@ -71,6 +71,7 @@ class NetworkState(val tcpPort: Int, val udpPort: Int) extends AbstractAppState 
   
   override def cleanup() {
     println(buffer.toString)
+    gameClient.close();
   }
 
 

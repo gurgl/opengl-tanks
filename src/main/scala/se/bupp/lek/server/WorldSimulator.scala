@@ -283,7 +283,18 @@ class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionListener {
     res.toList
   }
 
-  def connectPlayer(pjr: PlayerJoinRequest): Int = {
+  def removePlayer(playerId:Int) {
+
+
+    val (pcOpt, newConnectedPlayers) =connectedPlayers.partition(_.playerId == playerId)
+    connectedPlayers = newConnectedPlayers
+    pcOpt match {
+      case Nil =>
+      case pc :: rest => world.findPlayerInfo(playerId).foreach { case (_,s) => world.unspawnPlayer(s, pc) }
+    }
+  }
+
+  def addPlayer(pjr: PlayerJoinRequest): Int = {
 
     var playerId = -1
 

@@ -1,6 +1,6 @@
 package se.bupp.lek.server
 
-import com.esotericsoftware.kryonet.{Connection, Listener, Server => KryoServer}
+
 import scala.Predef._
 import management.ManagementFactory
 import com.jme3.math.{ColorRGBA, Quaternion, Vector3f}
@@ -20,6 +20,7 @@ import com.jme3.light.DirectionalLight
 import java.util.logging.{Logger, Level}
 import se.bupp.lek.server.Server.PortSettings
 import com.jme3.system.JmeContext.Type
+import se.bupp.lek.server.Server.GameMatchSettings.{WhenNumOfConnectedPlayersCriteria, AbstractStartCriteria}
 
 /**
  * Created by IntelliJ IDEA.
@@ -47,7 +48,9 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
 
   var worldSimulator: WorldSimulator = _
 
-  var server:KryoServer = _
+  var networkState: ServerNetworkState = _
+
+  var gameLogic:GameLogic = _
 
   var leRoot:Node = null
 
@@ -75,41 +78,39 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
     serverWorld.initEmpty()
     worldSimulator = new WorldSimulator(serverWorld)
 
-    server = new KryoServer();
-    server.start();
-    server.bind(portSettings.tcpPort, portSettings.udpPort);
 
-    val kryo = server.getKryo();
-    getNetworkMessages.foreach(kryo.register(_))
+    gameLogic = new GameLogic(new GameMatchSettings(
+      startCriteria = WhenNumOfConnectedPlayersCriteria(2)
+    )) {
 
-    server.addListener(new Listener() {
-      override def received(connection: Connection, obj: Object) {
-        //println("rec " + obj.getClass.getName)
-        obj match {
-          case request: PlayerActionRequest =>
-            //println(request.playerId + " " + request.position);
-            request.ensuring(request.motion.translation != null && request.motion.rotation != null)
+    }
 
-            //updateMaxTimeStamp = if(updateMaxTimeStamp < request.timeStamp) request.timeStamp else updateMaxTimeStamp
-            worldSimulator.addPlayerAction(request)
-
-
-          /*val response = new GameWorldResponse();
-          response.text = "Thanks!";
-          connection.sendUDP(response);*/
-          case req: PlayerJoinRequest =>
-            println("rec " + obj.getClass.getName)
-            val resp = new PlayerJoinResponse
-            resp.playerId = worldSimulator.connectPlayer(req)
-
-            connection.sendTCP(resp)
-          case _ =>
-        }
+    networkState = new ServerNetworkState(portSettings) {
+      def addPlayerAction(pa: PlayerActionRequest) {
+          pa.ensuring(pa.motion.translation != null && pa.motion.rotation != null)
+          worldSimulator.addPlayerAction(pa)
       }
-    });
+
+      override def playerJoined(pjr: PlayerJoinRequest) = {
+        val resp = new PlayerJoinResponse
+        val playerId = worldSimulator.addPlayer(pjr)
+        resp.playerId = playerId
+        gameLogic.addPlayer(playerId)
+        resp
+      }
+
+      def playerLeave(playerId: Int) {
+        println("Player disconnected")
+        worldSimulator.removePlayer(playerId)
+        gameLogic.removePlayer(playerId)
+      }
+    }
+
+
 
     println("Game Launch Complete")
  }
+
 
   def createDebug() {
     //val rot = Quaternion.IDENTITY.clone()
@@ -123,24 +124,21 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
     rootNode.addLight(sun);
   }
 
-  var lastSentUpdate = 0L
+
   override def simpleUpdate(tpf: Float) {
 
     worldSimulator.world.simulateToLastUpdated()
 
     worldSimulator.handleStateLogic()
 
-    if(System.currentTimeMillis() - lastSentUpdate > 1000/16) {
-
-        val gameWorld = worldSimulator.getGameWorld
-        //println("" + getPlayers.size)
-        server.sendToAllUDP(gameWorld)
-        lastSentUpdate = System.currentTimeMillis()
-    }
+    networkState.update(worldSimulator.getGameWorld())
 
     leRoot.updateLogicalState(tpf);
 
     leRoot.updateGeometricState();
+
+
+
   }
 }
 
@@ -163,6 +161,20 @@ object Server {
       classOf[java.util.ArrayList[PlayerGO]],
       classOf[ServerGameWorld]
     )
+
+  object GameMatchSettings {
+
+    sealed abstract class AbstractStartCriteria()
+
+    case class WhenNumOfConnectedPlayersCriteria(num:Int) extends AbstractStartCriteria()
+    case class AlwaysOn() extends AbstractStartCriteria()
+
+  }
+
+  class GameMatchSettings(startCriteria:AbstractStartCriteria) {
+
+  }
+
   def main(args: Array[String]) {
 
     val portSettings = args.toList match {

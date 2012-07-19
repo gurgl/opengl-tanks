@@ -142,6 +142,8 @@ class Client(tcpPort:Int, udpPort:Int) extends SimpleApplication {
     inputManager.addMapping("Fire",  new KeyTrigger(KeyInput.KEY_SPACE));
   }
 
+
+
   /*def attachStatsDisplay() {
     guiNode.detachAllChildren();
     guiFont = assetManager.loadFont("Interface/Fonts/Default.fnt");
@@ -151,6 +153,9 @@ class Client(tcpPort:Int, udpPort:Int) extends SimpleApplication {
     helloText.setLocalTranslation(300, helloText.getLineHeight(), 0);
     guiNode.attachChild(helloText);
   }*/
+
+
+
 
   def initAudio() {
     /* gun shot sound is to be triggered by a mouse click. */
@@ -227,6 +232,12 @@ class Client(tcpPort:Int, udpPort:Int) extends SimpleApplication {
 
   override def destroy() {
     super.destroy()
+
+    val networkState: NetworkState = stateManager.getState(classOf[NetworkState])
+    stateManager.detach( networkState)
+    networkState.cleanup()
+
+
 
     println("destroy " + Client.buffer.toString())
   }
