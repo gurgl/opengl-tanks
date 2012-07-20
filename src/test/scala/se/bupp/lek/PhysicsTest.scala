@@ -65,9 +65,6 @@ class PhysicsTest extends Specification {
 
 
 
-
-
-
   "lal" should {
 
     "lil" in {

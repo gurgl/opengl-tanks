@@ -45,6 +45,7 @@ object MyBuild extends Build {
       "com.esotericsoftware" % "reflectasm" % "1.03",
       "org.ow2.asm" % "asm" % "4.0",*/
       "org.specs2" %% "specs2" % "1.11" % "test",
+      "org.mockito" % "mockito-all" % "1.9.0" % "test",
       "org.scalaz" %% "scalaz-core" % "6.0.4",
       "org.objenesis" % "objenesis" % "1.2",
       "com.jme3" % "eventbus" % "3.0.0.20120512-SNAPSHOT",

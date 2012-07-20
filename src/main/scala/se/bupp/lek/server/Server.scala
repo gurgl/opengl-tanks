@@ -20,7 +20,10 @@ import com.jme3.light.DirectionalLight
 import java.util.logging.{Logger, Level}
 import se.bupp.lek.server.Server.PortSettings
 import com.jme3.system.JmeContext.Type
-import se.bupp.lek.server.Server.GameMatchSettings.{WhenNumOfConnectedPlayersCriteria, AbstractStartCriteria}
+import se.bupp.lek.server.Server.GameMatchSettings._
+import se.bupp.lek.server.Server.GameMatchSettings.WhenNumOfConnectedPlayersCriteria
+import se.bupp.lek.common.model.Competitor
+import se.bupp.lek.server.GameLogicFactory.GameLogicListener
 
 /**
  * Created by IntelliJ IDEA.
@@ -79,11 +82,12 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
     worldSimulator = new WorldSimulator(serverWorld)
 
 
-    gameLogic = new GameLogic(new GameMatchSettings(
-      startCriteria = WhenNumOfConnectedPlayersCriteria(2)
-    )) {
-
-    }
+    val settings: GameMatchSettings = new GameMatchSettings(
+      startCriteria = WhenNumOfConnectedPlayersCriteria(2),
+      roundEndCriteria = NumOfKills(2),
+      gameEndCriteria = NumOfRoundsPlayed(1)
+    )
+    gameLogic = GameLogicFactory.create(settings, new GameLogicListener() {})
 
     networkState = new ServerNetworkState(portSettings) {
       def addPlayerAction(pa: PlayerActionRequest) {
@@ -95,7 +99,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
         val resp = new PlayerJoinResponse
         val playerId = worldSimulator.addPlayer(pjr)
         resp.playerId = playerId
-        gameLogic.addPlayer(playerId)
+        gameLogic.addCompetitor(new Competitor(playerId,pjr.teamIdentifier))
         resp
       }
 
@@ -169,9 +173,15 @@ object Server {
     case class WhenNumOfConnectedPlayersCriteria(num:Int) extends AbstractStartCriteria()
     case class AlwaysOn() extends AbstractStartCriteria()
 
+    sealed abstract class RoundEndCriteria()
+    case class NumOfKills(value:Int) extends RoundEndCriteria()
+
+    sealed abstract class GameEndCriteria()
+    case class NumOfRoundsPlayed(value:Int) extends GameEndCriteria()
+
   }
 
-  class GameMatchSettings(startCriteria:AbstractStartCriteria) {
+  class GameMatchSettings(val startCriteria:AbstractStartCriteria,val roundEndCriteria:RoundEndCriteria,val gameEndCriteria:GameEndCriteria) {
 
   }
 

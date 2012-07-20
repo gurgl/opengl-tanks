@@ -11,6 +11,8 @@ import se.bupp.lek.server.Model.PlayerGO
  */
 
 
+class Competitor(val playerId:Int, val teamId:Int)
+
 sealed abstract class PlayerConnectionState {
 
 }

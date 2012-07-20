@@ -170,6 +170,7 @@ object Model {
 
   class PlayerJoinRequest {
     var clientLabel: String = _
+    var teamIdentifier : Int = _
   }
 
   class PlayerJoinResponse {
