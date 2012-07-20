@@ -24,7 +24,6 @@ object MyBuild extends Build {
     }
   )
 
-
   unmanagedJars in Compile <++= baseDirectory map { base =>
   	val baseDirectories = (base / "jme3-lib" )
   	val customJars = (baseDirectories ** "*.jar")
@@ -110,14 +109,6 @@ object MyBuild extends Build {
     addArtifact(artifact in (ServerBuild, task), task in ServerBuild).settings
   */
 
-  val getCp = TaskKey[String]("show-cp", "")
-  /*
-  val helloTask = getCp := {
-    import Process._
-
-   //get( fullClasspath in Compile).files foreach println
-  } */
-
   val oneJar = TaskKey[File]("one-jar", "Create a single executable JAR using One-JAR™")
   val oneJarRedist = TaskKey[Set[File]]("one-jar-redist", "The redistributable One-JAR™ launcher, unzipped.")
 
@@ -166,13 +157,11 @@ object MyBuild extends Build {
     }
   )
 
-
   lazy val webStartSettings = WebStartPlugin.allSettings ++ Seq(
     webstartGenConf := GenConf(
       dname       = "CN=Snake Oil, OU=An Anonymous Hacker, O=Bad Guys Inc., L=Bielefeld, ST=33641, C=DE",
       validity    = 365
     ),
-
 
     webstartKeyConf := KeyConf(
       keyStore    = file("testKeys"),
