@@ -59,11 +59,11 @@ class GameLogic(var gameSettings:GameMatchSettings, var listener:GameLogicListen
 
 
   def removePlayer(playerId:Int) {
-
+    competitors = competitors.filterNot(_.playerId == playerId)
   }
 
   def roundEnded() {
-    listener.onRoundEnd()
+    listener.onRoundEnd(null,null)
     roundCount = roundCount + 1
     gameSettings.gameEndCriteria match {
       case NumOfRoundsPlayed(r) =>
@@ -76,7 +76,7 @@ class GameLogic(var gameSettings:GameMatchSettings, var listener:GameLogicListen
   }
 
   def gameEnded() {
-    listener.onGameEnd()
+    listener.onGameEnd(null)
   }
 
 

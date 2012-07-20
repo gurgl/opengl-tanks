@@ -352,4 +352,8 @@ class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionListener {
       }
     }
   }
+
+  def removeAndRespawnAll() {
+
+  }
 }

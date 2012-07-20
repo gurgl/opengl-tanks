@@ -23,7 +23,10 @@ import com.jme3.system.JmeContext.Type
 import se.bupp.lek.server.Server.GameMatchSettings._
 import se.bupp.lek.server.Server.GameMatchSettings.WhenNumOfConnectedPlayersCriteria
 import se.bupp.lek.common.model.Competitor
-import se.bupp.lek.server.GameLogicFactory.{KillBasedStrategy, GameLogicListener}
+import se.bupp.lek.server.GameLogicFactory._
+import se.bupp.lek.server.Server.GameMatchSettings.ScoreReached
+import se.bupp.lek.server.Server.GameMatchSettings.WhenNumOfConnectedPlayersCriteria
+import se.bupp.lek.server.Server.GameMatchSettings.NumOfRoundsPlayed
 
 /**
  * Created by IntelliJ IDEA.
@@ -87,7 +90,34 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
       roundEndCriteria = ScoreReached(2),
       gameEndCriteria = NumOfRoundsPlayed(1)
     )
-    gameLogic = GameLogicFactory.create(settings, new GameLogicListener() {}, new KillBasedStrategy())
+
+    val listener = new GameLogicListener() {
+      def onGameStart() {
+        // send countdown message
+        // add timer to start round
+      }
+
+      def onRoundStart() {
+        worldSimulator.removeAndRespawnAll()
+      }
+
+
+
+
+      def onCompetetitorScored(scoreDescription: AbstractScoreDescription) {}
+
+      def onRoundEnd(roundResults: RoundResults, standing: GameTotalResults) {
+      // send countdown message
+        // add timer to start round
+      }
+
+      def onGameEnd(totals: GameTotalResults) {
+        worldSimulator.removeAndRespawnAll()
+        // lobby mode
+      }
+    }
+
+    gameLogic = GameLogicFactory.create(settings, listener, new KillBasedStrategy())
 
     networkState = new ServerNetworkState(portSettings) {
       def addPlayerAction(pa: PlayerActionRequest) {

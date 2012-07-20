@@ -48,8 +48,8 @@ class GameLogicTest extends Specification with Mockito {
       gameLogic.scoreStrategy.playerKilledByPlayer(2,1)
       there was noCallsTo(listener)
       gameLogic.scoreStrategy.playerKilledByPlayer(2,1)
-      there was one(listener).onRoundEnd()
-      there was one(listener).onGameEnd()
+      there was one(listener).onRoundEnd(any,any)
+      there was one(listener).onGameEnd(any)
     }
 
     "handle simple 2 on 2 team match" in {
@@ -76,8 +76,8 @@ class GameLogicTest extends Specification with Mockito {
       gameLogic.scoreStrategy.playerKilledByPlayer(3,2)
       there was noCallsTo(listener)
       gameLogic.scoreStrategy.playerKilledByPlayer(4,1)
-      there was one(listener).onRoundEnd()
-      there was one(listener).onGameEnd()
+      there was one(listener).onRoundEnd(any,any)
+      there was one(listener).onGameEnd(any)
     }
   }
 
@@ -119,8 +119,8 @@ class GameLogicTest extends Specification with Mockito {
       gameLogic.scoreStrategy.keepsTic()
       there was noCallsTo(listener)
       gameLogic.scoreStrategy.keepsTic()
-      there was one(listener).onRoundEnd()
-      there was one(listener).onGameEnd()
+      there was one(listener).onRoundEnd(any,any)
+      there was one(listener).onGameEnd(any)
     }
   }
 

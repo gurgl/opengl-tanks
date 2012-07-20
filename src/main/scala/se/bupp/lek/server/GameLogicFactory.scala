@@ -98,14 +98,22 @@ object GameLogicFactory {
 
 
   trait GameLogicListener {
-    def onGameStart() {}
+    def onGameStart()
 
-    def onRoundStart() {}
+    def onRoundStart()
 
-    def onRoundEnd() {}
+    def onRoundEnd(roundResults:RoundResults, standing:GameTotalResults)
 
-    def onGameEnd() {}
+    def onGameEnd(totals:GameTotalResults)
+
+    def onCompetetitorScored(scoreDescription:AbstractScoreDescription)
   }
+
+  class AbstractScoreDescription()
+
+  class GameTotalResults()
+
+  class RoundResults()
 
 
   def create(settings:GameMatchSettings, gameLogicListener:GameLogicListener, scoreStrategy:ScoreStrategy) : GameLogic = {
