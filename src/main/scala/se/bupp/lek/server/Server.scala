@@ -60,6 +60,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
 
   var leRoot:Node = null
 
+
   override def simpleInitApp() {
 
 
@@ -82,7 +83,11 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
     val physicsSpace = new PhysicsSpace()
     val serverWorld = new ServerWorld(leRoot, assetManager, physicsSpace)
     serverWorld.initEmpty()
-    worldSimulator = new WorldSimulator(serverWorld)
+    worldSimulator = new WorldSimulator(serverWorld) {
+      def playerKilledPlayer(killer: Int, victim: Int) {
+        gameLogic.scoreStrategy.playerKilledByPlayer(killer,victim)
+      }
+    }
 
 
     val settings: GameMatchSettings = new GameMatchSettings(
@@ -91,28 +96,37 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
       gameEndCriteria = NumOfRoundsPlayed(1)
     )
 
-    val listener = new GameLogicListener() {
+    var listener = new GameLogicListener() {
       def onGameStart() {
+
         // send countdown message
         // add timer to start round
+        // leave lobby mode
+        // enter game mode
+        println("Game Started")
       }
 
       def onRoundStart() {
+        // send round started message
+        println("Round Started")
         worldSimulator.removeAndRespawnAll()
       }
 
+      def onCompetetitorScored(scoreDescription: AbstractScoreDescription) {
 
-
-
-      def onCompetetitorScored(scoreDescription: AbstractScoreDescription) {}
+        println("Someone scored")
+        // send displayable score modification
+      }
 
       def onRoundEnd(roundResults: RoundResults, standing: GameTotalResults) {
-      // send countdown message
+        // send countdown message
         // add timer to start round
+        println("Round ended")
       }
 
       def onGameEnd(totals: GameTotalResults) {
         worldSimulator.removeAndRespawnAll()
+        println("Game ended")
         // lobby mode
       }
     }
@@ -129,7 +143,8 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
         val resp = new PlayerJoinResponse
         val playerId = worldSimulator.addPlayer(pjr)
         resp.playerId = playerId
-        gameLogic.addCompetitor(new Competitor(playerId,pjr.teamIdentifier))
+        val identifier = if(pjr.teamIdentifier == -1) playerId else pjr.teamIdentifier
+        gameLogic.addCompetitor(new Competitor(playerId,identifier))
         resp
       }
 
@@ -170,9 +185,6 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
     leRoot.updateLogicalState(tpf);
 
     leRoot.updateGeometricState();
-
-
-
   }
 }
 

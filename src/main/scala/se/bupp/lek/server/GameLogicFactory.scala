@@ -67,7 +67,7 @@ object GameLogicFactory {
 
   }
 
-  class TimedKeepsScoringStrategy(var currentKeeps:AbstractScoringControllables) extends ScoreStrategy {
+  class ControllablesScoringStrategy(var currentKeeps:AbstractScoringControllables) extends ScoreStrategy {
 
     var competitorScore = collection.mutable.HashMap.empty[Int,Int]
 
@@ -86,8 +86,9 @@ object GameLogicFactory {
     def keepsTic() {
         currentKeeps.scorePerTic.foreach {
           case (competitorId, increase) =>
+
             competitorScore += ( competitorId -> (competitorScore(competitorId) + increase))
-            gameLogic.competitorScored(competitorId)
+            if (increase > 0) gameLogic.competitorScored(competitorId)
 
         }
     }

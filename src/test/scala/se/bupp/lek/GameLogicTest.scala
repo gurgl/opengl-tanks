@@ -3,7 +3,7 @@ package se.bupp.lek
 import common.model.Competitor
 import org.specs2.mutable.Specification
 import server.GameLogicFactory
-import server.GameLogicFactory.{AbstractScoringControllables, TimedKeepsScoringStrategy, KillBasedStrategy, GameLogicListener}
+import server.GameLogicFactory.{AbstractScoringControllables, ControllablesScoringStrategy, KillBasedStrategy, GameLogicListener}
 import server.Server.GameMatchSettings
 import server.Server.GameMatchSettings.{ScoreReached, NumOfRoundsPlayed, WhenNumOfConnectedPlayersCriteria}
 
@@ -44,10 +44,11 @@ class GameLogicTest extends Specification with Mockito {
       there was one(listener).onGameStart()
 
       gameLogic.scoreStrategy.playerKilledByPlayer(1,2)
-      there was noCallsTo(listener)
+      there was one(listener).onCompetetitorScored(any)
       gameLogic.scoreStrategy.playerKilledByPlayer(2,1)
-      there was noCallsTo(listener)
+      there was two(listener).onCompetetitorScored(any)
       gameLogic.scoreStrategy.playerKilledByPlayer(2,1)
+      there was three(listener).onCompetetitorScored(any)
       there was one(listener).onRoundEnd(any,any)
       there was one(listener).onGameEnd(any)
     }
@@ -72,10 +73,11 @@ class GameLogicTest extends Specification with Mockito {
       there was one(listener).onGameStart()
 
       gameLogic.scoreStrategy.playerKilledByPlayer(1,4)
-      there was noCallsTo(listener)
+      there was one(listener).onCompetetitorScored(any)
       gameLogic.scoreStrategy.playerKilledByPlayer(3,2)
-      there was noCallsTo(listener)
+      there was two(listener).onCompetetitorScored(any)
       gameLogic.scoreStrategy.playerKilledByPlayer(4,1)
+      there was three(listener).onCompetetitorScored(any)
       there was one(listener).onRoundEnd(any,any)
       there was one(listener).onGameEnd(any)
     }
@@ -91,7 +93,7 @@ class GameLogicTest extends Specification with Mockito {
       )
 
       val listener = mock[GameLogicListener]
-      val gameLogic = GameLogicFactory.create(settings, listener, new TimedKeepsScoringStrategy(new AbstractScoringControllables(Map(1->0,2->0))))
+      val gameLogic = GameLogicFactory.create(settings, listener, new ControllablesScoringStrategy(new AbstractScoringControllables(Map(1->0,2->0))))
 
 
       gameLogic.addCompetitor(new Competitor(1,1))
@@ -101,7 +103,7 @@ class GameLogicTest extends Specification with Mockito {
       gameLogic.addCompetitor(new Competitor(2,2))
       there was one(listener).onGameStart()
 
-      val score: mutable.HashMap[Int, Int] = gameLogic.scoreStrategy.asInstanceOf[TimedKeepsScoringStrategy].competitorScore
+      val score: mutable.HashMap[Int, Int] = gameLogic.scoreStrategy.asInstanceOf[ControllablesScoringStrategy].competitorScore
       score should be equalTo((mutable.HashMap.empty ++= Map(1->0, 2->0)))
 
 
@@ -114,11 +116,12 @@ class GameLogicTest extends Specification with Mockito {
 
       gameLogic.scoreStrategy.controllablesChanged(new AbstractScoringControllables(Map(1->1,2->0)))
       gameLogic.scoreStrategy.keepsTic()
-      there was noCallsTo(listener)
+      there was one(listener).onCompetetitorScored(any)
       gameLogic.scoreStrategy.controllablesChanged(new AbstractScoringControllables(Map(1->0,2->1)))
       gameLogic.scoreStrategy.keepsTic()
-      there was noCallsTo(listener)
+      there was two(listener).onCompetetitorScored(any)
       gameLogic.scoreStrategy.keepsTic()
+      there was three(listener).onCompetetitorScored(any)
       there was one(listener).onRoundEnd(any,any)
       there was one(listener).onGameEnd(any)
     }

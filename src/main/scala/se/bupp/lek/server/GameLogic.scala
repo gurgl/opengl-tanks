@@ -44,10 +44,11 @@ class GameLogic(var gameSettings:GameMatchSettings, var listener:GameLogicListen
 
   def isGameStarted = false
   def startRound() = {
-
+    listener.onRoundStart()
   }
 
   def competitorScored(scorerComepetitorId:Int) {
+    listener.onCompetetitorScored(null)
     gameSettings.roundEndCriteria match {
       case ScoreReached(n) =>
         if (scoreStrategy.getCompetitorScore(scorerComepetitorId) >= n) {

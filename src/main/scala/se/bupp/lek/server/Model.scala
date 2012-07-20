@@ -170,7 +170,7 @@ object Model {
 
   class PlayerJoinRequest {
     var clientLabel: String = _
-    var teamIdentifier : Int = _
+    var teamIdentifier : Int = -1
   }
 
   class PlayerJoinResponse {

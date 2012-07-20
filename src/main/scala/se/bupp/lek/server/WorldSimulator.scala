@@ -56,7 +56,7 @@ class ProjectileCollisionControl(cs:CollisionShape) extends RigidBodyControl(cs)
 
 
 
-class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionListener {
+abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionListener {
 
   world.getPhysicsSpace.addCollisionListener(this)
 
@@ -72,8 +72,8 @@ class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionListener {
   def collision(p1: PhysicsCollisionEvent) {
   //println("collision")
     (extractUserData(p1.getNodeA),extractUserData(p1.getNodeB)) match {
-    case (Some(proj:ProjectileGO),Some(player:PlayerConnection)) => playerDied(p1.getNodeB, player) ; explodeProjectile(p1.getNodeA,proj)
-    case (Some(player:PlayerConnection),Some(proj:ProjectileGO)) => playerDied(p1.getNodeA, player) ; explodeProjectile(p1.getNodeB,proj)
+    case (Some(proj:ProjectileGO),Some(player:PlayerConnection)) => playerDied(p1.getNodeB, player, proj.playerId) ; explodeProjectile(p1.getNodeA,proj)
+    case (Some(player:PlayerConnection),Some(proj:ProjectileGO)) => playerDied(p1.getNodeA, player, proj.playerId) ; explodeProjectile(p1.getNodeB,proj)
     case (Some(proj:ProjectileGO), None) => explodeProjectile(p1.getNodeA,proj)
     case (None, Some(proj:ProjectileGO)) => explodeProjectile(p1.getNodeB,proj)
 
@@ -81,8 +81,9 @@ class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionListener {
     }
   }
 
+  def playerKilledPlayer(killer:Int, victim:Int)
 
-  def playerDied(s: Spatial, player: Model.PlayerConnection) {
+  def playerDied(s: Spatial, player: Model.PlayerConnection, killer:Int) {
     player.state match {
       case Dead(since) =>
       case Playing() =>
@@ -94,6 +95,7 @@ class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionListener {
         player.state = Dead(System.currentTimeMillis())
         //world.unspawnPlayer(s,player)
         spatialsToRemoveInUpdatePhase = spatialsToRemoveInUpdatePhase :+ (s, player)
+        playerKilledPlayer(killer,player.playerId)
 
     }
   }
