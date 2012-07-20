@@ -176,9 +176,9 @@ object MyBuild extends Build {
 
     webstartKeyConf := KeyConf(
       keyStore    = file("testKeys"),
-      storePass   = "asdf1234",
+      storePass   = "bobbafett123",
       alias       = "jdc",
-      keyPass     = "asdf1234"
+      keyPass     = "bobbafett123"
     ),
 
     webstartJnlpConf    := Seq(JnlpConf(

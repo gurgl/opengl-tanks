@@ -3,7 +3,7 @@ package se.bupp.lek
 import common.model.Competitor
 import org.specs2.mutable.Specification
 import server.GameLogicFactory
-import server.GameLogicFactory.{AbstractKeep, TimedKeepsScoringStrategy, KillBasedStrategy, GameLogicListener}
+import server.GameLogicFactory.{AbstractScoringControllables, TimedKeepsScoringStrategy, KillBasedStrategy, GameLogicListener}
 import server.Server.GameMatchSettings
 import server.Server.GameMatchSettings.{ScoreReached, NumOfRoundsPlayed, WhenNumOfConnectedPlayersCriteria}
 
@@ -91,7 +91,7 @@ class GameLogicTest extends Specification with Mockito {
       )
 
       val listener = mock[GameLogicListener]
-      val gameLogic = GameLogicFactory.create(settings, listener, new TimedKeepsScoringStrategy(new AbstractKeep(Map(1->0,2->0))))
+      val gameLogic = GameLogicFactory.create(settings, listener, new TimedKeepsScoringStrategy(new AbstractScoringControllables(Map(1->0,2->0))))
 
 
       gameLogic.addCompetitor(new Competitor(1,1))
@@ -112,10 +112,10 @@ class GameLogicTest extends Specification with Mockito {
       gameLogic.scoreStrategy.playerKilledByPlayer(2,1)
       gameLogic.scoreStrategy.keepsTic()
 
-      gameLogic.scoreStrategy.keepsChanged(new AbstractKeep(Map(1->1,2->0)))
+      gameLogic.scoreStrategy.controllablesChanged(new AbstractScoringControllables(Map(1->1,2->0)))
       gameLogic.scoreStrategy.keepsTic()
       there was noCallsTo(listener)
-      gameLogic.scoreStrategy.keepsChanged(new AbstractKeep(Map(1->0,2->1)))
+      gameLogic.scoreStrategy.controllablesChanged(new AbstractScoringControllables(Map(1->0,2->1)))
       gameLogic.scoreStrategy.keepsTic()
       there was noCallsTo(listener)
       gameLogic.scoreStrategy.keepsTic()

@@ -16,7 +16,7 @@ import se.bupp.lek.server.GameLogic.Kill
 
 object GameLogicFactory {
 
-  class AbstractKeep(val scorePerTic:Map[Int, Int]) {
+  class AbstractScoringControllables(val scorePerTic:Map[Int, Int]) {
 
   }
 
@@ -26,7 +26,7 @@ object GameLogicFactory {
 
     def init()
     def playerKilledByPlayer(offender:Int,victim:Int)
-    def keepsChanged(keep:AbstractKeep)
+    def controllablesChanged(keep:AbstractScoringControllables)
 
     def keepsTic()
 
@@ -43,7 +43,7 @@ object GameLogicFactory {
 
     def keepsTic() {}
 
-    def keepsChanged(keep: AbstractKeep) {}
+    def controllablesChanged(keep: AbstractScoringControllables) {}
 
     def playerKilledByPlayer(offender:Int,victim:Int) {
 
@@ -67,7 +67,7 @@ object GameLogicFactory {
 
   }
 
-  class TimedKeepsScoringStrategy(var currentKeeps:AbstractKeep) extends ScoreStrategy {
+  class TimedKeepsScoringStrategy(var currentKeeps:AbstractScoringControllables) extends ScoreStrategy {
 
     var competitorScore = collection.mutable.HashMap.empty[Int,Int]
 
@@ -79,7 +79,7 @@ object GameLogicFactory {
 
     def playerKilledByPlayer(offender: Int, victim: Int) {}
 
-    def keepsChanged(keep: AbstractKeep) {
+    def controllablesChanged(keep: AbstractScoringControllables) {
       currentKeeps = keep
     }
 
