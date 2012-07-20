@@ -23,7 +23,7 @@ import com.jme3.system.JmeContext.Type
 import se.bupp.lek.server.Server.GameMatchSettings._
 import se.bupp.lek.server.Server.GameMatchSettings.WhenNumOfConnectedPlayersCriteria
 import se.bupp.lek.common.model.Competitor
-import se.bupp.lek.server.GameLogicFactory.GameLogicListener
+import se.bupp.lek.server.GameLogicFactory.{KillBasedStrategy, GameLogicListener}
 
 /**
  * Created by IntelliJ IDEA.
@@ -84,10 +84,10 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
 
     val settings: GameMatchSettings = new GameMatchSettings(
       startCriteria = WhenNumOfConnectedPlayersCriteria(2),
-      roundEndCriteria = NumOfKills(2),
+      roundEndCriteria = ScoreReached(2),
       gameEndCriteria = NumOfRoundsPlayed(1)
     )
-    gameLogic = GameLogicFactory.create(settings, new GameLogicListener() {})
+    gameLogic = GameLogicFactory.create(settings, new GameLogicListener() {}, new KillBasedStrategy())
 
     networkState = new ServerNetworkState(portSettings) {
       def addPlayerAction(pa: PlayerActionRequest) {
@@ -174,7 +174,9 @@ object Server {
     case class AlwaysOn() extends AbstractStartCriteria()
 
     sealed abstract class RoundEndCriteria()
-    case class NumOfKills(value:Int) extends RoundEndCriteria()
+    //case class KillsReached(value:Int) extends RoundEndCriteria()
+    case class ScoreReached(value:Int) extends RoundEndCriteria()
+    case class TimeLimitReached(value:Long) extends RoundEndCriteria()
 
     sealed abstract class GameEndCriteria()
     case class NumOfRoundsPlayed(value:Int) extends GameEndCriteria()

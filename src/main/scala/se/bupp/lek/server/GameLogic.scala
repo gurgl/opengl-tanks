@@ -2,8 +2,8 @@ package se.bupp.lek.server
 
 import se.bupp.lek.common.model.Competitor
 import se.bupp.lek.server.Server.GameMatchSettings
-import se.bupp.lek.server.Server.GameMatchSettings.{NumOfRoundsPlayed, NumOfKills, WhenNumOfConnectedPlayersCriteria}
-import se.bupp.lek.server.GameLogicFactory.GameLogicListener
+import se.bupp.lek.server.Server.GameMatchSettings.{ScoreReached, NumOfRoundsPlayed, WhenNumOfConnectedPlayersCriteria}
+import se.bupp.lek.server.GameLogicFactory.{ScoreStrategy, GameLogicListener}
 import se.bupp.lek.server.GameLogic.Kill
 
 
@@ -19,13 +19,16 @@ object GameLogic {
   class Kill(victim:Int)
 }
 
-class GameLogic(var gameSettings:GameMatchSettings, var listener:GameLogicListener) {
+class GameLogic(var gameSettings:GameMatchSettings, var listener:GameLogicListener, val scoreStrategy:ScoreStrategy) {
 
   var roundCount = 0
-  var playerKills = collection.mutable.HashMap[Int,List[Kill]]()
-  var competitorKills = collection.mutable.HashMap[Int,List[Kill]]()
 
   var competitors = collection.mutable.ArrayBuffer[Competitor]()
+
+  private def gameStart() {
+    scoreStrategy.init()
+    listener.onGameStart()
+  }
 
   def addCompetitor(pjr: Competitor) {
     competitors += pjr
@@ -33,7 +36,7 @@ class GameLogic(var gameSettings:GameMatchSettings, var listener:GameLogicListen
     gameSettings.startCriteria match {
       case WhenNumOfConnectedPlayersCriteria(s) =>
         if(competitors.size == s) {
-          listener.onGameStart()
+          gameStart()
         }
       case _ =>
     }
@@ -44,6 +47,15 @@ class GameLogic(var gameSettings:GameMatchSettings, var listener:GameLogicListen
 
   }
 
+  def competitorScored(scorerComepetitorId:Int) {
+    gameSettings.roundEndCriteria match {
+      case ScoreReached(n) =>
+        if (scoreStrategy.getCompetitorScore(scorerComepetitorId) >= n) {
+          roundEnded()
+        }
+      case _ =>
+    }
+  }
 
 
   def removePlayer(playerId:Int) {
@@ -67,28 +79,7 @@ class GameLogic(var gameSettings:GameMatchSettings, var listener:GameLogicListen
     listener.onGameEnd()
   }
 
-  def playerKilledByPlayer(offender:Int,victim:Int) {
 
-    val offenderCompetitor = competitors.find(_.playerId == offender).get
-    val victimCompetitor = competitors.find(_.playerId == victim).get
-
-
-    if (victimCompetitor.teamId == offenderCompetitor.teamId) {
-
-    } else {
-      playerKills += (offender -> (playerKills.get(offenderCompetitor.teamId).flatten.toList :+ new Kill(victim)) )
-      competitorKills += (offenderCompetitor.teamId-> (competitorKills.get(offenderCompetitor.teamId).flatten.toList :+ new Kill(victim)) )
-    }
-
-    gameSettings.roundEndCriteria match {
-      case NumOfKills(n) =>
-        if (competitorKills(offenderCompetitor.teamId).size >= n) {
-          roundEnded()
-        }
-      case _ =>
-    }
-
-  }
 /*
   def onGameStart()
 

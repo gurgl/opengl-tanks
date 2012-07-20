@@ -3,6 +3,8 @@ package se.bupp.lek.server
 import se.bupp.lek.server.Server.GameMatchSettings
 import se.bupp.lek.server.Model.PlayerJoinRequest
 import se.bupp.lek.common.model.Competitor
+import se.bupp.lek.server.Server.GameMatchSettings.ScoreReached
+import se.bupp.lek.server.GameLogic.Kill
 
 /**
  * Created with IntelliJ IDEA.
@@ -13,6 +15,87 @@ import se.bupp.lek.common.model.Competitor
  */
 
 object GameLogicFactory {
+
+  class AbstractKeep(val scorePerTic:Map[Int, Int]) {
+
+  }
+
+  trait ScoreStrategy {
+
+    var gameLogic:GameLogic = _
+
+    def init()
+    def playerKilledByPlayer(offender:Int,victim:Int)
+    def keepsChanged(keep:AbstractKeep)
+
+    def keepsTic()
+
+    def getCompetitorScore(competitorId:Int) : Int
+  }
+
+  class KillBasedStrategy extends ScoreStrategy {
+
+    var playerKills = collection.mutable.HashMap[Int,List[Kill]]()
+    var competitorKills = collection.mutable.HashMap[Int,List[Kill]]()
+
+
+    def init() {}
+
+    def keepsTic() {}
+
+    def keepsChanged(keep: AbstractKeep) {}
+
+    def playerKilledByPlayer(offender:Int,victim:Int) {
+
+      val offenderCompetitor = gameLogic.competitors.find(_.playerId == offender).get
+      val victimCompetitor = gameLogic.competitors.find(_.playerId == victim).get
+
+
+      if (victimCompetitor.teamId == offenderCompetitor.teamId) {
+
+      } else {
+        playerKills += (offender -> (playerKills.get(offenderCompetitor.teamId).flatten.toList :+ new Kill(victim)) )
+        competitorKills += (offenderCompetitor.teamId-> (competitorKills.get(offenderCompetitor.teamId).flatten.toList :+ new Kill(victim)) )
+
+        gameLogic.competitorScored(offenderCompetitor.teamId)
+      }
+    }
+
+    def getCompetitorScore(competitorId:Int) : Int = {
+      competitorKills(competitorId).size
+    }
+
+  }
+
+  class TimedKeepsScoringStrategy(var currentKeeps:AbstractKeep) extends ScoreStrategy {
+
+    var competitorScore = collection.mutable.HashMap.empty[Int,Int]
+
+    def init() {
+      gameLogic.competitors.groupBy(_.teamId).keys.foreach {
+        comp => competitorScore += (comp -> 0)
+      }
+    }
+
+    def playerKilledByPlayer(offender: Int, victim: Int) {}
+
+    def keepsChanged(keep: AbstractKeep) {
+      currentKeeps = keep
+    }
+
+    def keepsTic() {
+        currentKeeps.scorePerTic.foreach {
+          case (competitorId, increase) =>
+            competitorScore += ( competitorId -> (competitorScore(competitorId) + increase))
+            gameLogic.competitorScored(competitorId)
+
+        }
+    }
+
+    def getCompetitorScore(competitorId: Int) = competitorScore(competitorId)
+  }
+
+
 
   trait GameLogicListener {
     def onGameStart() {}
@@ -25,18 +108,12 @@ object GameLogicFactory {
   }
 
 
-  def create(settings:GameMatchSettings, gameLogicListener:GameLogicListener) : GameLogic = {
-    new GameLogic(settings, gameLogicListener) {
+  def create(settings:GameMatchSettings, gameLogicListener:GameLogicListener, scoreStrategy:ScoreStrategy) : GameLogic = {
+    val gl = new GameLogic(settings, gameLogicListener, scoreStrategy)
+    scoreStrategy.gameLogic = gl
+    //scoreStrategy.init()
+    gl
 
-      override def removePlayer(playerId: Int) {
-        super.removePlayer(playerId)
-      }
-
-      override def playerKilledByPlayer(offender: Int, victim: Int) {
-        super.playerKilledByPlayer(offender, victim)
-      }
-
-    }
   }
 
 
