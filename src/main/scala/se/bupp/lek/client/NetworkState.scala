@@ -104,30 +104,40 @@ class NetworkState(clientConnectSettings:ClientConnectSettings) extends Abstract
 
     currentGameWorldUpdates = Queue(gameWorldUpdatesQueue:_*)
 
+    val worldToPaintOpt = gameApp.visualWorldSimulation.generateLocalGameWorld(simTime, currentGameWorldUpdates)
 
-    if(currentGameWorldUpdates.size > 0) {
-      val prediction: Set[AbstractOwnedGameObject with Savable] = gameApp.visualWorldSimulation.calculatePrediction(simTime, currentGameWorldUpdates, gameApp.playerIdOpt.get)
+    worldToPaintOpt.foreach( gameApp.visualWorldSimulation.updateGameWorld(_ , input) )
 
-      val lastGameWorldUpdate: ServerGameWorld = currentGameWorldUpdates.last
-      gameApp.visualWorldSimulation.updateGameWorld(prediction, lastGameWorldUpdate, input)
-    }
 
     lastUpdate match {
-      case Some((simTime, input)) =>
-
+      case Some((lastSimTime, input)) =>
 
       if((System.currentTimeMillis() - lastSentUpdate).toFloat > 1000f/15f ) {
 
-        val reorientation = MessageQueue.flushAccumulated()
-        val projectiles = gameApp.visualWorldSimulation.flushFired()
-        val request = gameApp.createPlayerActionRequest(simTime, reorientation, projectiles)
-        gameClient.sendUDP(request)
+        sendClientUpdate(simTime)
+
         lastSentUpdate = System.currentTimeMillis()
       }
       case None =>
     }
 
     lastUpdate = Some((simTime, input))
+
+  }
+
+
+  /*def generateLocalGameWorld(simTime: Long,currentGameWorldUpdates:Queue[Model.ServerGameWorld]): (Set[Model.AbstractOwnedGameObject with Savable] , Model.ServerGameWorld) = {
+    val prediction: Set[AbstractOwnedGameObject with Savable] = gameApp.visualWorldSimulation.calculatePrediction(simTime, currentGameWorldUpdates, gameApp.playerIdOpt.get)
+
+    (prediction, currentGameWorldUpdates.last)
+  }*/
+
+
+  def sendClientUpdate(simTime: Long) {
+    val reorientation = MessageQueue.flushAccumulated()
+    val projectiles = gameApp.visualWorldSimulation.flushFired()
+    val request = gameApp.createPlayerActionRequest(simTime, reorientation, projectiles)
+    gameClient.sendUDP(request)
 
   }
 
