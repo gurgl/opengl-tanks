@@ -49,7 +49,8 @@ object MessageQueue {
 
 }
 
-class NetworkState(val tcpPort: Int, val udpPort: Int) extends AbstractAppState with PhysicsTickListener {
+class ClientConnectSettings(val host:String, val tcpPort: Int, val udpPort: Int)
+class NetworkState(clientConnectSettings:ClientConnectSettings) extends AbstractAppState with PhysicsTickListener {
 
   var gameClient:KryoClient = _
 
@@ -83,6 +84,7 @@ class NetworkState(val tcpPort: Int, val udpPort: Int) extends AbstractAppState 
   override def update(tpf: Float) {
     if(gameApp.playerIdOpt.isEmpty) return
 
+    if(!isEnabled) return
     val simTime = System.currentTimeMillis()
 
     var input = gameApp.playerInput.pollInput()
@@ -165,8 +167,8 @@ class NetworkState(val tcpPort: Int, val udpPort: Int) extends AbstractAppState 
     });
 
     gameClient.start();
-    println("tcpPort " + tcpPort + ",  updPort " + udpPort)
-    gameClient.connect(5000, "localhost", tcpPort, udpPort);
+    println("tcpPort " + clientConnectSettings.tcpPort + ",  updPort " + clientConnectSettings.udpPort)
+    gameClient.connect(5000, clientConnectSettings.host, clientConnectSettings.tcpPort, clientConnectSettings.udpPort);
 
     val playerJoinRequest = new PlayerJoinRequest()
     playerJoinRequest.clientLabel = ManagementFactory.getRuntimeMXBean().getName()

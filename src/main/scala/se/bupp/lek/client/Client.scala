@@ -64,7 +64,7 @@ class PlayerInput(startPosition:Orientation) {
   }
 }
 
-class Client(tcpPort:Int, udpPort:Int) extends SimpleApplication {
+class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplication {
   import Client._
 
   var playerIdOpt:Option[Int] = None
@@ -85,7 +85,14 @@ class Client(tcpPort:Int, udpPort:Int) extends SimpleApplication {
           audio_gun.playInstance()
           //rootNode.attachChild(p)
         }
+      } else if (name.equals("Pause")) {
+        if(value == true) {
+          val state: NetworkState = getStateManager.getState(classOf[NetworkState])
+          state.setEnabled(!state.isEnabled)
+          println("Paused " + state.isEnabled)
+        }
       }
+
     }
 
     def onAnalog(name:String, value:Float, tpf:Float) {
@@ -110,7 +117,9 @@ class Client(tcpPort:Int, udpPort:Int) extends SimpleApplication {
 
           val v = visualWorldSimulation.player.getLocalRotation.toRotationMatrix;
           playerInput.translation = v.getColumn(0).mult(-speed*tpf)
-        case "Fire" =>
+        case _ =>
+
+
       }
     }
   };
@@ -133,13 +142,19 @@ class Client(tcpPort:Int, udpPort:Int) extends SimpleApplication {
   def setupInput() {
 
     //import collection.JavaConversions.
-    inputManager.addListener(actionListener, List("Left","Right", "Forward", "Back", "Fire"):_*)
 
-    inputManager.addMapping("Left",   new KeyTrigger(KeyInput.KEY_A));
-    inputManager.addMapping("Right",  new KeyTrigger(KeyInput.KEY_D));
-    inputManager.addMapping("Forward", new KeyTrigger(KeyInput.KEY_W));
-    inputManager.addMapping("Back",  new KeyTrigger(KeyInput.KEY_S));
-    inputManager.addMapping("Fire",  new KeyTrigger(KeyInput.KEY_SPACE));
+    val mappings = Map("Left" -> new KeyTrigger(KeyInput.KEY_A),
+      "Right" -> new KeyTrigger(KeyInput.KEY_D),
+      "Forward" -> new KeyTrigger(KeyInput.KEY_W),
+      "Back" ->  new KeyTrigger(KeyInput.KEY_S),
+      "Fire" -> new KeyTrigger(KeyInput.KEY_SPACE),
+      "Pause" ->  new KeyTrigger(KeyInput.KEY_P)
+    )
+    inputManager.addListener(actionListener, mappings.keys.toList:_*)
+
+    mappings.foreach {
+      case (key, trigger) => inputManager.addMapping(key,trigger)
+    }
   }
 
 
@@ -184,8 +199,9 @@ class Client(tcpPort:Int, udpPort:Int) extends SimpleApplication {
     setShowSettings(false)
 
     stateManager.detach( stateManager.getState(classOf[FlyCamAppState]))
-    val networkState: NetworkState = new NetworkState(tcpPort, udpPort)
+    val networkState: NetworkState = new NetworkState(clientConnectSettings)
     stateManager.attach(networkState)
+
 
 
     val bulletAppState = new BulletAppState() {
@@ -251,7 +267,7 @@ object Client {
   var spel:Client = _
 
   def main(arguments: Array[String]): Unit = {
-    spel = new Client(54555, 54777)
+    spel = new Client(new ClientConnectSettings("localhost", 54555, 54777))
     val settings = new AppSettings(true);
     settings.setFrameRate(58)
     settings.setResolution(640,480)
