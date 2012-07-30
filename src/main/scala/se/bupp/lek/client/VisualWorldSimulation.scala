@@ -271,20 +271,14 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
     val (nonPlayerPredictons:Set[AbstractOwnedGameObject with Savable], lastGameWorldUpdate: ServerGameWorld) = visualGameWorld
     syncNonPlayerGameWorld(nonPlayerPredictons)
 
-    val newWorldUpdate = if(lastSynchedGameWorldUpdate != lastGameWorldUpdate) {
+    if(lastSynchedGameWorldUpdate != lastGameWorldUpdate) {
+      applyServerWorld(lastGameWorldUpdate)
       lastSynchedGameWorldUpdate = lastGameWorldUpdate
-      Some(lastGameWorldUpdate)
-    } else None
-
-    newWorldUpdate.foreach {
-      wu => wu.explodedProjectiles.foreach {
-        p => println("explosiion")
-          explosion(p.position.clone())
-      }
-
     }
 
-    applyPlayerInput(lastGameWorldUpdate,reorientation, newWorldUpdate);
+
+    applyPlayerInput(lastGameWorldUpdate,reorientation)
+
     val dbgPlayerPos = player.getControl(classOf[CharacterControl]).getPhysicsLocation.clone()
 
     /*
@@ -360,22 +354,31 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
 
   var lastSynchedGameWorldUpdate:ServerGameWorld = _
 
-  def applyPlayerInput(lastGameWorldUpdate: ServerGameWorld, input:Reorientation, newServerStateOpt:Option[ServerGameWorld]) {
+  def applyServerWorld(newServerState:ServerGameWorld) {
 
-    // Only check if we're in (TODO: Rewrite for readablity)
-    lastGameWorldUpdate.alivePlayers.find(_.playerId == playerIdOpt().get).foreach {
+    newServerState.explodedProjectiles.foreach {
+      p => println("explosiion")
+      explosion(p.position.clone())
+    }
+
+    // Only check if player alive (TODO: Rewrite for readablity)
+    newServerState.alivePlayers.find(_.playerId == playerIdOpt().get).foreach {
       x =>
 
-      newServerStateOpt.foreach {
-        newServerState =>
-        // TODO: Might be able to do this when update arrives instead of on update
+      // TODO: Might be able to do this when server state arrives instead of on update
         applyCorrectionIfDiffers(x.sentToServerByClient, newServerState.timeStamp, x)
-      }
 
       //player.move(playerinput.translation)
       //player.rotate(playerinput.rotation)
 
-      val control = player.getControl(classOf[CharacterControl])
+    }
+  }
+  def applyPlayerInput(lastGameWorldUpdate: ServerGameWorld, input:Reorientation) {
+
+      // Only check if player alive (TODO: Rewrite for readablity)
+    lastGameWorldUpdate.alivePlayers.find(_.playerId == playerIdOpt().get).foreach {
+      x =>
+        val control = player.getControl(classOf[CharacterControl])
 
 
       //println(direction + " " + bulletAppState.getSpeed + " " + bulletAppState.getPhysicsSpace.getAccuracy)

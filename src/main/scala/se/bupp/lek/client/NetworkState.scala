@@ -95,12 +95,6 @@ class NetworkState(clientConnectSettings:ClientConnectSettings) extends Abstract
 
     MessageQueue.accumulate(input)
 
-    //gameApp.visualWorldSimulation.saveReorientation(simTime, input)
-
-    //saveReorientation(timeStamp, lastInput)
-
-
-    //    }
 
     currentGameWorldUpdates = Queue(gameWorldUpdatesQueue:_*)
 
