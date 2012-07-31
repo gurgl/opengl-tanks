@@ -87,7 +87,7 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
         }
       } else if (name.equals("Pause")) {
         if(value == true) {
-          val state: NetworkState = getStateManager.getState(classOf[NetworkState])
+          val state: PlayState = getStateManager.getState(classOf[PlayState])
           state.setEnabled(!state.isEnabled)
           println("Paused " + state.isEnabled)
         }
@@ -199,8 +199,12 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
     setShowSettings(false)
 
     stateManager.detach( stateManager.getState(classOf[FlyCamAppState]))
-    val networkState: NetworkState = new NetworkState(clientConnectSettings)
+
+    val networkState: NetworkComponent = new NetworkComponent(clientConnectSettings)
     stateManager.attach(networkState)
+
+    val playState: PlayState = new PlayState(clientConnectSettings)
+    stateManager.attach(playState)
 
 
 
@@ -219,7 +223,7 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
     }
     stateManager.attach(bulletAppState);
 
-    bulletAppState.getPhysicsSpace.addTickListener(networkState)
+    bulletAppState.getPhysicsSpace.addTickListener(playState)
 
     visualWorldSimulation = new VisualWorldSimulation(rootNode,assetManager,() => playerIdOpt,playerInput, viewPort, bulletAppState);
 
@@ -249,9 +253,11 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
   override def destroy() {
     super.destroy()
 
-    val networkState: NetworkState = stateManager.getState(classOf[NetworkState])
-    stateManager.detach( networkState)
-    networkState.cleanup()
+    val playState: PlayState = stateManager.getState(classOf[PlayState])
+
+
+    stateManager.detach( playState)
+    playState.cleanup()
 
 
 
