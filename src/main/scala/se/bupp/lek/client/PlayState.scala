@@ -40,7 +40,7 @@ class PlayState(clientConnectSettings:ClientConnectSettings) extends AbstractApp
 
   var gameApp:Client = _
 
-  var networkStateOpt:Option[NetworkComponent] = None
+  var worldUpdater:WorldUpdater = _
 
   var lastUpdate:Option[(Long,Reorientation)] = None
 
@@ -51,22 +51,17 @@ class PlayState(clientConnectSettings:ClientConnectSettings) extends AbstractApp
     if(!isEnabled) return
     val simTime = System.currentTimeMillis()
 
-
     var input = gameApp.playerInput.pollInput()
 
-    networkStateOpt.foreach(_.handleInputForNetworking(input,lastUpdate))
+    worldUpdater.processInput(input,lastUpdate)
 
-    val worldToPaintOpt = networkStateOpt match {
-      case Some(networkState) => networkState.generateNetworkModeGameWorld(simTime)
-      case None => throw new IllegalStateException("Not implemented")
-    }
+    val worldToPaintOpt = worldUpdater.generateGameWorld(simTime)
 
     worldToPaintOpt.foreach( gameApp.visualWorldSimulation.updateGameWorld(_ , input) )
 
-    networkStateOpt.foreach(networkState => lastUpdate.foreach {
-        case (lastSimTime, _) =>
-          networkState.handleNeworkGameClientToServerUpdate(simTime)
-    })
+    lastUpdate.foreach {
+        case _ => worldUpdater.postUpdate(simTime)
+    }
 
     lastUpdate = Some((simTime, input))
 
@@ -85,7 +80,7 @@ class PlayState(clientConnectSettings:ClientConnectSettings) extends AbstractApp
     gameApp = app.asInstanceOf[Client]
 
     val state: NetworkComponent = gameApp.getStateManager.getState(classOf[NetworkComponent])
-    networkStateOpt = Option.apply(state)
+    worldUpdater = state
   }
 
   val lock : AnyRef = new Object()

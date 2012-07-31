@@ -7,6 +7,7 @@ import management.ManagementFactory
 import com.jme3.app.state.{AbstractAppState, AppStateManager}
 import collection.immutable.Queue
 import com.jme3.app.Application
+import VisualWorldSimulation._
 
 import collection.JavaConversions
 import JavaConversions.asScalaBuffer
@@ -45,8 +46,12 @@ object MessageQueue {
 
 class ClientConnectSettings(val host:String, val tcpPort: Int, val udpPort: Int)
 
-
-class NetworkComponent(clientConnectSettings:ClientConnectSettings) extends AbstractAppState {
+trait WorldUpdater {
+  def postUpdate(simTime: Long)
+  def processInput(input: PlayerInput.Reorientation,lastUpdate:Option[(Long,Reorientation)])
+  def generateGameWorld(simTime: Long) : Option[VisualGameWorld]
+}
+class NetworkComponent(clientConnectSettings:ClientConnectSettings) extends AbstractAppState with WorldUpdater {
 
   var gameClient:KryoClient = _
 
@@ -143,7 +148,7 @@ class NetworkComponent(clientConnectSettings:ClientConnectSettings) extends Abst
   }
 
 
-  def handleNeworkGameClientToServerUpdate(simTime: Long) {
+  def postUpdate(simTime: Long) {
     if ((System.currentTimeMillis() - lastSentUpdate).toFloat > 1000f / 15f) {
 
       sendClientUpdate(simTime)
@@ -152,7 +157,7 @@ class NetworkComponent(clientConnectSettings:ClientConnectSettings) extends Abst
     }
   }
 
-  def handleInputForNetworking(input: PlayerInput.Reorientation,lastUpdate:Option[(Long,Reorientation)]) {
+  def processInput(input: PlayerInput.Reorientation,lastUpdate:Option[(Long,Reorientation)]) {
     lastUpdate.foreach {
       case (lastSimTime, lastInput) =>
         gameApp.visualWorldSimulation.storePlayerLastInputAndOutput(lastSimTime, lastInput)
@@ -162,7 +167,7 @@ class NetworkComponent(clientConnectSettings:ClientConnectSettings) extends Abst
   }
 
   var currentGameWorldUpdates:Queue[ServerGameWorld] = null
-  def generateNetworkModeGameWorld(simTime: Long) = {
+  def generateGameWorld(simTime: Long) : Option[VisualGameWorld] = {
     currentGameWorldUpdates = Queue(gameWorldUpdatesQueue: _*)
 
     gameApp.visualWorldSimulation.generateLocalGameWorld(simTime, currentGameWorldUpdates)
