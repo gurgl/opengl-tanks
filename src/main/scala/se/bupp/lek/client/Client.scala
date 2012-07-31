@@ -69,60 +69,12 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
   var playerIdOpt:Option[Int] = None
 
-  var playerInput:PlayerInput = _
 
   var visualWorldSimulation:VisualWorldSimulation = _
 
   var audio_gun:AudioNode = _
 
-  val actionListener = new AnalogListener() with ActionListener {
-
-    def onAction(name:String, value:Boolean, tpf:Float) {
-
-      if (name.equals("Fire")) {
-        if(value == true) {
-          val p = visualWorldSimulation.fireProjectile(visualWorldSimulation.player.getControl(classOf[CharacterControl]).getPhysicsLocation.clone(),visualWorldSimulation.player.getLocalRotation)
-          audio_gun.playInstance()
-          //rootNode.attachChild(p)
-        }
-      } else if (name.equals("Pause")) {
-        if(value == true) {
-          val state: PlayState = getStateManager.getState(classOf[PlayState])
-          state.setEnabled(!state.isEnabled)
-          println("Paused " + state.isEnabled)
-        }
-      }
-
-    }
-
-    def onAnalog(name:String, value:Float, tpf:Float) {
-
-      name match {
-        case "Left" =>
-
-          playerInput.rotation = new Quaternion().fromAngleNormalAxis(rotSpeed * tpf,Vector3f.UNIT_Y)
-
-        case "Right" =>
-          //player.rotate(0, -rotSpeed * tpf, 0);
-          //val rot = new Quaternion(0f, math.sin(angle/2d).toFloat, 0f, math.cos(angle/2d).toFloat)
-
-          playerInput.rotation = new Quaternion().fromAngleNormalAxis(-rotSpeed * tpf,Vector3f.UNIT_Y)
-
-        case "Forward" =>
-
-          val v = visualWorldSimulation.player.getLocalRotation.toRotationMatrix;
-          playerInput.translation = v.getColumn(0).mult(speed*tpf)
-
-        case "Back" =>
-
-          val v = visualWorldSimulation.player.getLocalRotation.toRotationMatrix;
-          playerInput.translation = v.getColumn(0).mult(-speed*tpf)
-        case _ =>
-
-
-      }
-    }
-  };
+  def getSpeed = speed
 
   var seqId = 0
   def createPlayerActionRequest(lastRecordedActionTime:Long, reorientation:Reorientation,projectiles:List[ProjectileFireGO]): Model.PlayerActionRequest = {
@@ -139,23 +91,7 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
       request
     }
 
-  def setupInput() {
 
-    //import collection.JavaConversions.
-
-    val mappings = Map("Left" -> new KeyTrigger(KeyInput.KEY_A),
-      "Right" -> new KeyTrigger(KeyInput.KEY_D),
-      "Forward" -> new KeyTrigger(KeyInput.KEY_W),
-      "Back" ->  new KeyTrigger(KeyInput.KEY_S),
-      "Fire" -> new KeyTrigger(KeyInput.KEY_SPACE),
-      "Pause" ->  new KeyTrigger(KeyInput.KEY_P)
-    )
-    inputManager.addListener(actionListener, mappings.keys.toList:_*)
-
-    mappings.foreach {
-      case (key, trigger) => inputManager.addMapping(key,trigger)
-    }
-  }
 
 
 
@@ -200,10 +136,10 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
     stateManager.detach( stateManager.getState(classOf[FlyCamAppState]))
 
-    val networkState: NetworkComponent = new NetworkComponent(clientConnectSettings)
+    val networkState: NetworkGameState = new NetworkGameState(clientConnectSettings)
     stateManager.attach(networkState)
 
-    val playState: PlayState = new PlayState(clientConnectSettings)
+    val playState: PlayState = new PlayState()
     stateManager.attach(playState)
 
 
@@ -225,16 +161,11 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
     bulletAppState.getPhysicsSpace.addTickListener(playState)
 
-    visualWorldSimulation = new VisualWorldSimulation(rootNode,assetManager,() => playerIdOpt,playerInput, viewPort, bulletAppState);
 
-    val playerStartPosition = new Orientation(Vector3f.ZERO.clone().setY(0.5f), Quaternion.IDENTITY.clone())
-    visualWorldSimulation.init(playerStartPosition)
-
-    playerInput = new PlayerInput(playerStartPosition)
 
     initAudio()
 
-    setupInput()
+    //playState.setupInput()
   }
   
 
@@ -242,8 +173,6 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
   override def simpleUpdate(tpf: Float) {
 
-    val (pos,rot) = visualWorldSimulation.getCamPosition
-    getCamera.setFrame(pos,rot)
 
   }
 
@@ -267,7 +196,6 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
 object Client {
 
-  val rotSpeed = 2.0f
 
   var buffer = new StringBuilder
   var spel:Client = _

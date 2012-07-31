@@ -51,7 +51,7 @@ trait WorldUpdater {
   def processInput(input: PlayerInput.Reorientation,lastUpdate:Option[(Long,Reorientation)])
   def generateGameWorld(simTime: Long) : Option[VisualGameWorld]
 }
-class NetworkComponent(clientConnectSettings:ClientConnectSettings) extends AbstractAppState with WorldUpdater {
+class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends AbstractAppState with WorldUpdater {
 
   var gameClient:KryoClient = _
 
