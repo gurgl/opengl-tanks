@@ -101,9 +101,9 @@ object GameLogicFactory {
   trait GameLogicListener {
     def onGameStart()
 
-    def onRoundStart()
+    def onIntermediateRoundStart()
 
-    def onRoundEnd(roundResults:RoundResults, standing:GameTotalResults)
+    def onIntermediateRoundEnd(roundResults:RoundResults, standing:GameTotalResults)
 
     def onGameEnd(totals:GameTotalResults)
 

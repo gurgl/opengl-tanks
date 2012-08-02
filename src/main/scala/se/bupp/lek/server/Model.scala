@@ -177,6 +177,22 @@ object Model {
     var playerId: Int = _
   }
 
+  class GameOverRequest {
+
+  }
+
+  class StartGameRequest {
+
+  }
+
+  class RoundOverRequest {
+
+  }
+
+  class StartRoundRequest {
+
+  }
+
   class MotionGO(
                   var translation: Vector3f,
                   var rotation: Quaternion,

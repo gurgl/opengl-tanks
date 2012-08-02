@@ -28,6 +28,7 @@ class GameLogic(var gameSettings:GameMatchSettings, var listener:GameLogicListen
   private def gameStart() {
     scoreStrategy.init()
     listener.onGameStart()
+    startRound()
   }
 
   def addCompetitor(pjr: Competitor) {
@@ -44,7 +45,8 @@ class GameLogic(var gameSettings:GameMatchSettings, var listener:GameLogicListen
 
   def isGameStarted = false
   def startRound() = {
-    listener.onRoundStart()
+    println("roundCount roundCount roundCount roundCount " + roundCount)
+    if(roundCount > 0) { listener.onIntermediateRoundStart() }
   }
 
   def competitorScored(scorerComepetitorId:Int) {
@@ -64,12 +66,14 @@ class GameLogic(var gameSettings:GameMatchSettings, var listener:GameLogicListen
   }
 
   def roundEnded() {
-    listener.onRoundEnd(null,null)
+    //listener.onIntermediateRoundEnd(null,null)
     roundCount = roundCount + 1
     gameSettings.gameEndCriteria match {
       case NumOfRoundsPlayed(r) =>
         if(roundCount >= r) {
           gameEnded()
+        } else {
+          listener.onIntermediateRoundEnd(null,null)
         }
       case _ =>
 
@@ -84,9 +88,9 @@ class GameLogic(var gameSettings:GameMatchSettings, var listener:GameLogicListen
 /*
   def onGameStart()
 
-  def onRoundStart()
+  def onIntermediateRoundStart()
 
-  def onRoundEnd()
+  def onIntermediateRoundEnd()
 
   def onGameEnd()*/
 

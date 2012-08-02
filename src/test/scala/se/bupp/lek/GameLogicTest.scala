@@ -12,6 +12,8 @@ import org.mockito.stubbing.Answer
 import org.mockito.invocation.InvocationOnMock
 import org.specs2.mock.Mockito
 import collection.mutable
+//import org.mockito.Mockito
+import org.specs2.mock.Mockito
 
 
 /**
@@ -26,7 +28,7 @@ class GameLogicTest extends Specification with Mockito {
 
   "kill based games" should {
 
-      "handle simple 1 on 1 free for all" in {
+     "handle simple 1 on 1 free for all, 1 round" in {
       val settings = new GameMatchSettings(
         startCriteria = WhenNumOfConnectedPlayersCriteria(2),
         roundEndCriteria = ScoreReached(2),
@@ -49,8 +51,41 @@ class GameLogicTest extends Specification with Mockito {
       there was two(listener).onCompetetitorScored(any)
       gameLogic.scoreStrategy.playerKilledByPlayer(2,1)
       there was three(listener).onCompetetitorScored(any)
-      there was one(listener).onRoundEnd(any,any)
+      //there was one(listener).onIntermediateRoundEnd(any,any)
       there was one(listener).onGameEnd(any)
+      there were noMoreCallsTo(listener)
+    }
+
+
+    "handle simple 1 on 1 free for all, multiple rounds" in {
+      val settings = new GameMatchSettings(
+        startCriteria = WhenNumOfConnectedPlayersCriteria(2),
+        roundEndCriteria = ScoreReached(1),
+        gameEndCriteria = NumOfRoundsPlayed(2)
+      )
+
+      val listener = mock[GameLogicListener]
+      val gameLogic = GameLogicFactory.create(settings, listener, new KillBasedStrategy())
+
+      gameLogic.addCompetitor(new Competitor(1,1))
+
+      there was no(listener).onGameStart()
+      //gameLogic.isGameStarted should be equalTo(false)
+      gameLogic.addCompetitor(new Competitor(2,2))
+      there was one(listener).onGameStart()
+      //Mockito.reset(gameLogic)
+      gameLogic.scoreStrategy.playerKilledByPlayer(1,2)
+      there was one(listener).onCompetetitorScored(any)
+      there was one(listener).onIntermediateRoundEnd(any,any)
+      there was no(listener).onGameEnd(any)
+
+      gameLogic.startRound()
+      there was one(listener).onIntermediateRoundStart()
+      gameLogic.scoreStrategy.playerKilledByPlayer(1,2)
+      there was two(listener).onCompetetitorScored(any)
+      there was one(listener).onGameEnd(any)
+      there were noMoreCallsTo(listener)
+
     }
 
     "handle simple 2 on 2 team match" in {
@@ -78,8 +113,9 @@ class GameLogicTest extends Specification with Mockito {
       there was two(listener).onCompetetitorScored(any)
       gameLogic.scoreStrategy.playerKilledByPlayer(4,1)
       there was three(listener).onCompetetitorScored(any)
-      there was one(listener).onRoundEnd(any,any)
+      //there was one(listener).onIntermediateRoundEnd(any,any)
       there was one(listener).onGameEnd(any)
+      there were noMoreCallsTo(listener)
     }
   }
 
@@ -122,8 +158,9 @@ class GameLogicTest extends Specification with Mockito {
       there was two(listener).onCompetetitorScored(any)
       gameLogic.scoreStrategy.keepsTic()
       there was three(listener).onCompetetitorScored(any)
-      there was one(listener).onRoundEnd(any,any)
+      //there was one(listener).onIntermediateRoundEnd(any,any)
       there was one(listener).onGameEnd(any)
+      there were noMoreCallsTo(listener)
     }
   }
 

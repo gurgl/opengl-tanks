@@ -11,7 +11,6 @@ import se.bupp.lek.server.Model._
 
 import JavaConversions.asScalaBuffer
 import collection.mutable.{HashMap, ArrayBuffer}
-import se.bupp.lek.server.Model._
 import scala.None
 import com.jme3.app.{FlyCamAppState, SimpleApplication}
 import com.jme3.bullet.{PhysicsSpace, PhysicsTickListener, BulletAppState}
@@ -24,6 +23,10 @@ import se.bupp.lek.server.Server.GameMatchSettings._
 import se.bupp.lek.server.Server.GameMatchSettings.WhenNumOfConnectedPlayersCriteria
 import se.bupp.lek.common.model.Competitor
 import se.bupp.lek.server.GameLogicFactory._
+import se.bupp.lek.server.Server.GameMatchSettings.ScoreReached
+import se.bupp.lek.server.Server.GameMatchSettings.WhenNumOfConnectedPlayersCriteria
+import se.bupp.lek.server.Server.GameMatchSettings.NumOfRoundsPlayed
+import java.util.{TimerTask, Timer}
 import se.bupp.lek.server.Server.GameMatchSettings.ScoreReached
 import se.bupp.lek.server.Server.GameMatchSettings.WhenNumOfConnectedPlayersCriteria
 import se.bupp.lek.server.Server.GameMatchSettings.NumOfRoundsPlayed
@@ -93,7 +96,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
     val settings: GameMatchSettings = new GameMatchSettings(
       startCriteria = WhenNumOfConnectedPlayersCriteria(2),
       roundEndCriteria = ScoreReached(2),
-      gameEndCriteria = NumOfRoundsPlayed(1)
+      gameEndCriteria = NumOfRoundsPlayed(2)
     )
 
     var listener = new GameLogicListener() {
@@ -106,9 +109,10 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
         println("Game Started")
       }
 
-      def onRoundStart() {
+      def onIntermediateRoundStart() {
         // send round started message
         println("Round Started")
+        networkState.server.sendToAllTCP(new StartRoundRequest)
         worldSimulator.removeAndRespawnAll()
       }
 
@@ -118,14 +122,21 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
         // send displayable score modification
       }
 
-      def onRoundEnd(roundResults: RoundResults, standing: GameTotalResults) {
+      def onIntermediateRoundEnd(roundResults: RoundResults, standing: GameTotalResults) {
         // send countdown message
         // add timer to start round
         println("Round ended")
+        new Timer().schedule(new TimerTask {
+          def run() {
+           gameLogic.startRound()
+          }
+        },3000L)
+        networkState.server.sendToAllTCP(new RoundOverRequest)
       }
 
       def onGameEnd(totals: GameTotalResults) {
         worldSimulator.removeAndRespawnAll()
+        networkState.server.sendToAllTCP(new RoundOverRequest)
         println("Game ended")
         // lobby mode
       }
@@ -205,7 +216,10 @@ object Server {
       classOf[OrientationGO],
       classOf[ProjectileFireGO],
       classOf[java.util.ArrayList[PlayerGO]],
-      classOf[ServerGameWorld]
+      classOf[ServerGameWorld],
+      classOf[RoundOverRequest],
+      classOf[StartRoundRequest]
+
     )
 
   object GameMatchSettings {

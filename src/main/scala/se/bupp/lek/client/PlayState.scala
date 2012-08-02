@@ -34,6 +34,7 @@ import com.jme3.input.KeyInput
 class PlayState() extends AbstractAppState with PhysicsTickListener {
 
 
+  var visualWorldSimulation:VisualWorldSimulation = _
 
 
 
@@ -52,7 +53,7 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
 
   override def update(tpf: Float) {
 
-    val (pos,rot) = gameApp.visualWorldSimulation.getCamPosition
+    val (pos,rot) = visualWorldSimulation.getCamPosition
     gameApp.getCamera.setFrame(pos,rot)
 
 
@@ -67,7 +68,7 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
 
     val worldToPaintOpt = worldUpdater.generateGameWorld(simTime)
 
-    worldToPaintOpt.foreach( gameApp.visualWorldSimulation.updateGameWorld(_ , input) )
+    worldToPaintOpt.foreach( visualWorldSimulation.updateGameWorld(_ , input) )
 
     lastUpdate.foreach {
         case _ => worldUpdater.postUpdate(simTime)
@@ -95,8 +96,8 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
     val playerStartPosition = new Orientation(Vector3f.ZERO.clone().setY(0.5f), Quaternion.IDENTITY.clone())
 
     val bulletAppState = gameApp.getStateManager.getState(classOf[BulletAppState])
-    gameApp.visualWorldSimulation = new VisualWorldSimulation(gameApp.getRootNode,gameApp.getAssetManager,() => gameApp.playerIdOpt,playerInput, gameApp.getViewPort, bulletAppState);
-    gameApp.visualWorldSimulation.init(playerStartPosition)
+    visualWorldSimulation = new VisualWorldSimulation(gameApp.getRootNode,gameApp.getAssetManager,() => gameApp.playerIdOpt,playerInput, gameApp.getViewPort, bulletAppState);
+    visualWorldSimulation.init(playerStartPosition)
     playerInput = new PlayerInput(playerStartPosition)
 
     setupInput()
@@ -121,7 +122,7 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
 
       if (name.equals("Fire")) {
         if(value == true) {
-          val p = gameApp.visualWorldSimulation.fireProjectile(gameApp.visualWorldSimulation.player.getControl(classOf[CharacterControl]).getPhysicsLocation.clone(),gameApp.visualWorldSimulation.player.getLocalRotation)
+          val p = visualWorldSimulation.fireProjectile(visualWorldSimulation.player.getControl(classOf[CharacterControl]).getPhysicsLocation.clone(),gameApp.visualWorldSimulation.player.getLocalRotation)
           gameApp.audio_gun.playInstance()
           //rootNode.attachChild(p)
         }
@@ -149,12 +150,12 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
 
         case "Forward" =>
 
-          val v = gameApp.visualWorldSimulation.player.getLocalRotation.toRotationMatrix;
+          val v = visualWorldSimulation.player.getLocalRotation.toRotationMatrix;
           playerInput.translation = v.getColumn(0).mult(gameApp.getSpeed *tpf)
 
         case "Back" =>
 
-          val v = gameApp.visualWorldSimulation.player.getLocalRotation.toRotationMatrix;
+          val v = visualWorldSimulation.player.getLocalRotation.toRotationMatrix;
           playerInput.translation = v.getColumn(0).mult(-gameApp.getSpeed *tpf)
         case _ =>
 
@@ -179,7 +180,7 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
     mappings.foreach {
       case (key, trigger) => gameApp.getInputManager.addMapping(key,trigger)
     }
-
-
   }
+
+
 }

@@ -55,6 +55,8 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
 
   var gameClient:KryoClient = _
 
+
+
   var gameApp:Client = _
 
   var buffer = new StringBuffer()
@@ -83,6 +85,10 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
             } else {
               println("Getting world wo player received.")
             }
+          case response:RoundOverRequest =>
+            gameApp.postMessage(response)
+          case response:StartRoundRequest =>
+            gameApp.postMessage(response)
 
           case response:PlayerJoinResponse =>
             println("join resp received " + response.playerId)
@@ -110,7 +116,7 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
 
   def sendClientUpdate(simTime: Long) {
     val reorientation = MessageQueue.flushAccumulated()
-    val projectiles = gameApp.visualWorldSimulation.flushFired()
+    val projectiles = visualWorldSimulation.flushFired()
     val request = gameApp.createPlayerActionRequest(simTime, reorientation, projectiles)
     gameClient.sendUDP(request)
 
@@ -134,15 +140,15 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
     val toKill = serverUpdate.deadPlayers.toList
     if (toKill.size > 0) {
       println("handle deaths")
-      gameApp.visualWorldSimulation.handleKilledPlayers(toKill)
+      visualWorldSimulation.handleKilledPlayers(toKill)
     }
 
-    if (gameApp.visualWorldSimulation.playerDead) {
+    if (visualWorldSimulation.playerDead) {
       serverUpdate.alivePlayers.find( p => p.playerId == gameApp.playerIdOpt.get).foreach {
         p =>
           println("You respawned")
-          gameApp.visualWorldSimulation.playerDead = false
-          gameApp.visualWorldSimulation.rootNode.attachChild(gameApp.visualWorldSimulation.player)
+          visualWorldSimulation.playerDead = false
+          visualWorldSimulation.rootNode.attachChild(visualWorldSimulation.player)
       }
     }
   }
@@ -160,7 +166,7 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
   def processInput(input: PlayerInput.Reorientation,lastUpdate:Option[(Long,Reorientation)]) {
     lastUpdate.foreach {
       case (lastSimTime, lastInput) =>
-        gameApp.visualWorldSimulation.storePlayerLastInputAndOutput(lastSimTime, lastInput)
+        visualWorldSimulation.storePlayerLastInputAndOutput(lastSimTime, lastInput)
     }
 
     MessageQueue.accumulate(input)
@@ -170,7 +176,7 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
   def generateGameWorld(simTime: Long) : Option[VisualGameWorld] = {
     currentGameWorldUpdates = Queue(gameWorldUpdatesQueue: _*)
 
-    gameApp.visualWorldSimulation.generateLocalGameWorld(simTime, currentGameWorldUpdates)
+    visualWorldSimulation.generateLocalGameWorld(simTime, currentGameWorldUpdates)
   }
 
 }

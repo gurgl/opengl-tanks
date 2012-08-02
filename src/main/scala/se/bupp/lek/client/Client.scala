@@ -70,7 +70,7 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
   var playerIdOpt:Option[Int] = None
 
 
-  var visualWorldSimulation:VisualWorldSimulation = _
+  //var visualWorldSimulation:VisualWorldSimulation = _
 
   var audio_gun:AudioNode = _
 
@@ -107,6 +107,10 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
 
 
+  var messages:Option[AnyRef] = None
+  def postMessage(b:AnyRef) {
+    messages = Some(b)
+  }
 
   def initAudio() {
     /* gun shot sound is to be triggered by a mouse click. */
@@ -173,6 +177,28 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
   override def simpleUpdate(tpf: Float) {
 
+    messages.foreach  {
+      case x:RoundOverRequest =>
+
+      val state: PlayState = getStateManager.getState(classOf[PlayState])
+      if (state != null) {
+        println("Game over received")
+        state.setEnabled(false)
+
+        //getStateManager.detach(state)
+
+        messages = None
+      }
+      case x:StartRoundRequest =>
+        val state: PlayState = getStateManager.getState(classOf[PlayState])
+        if (state != null) {
+          println("Start round received")
+          state.setEnabled(true)
+
+
+          messages = None
+        }
+    }
 
   }
 
@@ -206,6 +232,7 @@ object Client {
     settings.setFrameRate(58)
     settings.setResolution(640,480)
     settings.setTitle("Tank Showdown")
+
     spel.setSettings(settings)
     spel.setShowSettings(false)
     spel.start()
