@@ -107,6 +107,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
         // leave lobby mode
         // enter game mode
         println("Game Started")
+        networkState.server.sendToAllTCP(new StartGameRequest)
       }
 
       def onIntermediateRoundStart() {
@@ -136,8 +137,13 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
 
       def onGameEnd(totals: GameTotalResults) {
         worldSimulator.removeAndRespawnAll()
-        networkState.server.sendToAllTCP(new RoundOverRequest)
+        networkState.server.sendToAllTCP(new GameOverRequest)
         println("Game ended")
+        new Timer().schedule(new TimerTask {
+          def run() {
+            gameLogic.queryStartGame()
+          }
+        },5000L)
         // lobby mode
       }
     }
@@ -218,7 +224,9 @@ object Server {
       classOf[java.util.ArrayList[PlayerGO]],
       classOf[ServerGameWorld],
       classOf[RoundOverRequest],
-      classOf[StartRoundRequest]
+      classOf[StartRoundRequest],
+      classOf[StartGameRequest],
+      classOf[GameOverRequest]
 
     )
 

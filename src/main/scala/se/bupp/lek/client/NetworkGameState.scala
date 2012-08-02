@@ -51,7 +51,7 @@ trait WorldUpdater {
   def processInput(input: PlayerInput.Reorientation,lastUpdate:Option[(Long,Reorientation)])
   def generateGameWorld(simTime: Long) : Option[VisualGameWorld]
 }
-class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends AbstractAppState with WorldUpdater {
+class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends AbstractAppState {
 
   var gameClient:KryoClient = _
 
@@ -64,8 +64,6 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
   val GW_UPDATES_SIZE = 4
 
   var gameWorldUpdatesQueue:Queue[Model.ServerGameWorld] = Queue()
-
-  var lastSentUpdate = 0L
 
   def initClient() {
     gameClient = new KryoClient();
@@ -89,6 +87,10 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
             gameApp.postMessage(response)
           case response:StartRoundRequest =>
             gameApp.postMessage(response)
+          case response:GameOverRequest =>
+            gameApp.postMessage(response)
+          case response:StartGameRequest =>
+            gameApp.postMessage(response)
 
           case response:PlayerJoinResponse =>
             println("join resp received " + response.playerId)
@@ -108,13 +110,15 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
     gameClient.sendTCP(playerJoinRequest);
   }
 
+  def getPlayState = Option(gameApp.getStateManager.getState(classOf[PlayState]))
+
   override def initialize(stateManager: AppStateManager, app: Application) {
     gameApp = app.asInstanceOf[Client]
     initClient()
   }
 
 
-  def sendClientUpdate(simTime: Long) {
+  def sendClientUpdate(simTime: Long, visualWorldSimulation:VisualWorldSimulation) {
     val reorientation = MessageQueue.flushAccumulated()
     val projectiles = visualWorldSimulation.flushFired()
     val request = gameApp.createPlayerActionRequest(simTime, reorientation, projectiles)
@@ -137,46 +141,55 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
         }
       ).head.enqueue(serverUpdate);
 
-    val toKill = serverUpdate.deadPlayers.toList
-    if (toKill.size > 0) {
-      println("handle deaths")
-      visualWorldSimulation.handleKilledPlayers(toKill)
-    }
+    getPlayState.foreach {
+      playState =>
+        if(playState.isInitialized) {
+          val toKill = serverUpdate.deadPlayers.toList
+          if (toKill.size > 0) {
+            println("handle deaths")
+            playState.visualWorldSimulation.handleKilledPlayers(toKill)
+          }
 
-    if (visualWorldSimulation.playerDead) {
-      serverUpdate.alivePlayers.find( p => p.playerId == gameApp.playerIdOpt.get).foreach {
-        p =>
-          println("You respawned")
-          visualWorldSimulation.playerDead = false
-          visualWorldSimulation.rootNode.attachChild(visualWorldSimulation.player)
+          if (playState.visualWorldSimulation.playerDead) {
+            serverUpdate.alivePlayers.find( p => p.playerId == gameApp.playerIdOpt.get).foreach {
+              p =>
+                println("You respawned")
+                playState.visualWorldSimulation.playerDead = false
+                playState.visualWorldSimulation.rootNode.attachChild(playState.visualWorldSimulation.player)
+            }
+          }
+        }
+    }
+  }
+
+  class ServerWorldUpdater(visualWorldSimulation:VisualWorldSimulation) extends WorldUpdater {
+
+    var lastSentUpdate = 0L
+
+    def postUpdate(simTime: Long) {
+
+      if ((System.currentTimeMillis() - lastSentUpdate).toFloat > 1000f / 15f) {
+          sendClientUpdate(simTime,visualWorldSimulation)
+
+          lastSentUpdate = System.currentTimeMillis()
+
       }
     }
-  }
 
+    def processInput(input: PlayerInput.Reorientation,lastUpdate:Option[(Long,Reorientation)]) {
+      lastUpdate.foreach {
+        case (lastSimTime, lastInput) =>
+          visualWorldSimulation.storePlayerLastInputAndOutput(lastSimTime, lastInput)
+      }
 
-  def postUpdate(simTime: Long) {
-    if ((System.currentTimeMillis() - lastSentUpdate).toFloat > 1000f / 15f) {
-
-      sendClientUpdate(simTime)
-
-      lastSentUpdate = System.currentTimeMillis()
-    }
-  }
-
-  def processInput(input: PlayerInput.Reorientation,lastUpdate:Option[(Long,Reorientation)]) {
-    lastUpdate.foreach {
-      case (lastSimTime, lastInput) =>
-        visualWorldSimulation.storePlayerLastInputAndOutput(lastSimTime, lastInput)
+      MessageQueue.accumulate(input)
     }
 
-    MessageQueue.accumulate(input)
+    var currentGameWorldUpdates:Queue[ServerGameWorld] = null
+    def generateGameWorld(simTime: Long) : Option[VisualGameWorld] = {
+      currentGameWorldUpdates = Queue(gameWorldUpdatesQueue: _*)
+
+      visualWorldSimulation.generateLocalGameWorld(simTime, currentGameWorldUpdates)
+    }
   }
-
-  var currentGameWorldUpdates:Queue[ServerGameWorld] = null
-  def generateGameWorld(simTime: Long) : Option[VisualGameWorld] = {
-    currentGameWorldUpdates = Queue(gameWorldUpdatesQueue: _*)
-
-    visualWorldSimulation.generateLocalGameWorld(simTime, currentGameWorldUpdates)
-  }
-
 }

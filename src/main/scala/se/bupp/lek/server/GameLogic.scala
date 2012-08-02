@@ -34,6 +34,10 @@ class GameLogic(var gameSettings:GameMatchSettings, var listener:GameLogicListen
   def addCompetitor(pjr: Competitor) {
     competitors += pjr
 
+    queryStartGame()
+  }
+
+  def queryStartGame() {
     gameSettings.startCriteria match {
       case WhenNumOfConnectedPlayersCriteria(s) =>
         if(competitors.size == s) {

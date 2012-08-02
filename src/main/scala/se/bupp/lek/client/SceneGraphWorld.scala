@@ -31,7 +31,10 @@ object SceneGraphWorld {
   object SceneGraphNodeKeys {
     val Projectiles = "Projectiles"
     val Enemies= "Enemies"
-    val Particles = "Particles"
+    //val Particles = "Particles"
+    val Effects = "Effects"
+    val Statics = "Statics"
+    val Player = "Player"
   }
 
   def setMatch[A,B](left:Set[A],right:Set[B],comp:Function2[A,B,Boolean]) : Tuple3[Set[A],Set[B],Set[(A,B)]] = {
@@ -102,7 +105,9 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
       //mat_default_ush.setColor("Ambient", ColorRGBA.White);
     }
 
-    materializeLevel()
+    var levelItems = new Node(SceneGraphNodeKeys.Statics)
+    rootNode.attachChild(levelItems)
+
 
     var enemyNodes = new Node(SceneGraphNodeKeys.Enemies)
     rootNode.attachChild(enemyNodes)
@@ -110,8 +115,14 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
     var projectileNodes = new Node(SceneGraphNodeKeys.Projectiles)
     rootNode.attachChild(projectileNodes)
 
-    var levelItems = new Node("levelItems")
-    rootNode.attachChild(levelItems)
+    var effects = new Node(SceneGraphNodeKeys.Effects)
+    rootNode.attachChild(effects)
+
+    var playerContainer = new Node(SceneGraphNodeKeys.Player)
+    rootNode.attachChild(playerContainer)
+
+    materializeLevel()
+
 
     val flag = materializeFlag(new Orientation(new Vector3f(-2.0f,0.5f,-2.0f),MathUtil.noRotation.fromAngles(math.Pi.toFloat/2,0f,0f)))
     levelItems.attachChild(flag)
@@ -151,7 +162,7 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
     if(!isHeadLess) {
       level.setShadowMode(ShadowMode.Receive)
     }
-    rootNode.attachChild(level);
+    getNode(SceneGraphNodeKeys.Statics).attachChild(level);
   }
 
   def materializeTank(pd: Orientation): Spatial = {
@@ -239,7 +250,7 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
     */
     //player.setMaterial(mat_default);
 
-    rootNode.attachChild(player);
+    getNode(SceneGraphNodeKeys.Player).attachChild(player);
   }
 
 
@@ -277,6 +288,20 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
     }
 
     rootNode.getChild(SceneGraphNodeKeys.Projectiles).asInstanceOf[Node].attachChild(instance)
+  }
+
+  def destroy() {
+    val toRemove = List(
+      SceneGraphNodeKeys.Enemies,
+      SceneGraphNodeKeys.Statics,
+      SceneGraphNodeKeys.Projectiles,
+      SceneGraphNodeKeys.Effects,
+      SceneGraphNodeKeys.Player
+    )
+    toRemove.foreach(x => Option(getNode(x)) match {
+      case Some(y) => rootNode.detachChild(y)
+      case None => println("Cannot remove " + x)
+    })
   }
 
 }

@@ -1,6 +1,6 @@
 package se.bupp.lek.client
 
-import com.jme3.app.{FlyCamAppState, SimpleApplication}
+import com.jme3.app.{Application, FlyCamAppState, SimpleApplication}
 import com.jme3.input.KeyInput
 import com.jme3.input.controls.{AnalogListener, ActionListener, KeyTrigger}
 import com.jme3.scene.{Node, Mesh, Spatial, Geometry}
@@ -18,6 +18,9 @@ import com.jme3.bullet.control.CharacterControl
 import com.jme3.renderer.RenderManager
 import com.jme3.bullet.BulletAppState.ThreadingType
 import com.jme3.audio.AudioNode
+import com.jme3.app.state.{AppStateManager, AbstractAppState}
+import com.jme3.font.BitmapText
+import java.util.logging.{Level, Logger}
 
 
 /**
@@ -133,10 +136,13 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
 
   override def simpleInitApp() {
-
+    Logger.getLogger("com.jme3").setLevel(Level.OFF);
     settings.setTitle("Tank Showdown")
     setPauseOnLostFocus(false)
     setShowSettings(false)
+
+    //setDisplayStatView(false)
+    //setDisplayFps(false)
 
     stateManager.detach( stateManager.getState(classOf[FlyCamAppState]))
 
@@ -179,26 +185,61 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
     messages.foreach  {
       case x:RoundOverRequest =>
-
-      val state: PlayState = getStateManager.getState(classOf[PlayState])
-      if (state != null) {
-        println("Game over received")
-        state.setEnabled(false)
-
-        //getStateManager.detach(state)
-
+        val state: PlayState = getStateManager.getState(classOf[PlayState])
+        if (state != null) {
+          println("Round over received")
+          state.setEnabled(false)
+        }
         messages = None
-      }
+        //getStateManager.attach(new MessageState("Round Over"))
+      case x:StartGameRequest =>
+        var state: PlayState = getStateManager.getState(classOf[PlayState])
+        if (state != null) {
+          if (state.isInitialized) {
+            getStateManager.detach(state)
+          }
+          //state.setEnabled(false)
+        } else {
+          println("Start game received")
+          state = new PlayState()
+          getStateManager.attach(state)
+          messages = None
+
+        }
+
+        var mstate = getStateManager.getState(classOf[MessageState])
+        if (mstate != null) {
+          getStateManager.detach(mstate)
+        }
+
+
+
+
+      case x:GameOverRequest =>
+        val state: PlayState = getStateManager.getState(classOf[PlayState])
+        if (state != null) {
+          getStateManager.detach(state)
+          println("GAme over received")
+          state.setEnabled(false)
+        }
+        messages = None
+        //getStateManager.attach(new MessageState("Game Over"))
+
       case x:StartRoundRequest =>
         val state: PlayState = getStateManager.getState(classOf[PlayState])
         if (state != null) {
           println("Start round received")
           state.setEnabled(true)
-
-
-          messages = None
         }
+
+        var mstate = getStateManager.getState(classOf[MessageState])
+        if (mstate != null) {
+          getStateManager.detach(mstate)
+        }
+        messages = None
     }
+
+
 
   }
 
@@ -218,7 +259,38 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
     println("destroy " + Client.buffer.toString())
   }
+
+  def getGuiFont = guiFont
 }
+
+
+class MessageState(s:String) extends AbstractAppState {
+  var content:Node = _
+
+  var application:Client = _
+  override def initialize(stateManager: AppStateManager, app: Application) {
+    super.initialize(stateManager, app)
+    //app.asInstanceOf[SimpleApplication].getGuiNode.attachChild()
+    var application: Client = app.asInstanceOf[Client]
+
+    val hudText = new BitmapText(application.getGuiFont, false);
+    hudText.setSize(application.getGuiFont.getCharSet().getRenderedSize());      // font size
+    hudText.setColor(ColorRGBA.White);                             // font color
+    hudText.setText(s);             // the text
+    hudText.setLocalTranslation(300, hudText.getLineHeight(), 0); // position
+    content = new Node("content")
+    content.attachChild(hudText)
+    application.getGuiNode.attachChild(content)
+  }
+
+  override def cleanup() {
+    super.cleanup()
+
+    application.getGuiNode.detachChild(content)
+  }
+}
+
+
 
 object Client {
 
@@ -232,6 +304,7 @@ object Client {
     settings.setFrameRate(58)
     settings.setResolution(640,480)
     settings.setTitle("Tank Showdown")
+
 
     spel.setSettings(settings)
     spel.setShowSettings(false)

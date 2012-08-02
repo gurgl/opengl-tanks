@@ -110,8 +110,6 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
     al.setColor(ColorRGBA.White.mult(1.3f));
     rootNode.addLight(al);
 
-    var particles = new Node(SceneGraphNodeKeys.Particles)
-    rootNode.attachChild(particles)
 
     /*val bsr = new BasicShadowRenderer(assetManager, 1024);
     bsr.setDirection(sunDirection.clone()); // light direction
@@ -448,7 +446,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
     fire.getParticleInfluencer().setVelocityVariation(0.3f);
     fire.setLocalTranslation(pos)
     fire.emitAllParticles()
-    rootNode.attachChild(fire)
+    getNode(SceneGraphNodeKeys.Effects).attachChild(fire)
     fire.killAllParticles()
     fire.addControl(new DestroyControl)
     fire.setParticlesPerSec(0)

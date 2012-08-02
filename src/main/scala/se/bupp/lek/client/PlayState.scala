@@ -47,7 +47,10 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
 
   var gameApp:Client = _
 
-  var worldUpdater:WorldUpdater = _
+  lazy val worldUpdater:WorldUpdater = {
+    val state: NetworkGameState = gameApp.getStateManager.getState(classOf[NetworkGameState])
+    new state.ServerWorldUpdater(visualWorldSimulation)
+  }
 
   var lastUpdate:Option[(Long,Reorientation)] = None
 
@@ -91,7 +94,7 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
     gameApp = app.asInstanceOf[Client]
 
     val state: NetworkGameState = gameApp.getStateManager.getState(classOf[NetworkGameState])
-    worldUpdater = state
+
 
     val playerStartPosition = new Orientation(Vector3f.ZERO.clone().setY(0.5f), Quaternion.IDENTITY.clone())
 
@@ -122,7 +125,7 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
 
       if (name.equals("Fire")) {
         if(value == true) {
-          val p = visualWorldSimulation.fireProjectile(visualWorldSimulation.player.getControl(classOf[CharacterControl]).getPhysicsLocation.clone(),gameApp.visualWorldSimulation.player.getLocalRotation)
+          val p = visualWorldSimulation.fireProjectile(visualWorldSimulation.player.getControl(classOf[CharacterControl]).getPhysicsLocation.clone(),visualWorldSimulation.player.getLocalRotation)
           gameApp.audio_gun.playInstance()
           //rootNode.attachChild(p)
         }
@@ -164,17 +167,19 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
     }
   };
 
+
+  val mappings = Map("Left" -> new KeyTrigger(KeyInput.KEY_A),
+    "Right" -> new KeyTrigger(KeyInput.KEY_D),
+    "Forward" -> new KeyTrigger(KeyInput.KEY_W),
+    "Back" ->  new KeyTrigger(KeyInput.KEY_S),
+    "Fire" -> new KeyTrigger(KeyInput.KEY_SPACE),
+    "Pause" ->  new KeyTrigger(KeyInput.KEY_P)
+  )
+
   def setupInput() {
 
     //import collection.JavaConversions.
 
-    val mappings = Map("Left" -> new KeyTrigger(KeyInput.KEY_A),
-      "Right" -> new KeyTrigger(KeyInput.KEY_D),
-      "Forward" -> new KeyTrigger(KeyInput.KEY_W),
-      "Back" ->  new KeyTrigger(KeyInput.KEY_S),
-      "Fire" -> new KeyTrigger(KeyInput.KEY_SPACE),
-      "Pause" ->  new KeyTrigger(KeyInput.KEY_P)
-    )
     gameApp.getInputManager.addListener(actionListener, mappings.keys.toList:_*)
 
     mappings.foreach {
@@ -182,5 +187,14 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
     }
   }
 
+  override def cleanup() {
+    super.cleanup()
+    visualWorldSimulation.destroy()
 
+    gameApp.getInputManager.removeListener(actionListener)
+
+    mappings.foreach {
+      case (key, trigger) => gameApp.getInputManager.deleteMapping(key)
+    }
+  }
 }
