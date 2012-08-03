@@ -50,7 +50,10 @@ class GameLogic(var gameSettings:GameMatchSettings, var listener:GameLogicListen
   def isGameStarted = false
   def startRound() = {
     println("roundCount roundCount roundCount roundCount " + roundCount)
-    if(roundCount > 0) { listener.onIntermediateRoundStart() }
+    if(roundCount > 0) {
+      scoreStrategy.newRound
+      listener.onIntermediateRoundStart()
+    }
   }
 
   def competitorScored(scorerComepetitorId:Int) {

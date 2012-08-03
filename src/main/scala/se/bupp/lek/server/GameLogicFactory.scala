@@ -26,6 +26,7 @@ object GameLogicFactory {
 
     def init()
     def playerKilledByPlayer(offender:Int,victim:Int)
+    def newRound
     def controllablesChanged(keep:AbstractScoringControllables)
 
     def keepsTic()
@@ -35,11 +36,23 @@ object GameLogicFactory {
 
   class KillBasedStrategy extends ScoreStrategy {
 
-    var playerKills = collection.mutable.HashMap[Int,List[Kill]]()
-    var competitorKills = collection.mutable.HashMap[Int,List[Kill]]()
+    class RoundScore() {
+      var playerKills = collection.mutable.HashMap[Int,List[Kill]]()
+      var competitorKills = collection.mutable.HashMap[Int,List[Kill]]()
+    }
 
 
-    def init() {}
+    var roundResults = List[RoundScore]()
+    var currentRound:RoundScore = _
+
+    def init() {
+      currentRound = new RoundScore
+    }
+
+    def newRound = {
+      roundResults = roundResults :+ currentRound
+      currentRound = new RoundScore
+    }
 
     def keepsTic() {}
 
@@ -54,15 +67,15 @@ object GameLogicFactory {
       if (victimCompetitor.teamId == offenderCompetitor.teamId) {
 
       } else {
-        playerKills += (offender -> (playerKills.get(offenderCompetitor.teamId).flatten.toList :+ new Kill(victim)) )
-        competitorKills += (offenderCompetitor.teamId-> (competitorKills.get(offenderCompetitor.teamId).flatten.toList :+ new Kill(victim)) )
+        currentRound.playerKills += (offender -> (currentRound.playerKills.get(offenderCompetitor.teamId).flatten.toList :+ new Kill(victim)) )
+        currentRound.competitorKills += (offenderCompetitor.teamId-> (currentRound.competitorKills.get(offenderCompetitor.teamId).flatten.toList :+ new Kill(victim)) )
 
         gameLogic.competitorScored(offenderCompetitor.teamId)
       }
     }
 
     def getCompetitorScore(competitorId:Int) : Int = {
-      competitorKills(competitorId).size
+      currentRound.competitorKills(competitorId).size
     }
 
   }
@@ -81,6 +94,10 @@ object GameLogicFactory {
 
     def controllablesChanged(keep: AbstractScoringControllables) {
       currentKeeps = keep
+    }
+
+    def newRound {
+
     }
 
     def keepsTic() {

@@ -180,65 +180,69 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
   
 
 
-
+  var gotGO = false
   override def simpleUpdate(tpf: Float) {
 
+    //if (gotGO ) println("Start please")
     messages.foreach  {
-      case x:RoundOverRequest =>
-        val state: PlayState = getStateManager.getState(classOf[PlayState])
-        if (state != null) {
-          println("Round over received")
-          state.setEnabled(false)
-        }
-        messages = None
-        //getStateManager.attach(new MessageState("Round Over"))
-      case x:StartGameRequest =>
-        var state: PlayState = getStateManager.getState(classOf[PlayState])
-        if (state != null) {
-          if (state.isInitialized) {
-            getStateManager.detach(state)
+      m =>
+        println("MESS " + m.getClass)
+        m match {
+        case x:RoundOverRequest =>
+          val state: PlayState = getStateManager.getState(classOf[PlayState])
+          if (state != null) {
+            println("Round over received")
+            state.setEnabled(false)
           }
-          //state.setEnabled(false)
-        } else {
-          println("Start game received")
-          state = new PlayState()
-          getStateManager.attach(state)
           messages = None
+          //getStateManager.attach(new MessageState("Round Over"))
+        case x:StartGameRequest =>
+          var state: PlayState = getStateManager.getState(classOf[PlayState])
+          println("Start game received - checking")
+          if (state != null) {
+            println("Waiting for state to initialize")
+            if (state.isInitialized) {
+              getStateManager.detach(state)
+            }
+            //state.setEnabled(false)
+          } else {
+            println("Start game received - starting new game")
+            state = new PlayState()
+            getStateManager.attach(state)
+            messages = None
 
-        }
+          }
 
-        var mstate = getStateManager.getState(classOf[MessageState])
-        if (mstate != null) {
-          getStateManager.detach(mstate)
-        }
+          var mstate = getStateManager.getState(classOf[MessageState])
+          if (mstate != null) {
+            getStateManager.detach(mstate)
+          }
 
+        case x:GameOverRequest =>
+          val state: PlayState = getStateManager.getState(classOf[PlayState])
+          if (state != null) {
+            getStateManager.detach(state)
+            println("GAme over received")
+          }
+          gotGO = true
+          messages = None
+          //getStateManager.attach(new MessageState("Game Over"))
 
+        case x:StartRoundRequest =>
+          val state: PlayState = getStateManager.getState(classOf[PlayState])
+          if (state != null) {
+            println("Start round received")
+            state.setEnabled(true)
+          }
 
-
-      case x:GameOverRequest =>
-        val state: PlayState = getStateManager.getState(classOf[PlayState])
-        if (state != null) {
-          getStateManager.detach(state)
-          println("GAme over received")
-          state.setEnabled(false)
-        }
-        messages = None
-        //getStateManager.attach(new MessageState("Game Over"))
-
-      case x:StartRoundRequest =>
-        val state: PlayState = getStateManager.getState(classOf[PlayState])
-        if (state != null) {
-          println("Start round received")
-          state.setEnabled(true)
-        }
-
-        var mstate = getStateManager.getState(classOf[MessageState])
-        if (mstate != null) {
-          getStateManager.detach(mstate)
-        }
-        messages = None
+          var mstate = getStateManager.getState(classOf[MessageState])
+          if (mstate != null) {
+            getStateManager.detach(mstate)
+          }
+          messages = None
+        case _ => println("WTF")
+      }
     }
-
 
 
   }

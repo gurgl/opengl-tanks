@@ -90,6 +90,7 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
           case response:GameOverRequest =>
             gameApp.postMessage(response)
           case response:StartGameRequest =>
+            println("yuihg")
             gameApp.postMessage(response)
 
           case response:PlayerJoinResponse =>

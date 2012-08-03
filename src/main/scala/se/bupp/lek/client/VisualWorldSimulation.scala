@@ -68,6 +68,11 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
 
   var saved = Queue.empty[(Long, Orientation, Reorientation)] //:+ ((System.currentTimeMillis(),startPosition, MathUtil.noMotion))
 
+
+  var sun:DirectionalLight = _
+  var al:AmbientLight = _
+
+
   def storePlayerLastInputAndOutput(simTime:Long, input:Reorientation) = {
 
     val physicalPosition = player.getLocalTranslation
@@ -99,16 +104,18 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
 
 
     // You must add a light to make the model visible
-    val sun = new DirectionalLight();
+    sun = new DirectionalLight();
+
     //sun.setColor(ColorRGBA.White)
     val sunDirection: Vector3f = new Vector3f(-1, -1, -1).normalizeLocal()
     sun.setDirection(sunDirection);
     sun.setColor(ColorRGBA.Green)
     rootNode.addLight(sun);
 
-    val al = new AmbientLight();
+    al = new AmbientLight();
     al.setColor(ColorRGBA.White.mult(1.3f));
     rootNode.addLight(al);
+
 
 
     /*val bsr = new BasicShadowRenderer(assetManager, 1024);
@@ -467,6 +474,13 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
     explosion.killAllParticles
     //rootNode.attachChild(explosion)
     */
+
+  }
+
+  override def destroy() {
+    super.destroy()
+    rootNode.removeLight(al)
+    rootNode.removeLight(sun)
 
   }
 

@@ -104,6 +104,7 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
     playerInput = new PlayerInput(playerStartPosition)
 
     setupInput()
+    initialized = true
   }
 
   val lock : AnyRef = new Object()
