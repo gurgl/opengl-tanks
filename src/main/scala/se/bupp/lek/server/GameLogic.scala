@@ -26,6 +26,7 @@ class GameLogic(var gameSettings:GameMatchSettings, var listener:GameLogicListen
   var competitors = collection.mutable.ArrayBuffer[Competitor]()
 
   private def gameStart() {
+    roundCount = 0
     scoreStrategy.init()
     listener.onGameStart()
     startRound()

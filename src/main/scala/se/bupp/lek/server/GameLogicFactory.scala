@@ -46,6 +46,7 @@ object GameLogicFactory {
     var currentRound:RoundScore = _
 
     def init() {
+      roundResults = List[RoundScore]()
       currentRound = new RoundScore
     }
 
