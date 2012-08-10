@@ -19,7 +19,7 @@ import com.jme3.renderer.RenderManager
 import com.jme3.bullet.BulletAppState.ThreadingType
 import com.jme3.audio.AudioNode
 import com.jme3.app.state.{AppStateManager, AbstractAppState}
-import com.jme3.font.BitmapText
+import com.jme3.font.{BitmapFont, BitmapText}
 import java.util.logging.{Level, Logger}
 
 
@@ -80,6 +80,8 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
   def getSpeed = speed
 
   var seqId = 0
+
+  def getSettings = settings
   def createPlayerActionRequest(lastRecordedActionTime:Long, reorientation:Reorientation,projectiles:List[ProjectileFireGO]): Model.PlayerActionRequest = {
       val request: PlayerActionRequest = new PlayerActionRequest
 
@@ -136,7 +138,7 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
 
   override def simpleInitApp() {
-    Logger.getLogger("com.jme3").setLevel(Level.OFF);
+    //Logger.getLogger("com.jme3").setLevel(Level.OFF);
     settings.setTitle("Tank Showdown")
     setPauseOnLostFocus(false)
     setShowSettings(false)
@@ -148,10 +150,6 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
     val networkState: NetworkGameState = new NetworkGameState(clientConnectSettings)
     stateManager.attach(networkState)
-
-    val playState: PlayState = new PlayState()
-    stateManager.attach(playState)
-
 
 
     val bulletAppState = new BulletAppState() {
@@ -169,18 +167,17 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
     }
     stateManager.attach(bulletAppState);
 
-    bulletAppState.getPhysicsSpace.addTickListener(playState)
+    stateManager.attach(new MessageState("Tja"))
+    //val playState: PlayState = new PlayState()
+    //stateManager.attach(playState)
 
-
+    //bulletAppState.getPhysicsSpace.addTickListener(playState)
 
     initAudio()
 
     //playState.setupInput()
   }
-  
 
-
-  var gotGO = false
   override def simpleUpdate(tpf: Float) {
 
     //if (gotGO ) println("Start please")
@@ -195,10 +192,12 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
             state.setEnabled(false)
           }
           messages = None
-          //getStateManager.attach(new MessageState("Round Over"))
+          getStateManager.attach(new MessageState("Round Over"))
         case x:StartGameRequest =>
+
           var state: PlayState = getStateManager.getState(classOf[PlayState])
           println("Start game received - checking")
+
           if (state != null) {
             println("Waiting for state to initialize")
             if (state.isInitialized) {
@@ -224,7 +223,12 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
             getStateManager.detach(state)
             println("GAme over received")
           }
-          gotGO = true
+          //val mState = getStateManager.getState(classOf[MessageState])
+          //if (mState == null) {
+            getStateManager.attach(new MessageState("Game Over"))
+
+          //}
+
           messages = None
           //getStateManager.attach(new MessageState("Game Over"))
 
@@ -255,10 +259,10 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
     val playState: PlayState = stateManager.getState(classOf[PlayState])
 
-
-    stateManager.detach( playState)
-    playState.cleanup()
-
+    if (playState != null) {
+      stateManager.detach( playState)
+      playState.cleanup()
+    }
 
 
     println("destroy " + Client.buffer.toString())
@@ -272,19 +276,46 @@ class MessageState(s:String) extends AbstractAppState {
   var content:Node = _
 
   var application:Client = _
+
+  var refreshed = false
+
+  var settings:AppSettings = _
+
+  val NODE_NAME = "messageNodeName"
+
   override def initialize(stateManager: AppStateManager, app: Application) {
     super.initialize(stateManager, app)
     //app.asInstanceOf[SimpleApplication].getGuiNode.attachChild()
-    var application: Client = app.asInstanceOf[Client]
+    application = app.asInstanceOf[Client]
+    settings = application.getSettings
+  }
 
-    val hudText = new BitmapText(application.getGuiFont, false);
-    hudText.setSize(application.getGuiFont.getCharSet().getRenderedSize());      // font size
-    hudText.setColor(ColorRGBA.White);                             // font color
-    hudText.setText(s);             // the text
-    hudText.setLocalTranslation(300, hudText.getLineHeight(), 0); // position
-    content = new Node("content")
-    content.attachChild(hudText)
-    application.getGuiNode.attachChild(content)
+  import JavaConversions.asScalaBuffer
+  override def update(tpf: Float) {
+    super.update(tpf)
+
+    if (!refreshed ) {
+      val contentNode:Node = Option(application.getGuiNode.getChild(NODE_NAME).asInstanceOf[Node]).getOrElse {
+          content = new Node(NODE_NAME)
+          application.getGuiNode.attachChild(content)
+          content
+      }
+      contentNode.getChildren.toList.foreach(_.removeFromParent())
+
+      val hudText = new BitmapText(application.getGuiFont, false);
+      hudText.setSize(application.getGuiFont.getCharSet().getRenderedSize());      // font size
+      hudText.setColor(ColorRGBA.White);                             // font color
+      hudText.setBox(new  com.jme3.font.Rectangle(0, 0, settings.getWidth, settings.getHeight));
+      //hudText.setBox(new com.jme3.font.Rectangle(0,0,settings.getWidth , settings.getHeight))
+      hudText.setAlignment(BitmapFont.Align.Center);
+      hudText.setVerticalAlignment(BitmapFont.VAlign.Center);
+      hudText.setText(s);             // the text
+      //hudText.setLocalTranslation(settings.getWidth/2 , settings.getHeight/2 , 0); // position
+      hudText.setLocalTranslation(0 , settings.getHeight , 0); // position
+      contentNode.attachChild(hudText)
+      refreshed = true
+    }
+
   }
 
   override def cleanup() {
