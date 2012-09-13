@@ -29,7 +29,7 @@ object Model {
 
     var lastSimulation:Long = _
 
-    def playerId = gameState.playerId
+    var playerId: Int = _
 
     override def read(reader: JmeImporter) {}
 

@@ -143,6 +143,7 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
     getPlayState.foreach {
       playState =>
         if(playState.isInitialized) {
+          //println("ITS INITIALIZED")
           val toKill = serverUpdate.deadPlayers.toList
           if (toKill.size > 0) {
             println("handle deaths")

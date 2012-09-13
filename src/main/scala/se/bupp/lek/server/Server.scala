@@ -63,6 +63,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
 
   var leRoot:Node = null
 
+  var lobby = new Lobby()
 
   override def simpleInitApp() {
 
@@ -106,6 +107,10 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
         // add timer to start round
         // leave lobby mode
         // enter game mode
+        lobby.connectedPlayers.foreach {
+          ps =>
+
+        }
         println("Game Started")
         networkState.server.sendToAllTCP(new StartGameRequest)
       }
@@ -114,7 +119,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
         // send round started message
         println("Round Started")
         networkState.server.sendToAllTCP(new StartRoundRequest)
-        worldSimulator.removeAndRespawnAll()
+        worldSimulator.unspawnAllGameObjects()
       }
 
       def onCompetetitorScored(scoreDescription: AbstractScoreDescription) {
@@ -158,16 +163,19 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
 
       override def playerJoined(pjr: PlayerJoinRequest) = {
         val resp = new PlayerJoinResponse
-        val playerId = worldSimulator.addPlayer(pjr)
-        resp.playerId = playerId
-        val identifier = if(pjr.teamIdentifier == -1) playerId else pjr.teamIdentifier
-        gameLogic.addCompetitor(new Competitor(playerId,identifier))
+        val ps = lobby.addPlayer(pjr)
+
+        resp.playerId = ps.playerId
+        val identifier = if(pjr.teamIdentifier == -1) ps.playerId else pjr.teamIdentifier
+        worldSimulator.addParticipant(ps)
+        gameLogic.addCompetitor(new Competitor(ps.playerId,identifier))
         resp
       }
 
       def playerLeave(playerId: Int) {
         println("Player disconnected")
-        worldSimulator.removePlayer(playerId)
+        lobby.removePlayer(playerId)
+        worldSimulator.removeParticipant(playerId)
         gameLogic.removePlayer(playerId)
       }
     }

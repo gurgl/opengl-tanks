@@ -89,7 +89,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
       case Playing() =>
         println("Player " + player.gameState.playerId + " died.")
 
-        deadSinceLastUpdate
+
 
         deadSinceLastUpdate = deadSinceLastUpdate :+ player.playerId
         player.state = Dead(System.currentTimeMillis())
@@ -117,7 +117,6 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
     }
   }
 
-  var connectionSequence = 0
 
   var lock: AnyRef = new Object()
 
@@ -125,9 +124,9 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
   //var getPlayers = new ArrayBuffer[PlayerStatus]()
   var firedProjectiles = new HashMap[Int, List[ProjectileFireGO]]()
 
-  var connectedPlayers = List[PlayerConnection]()
-
   //var projectiles = List[ProjectileGO]()
+
+  var participatingPlayers = List[PlayerConnection]()
 
   var simulatedUntil:Option[Long] = None
 
@@ -163,7 +162,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
 
     spatialsToRemoveInUpdatePhase = spatialsToRemoveInUpdatePhase.companion.empty
 
-    connectedPlayers.foreach {
+    participatingPlayers.foreach {
       cp => cp.state match {
         case Dead(since) => if(System.currentTimeMillis() - since > RespawnTime) {
           respawnDeadPlayer(cp)
@@ -268,6 +267,12 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
       //if(simulatedProjectiles.size > 0) simulatedProjectiles.foreach { p => print(p.id) }
       lastWorldSimTimeStamp = Some(world.simCurrentTime)
       val deadPlayers = purgeDeadPlayersSinceLastUpdate.ensuring(_.forall( dp => !playerState.exists(_.playerId == dp)))
+
+
+      if(deadPlayers.size > 0 ) {
+        println(deadPlayers.size + "DDDDDDDDDDDDDDDDDDDDDDEAD")
+        deadPlayers.foreach( p => println(p))
+      }
       val res: ServerGameWorld = new ServerGameWorld(
 
         deadPlayers = new java.util.ArrayList[Int](deadPlayers),
@@ -286,49 +291,42 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
     res.toList
   }
 
-  def removePlayer(playerId:Int) {
 
+  def removeParticipant(playerId:Int) {
 
-    val (pcOpt, newConnectedPlayers) =connectedPlayers.partition(_.playerId == playerId)
-    connectedPlayers = newConnectedPlayers
+    val (pcOpt, newParticipatingPlayers) = participatingPlayers.partition(_.playerId == playerId)
+    participatingPlayers = newParticipatingPlayers
     pcOpt match {
       case Nil =>
       case pc :: rest => world.findPlayerInfo(playerId).foreach { case (_,s) => world.unspawnPlayer(s, pc) }
     }
   }
 
-  def addPlayer(pjr: PlayerJoinRequest): Int = {
-
-    var playerId = -1
+  def addParticipant(pjr: PlayerConnection) = {
 
     lock.synchronized {
 
-      playerId = connectionSequence
-      val player = {
-        val pd = new PlayerGO
-        pd.playerId = playerId
-        pd.position = Vector3f.ZERO.clone().setY(0.13499954f)
-        pd.direction = Quaternion.DIRECTION_Z.clone()
-        pd
-        var ps = new PlayerConnection
-        ps.gameState = pd
-        //ps.lastUpdate = None
-        ps
-      }
+      val pd = new PlayerGO
+      pd.playerId = pjr.playerId
+      pd.position = Vector3f.ZERO.clone().setY(0.13499954f)
+      pd.direction = Quaternion.DIRECTION_Z.clone()
 
-      connectedPlayers = connectedPlayers :+ player
-      world.spawnPlayer(player)
+      pjr.gameState = pd
 
-      connectionSequence += 1
+      participatingPlayers = participatingPlayers :+ pjr
+
+      world.spawnPlayer(pjr)
     }
-    playerId
+
   }
+
+
 
   def addPlayerAction(request: PlayerActionRequest) {
     lock.synchronized {
 
 
-      connectedPlayers.find(_.playerId == request.playerId).map(_.state) match {
+      participatingPlayers.find(_.playerId == request.playerId).map(_.state) match {
         case Some(Dead(since)) => //println("Discarding dead player " + request.playerId + " update")
         case Some(Playing()) =>
 
@@ -354,6 +352,10 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
         case None => println("Player not connected")
       }
     }
+  }
+
+  def unspawnAllGameObjects() {
+
   }
 
   def removeAndRespawnAll() {

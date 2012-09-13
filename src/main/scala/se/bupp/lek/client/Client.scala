@@ -188,6 +188,7 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
         case x:RoundOverRequest =>
           val state: PlayState = getStateManager.getState(classOf[PlayState])
           if (state != null) {
+            //state.unspawnAllObjects()
             println("Round over received")
             state.setEnabled(false)
           }

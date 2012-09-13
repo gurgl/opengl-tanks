@@ -29,6 +29,7 @@ object SceneGraphWorld {
     val Player = "PlayerGO"
   }
   object SceneGraphNodeKeys {
+    type SceneGraphNodeKey = String
     val Projectiles = "Projectiles"
     val Enemies= "Enemies"
     //val Particles = "Particles"
@@ -298,10 +299,15 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
       SceneGraphNodeKeys.Effects,
       SceneGraphNodeKeys.Player
     )
-    toRemove.foreach(x => Option(getNode(x)) match {
+    cleanNodes(toRemove)
+  }
+
+  def cleanNodes(toRemove:List[SceneGraphNodeKeys.SceneGraphNodeKey]) {
+    toRemove.foreach( x => Option(getNode(x)) match {
       case Some(y) => rootNode.detachChild(y)
       case None => println("Cannot remove " + x)
-    })
-  }
+    }
+  )
+}
 
 }

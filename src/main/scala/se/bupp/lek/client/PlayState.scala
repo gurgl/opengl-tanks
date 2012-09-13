@@ -21,6 +21,7 @@ import java.util
 import com.jme3.input.controls.{KeyTrigger, ActionListener, AnalogListener}
 import com.jme3.bullet.control.CharacterControl
 import com.jme3.input.KeyInput
+import se.bupp.lek.client.SceneGraphWorld.SceneGraphNodeKeys
 
 
 /**
@@ -58,7 +59,6 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
 
     val (pos,rot) = visualWorldSimulation.getCamPosition
     gameApp.getCamera.setFrame(pos,rot)
-
 
     if(gameApp.playerIdOpt.isEmpty) return
 
@@ -186,6 +186,11 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
     mappings.foreach {
       case (key, trigger) => gameApp.getInputManager.addMapping(key,trigger)
     }
+  }
+
+  def unspawnAllGameObject() {
+    import SceneGraphNodeKeys._
+    visualWorldSimulation.cleanNodes(List(Player,Projectiles,Enemies,Effects))
   }
 
   override def cleanup() {
