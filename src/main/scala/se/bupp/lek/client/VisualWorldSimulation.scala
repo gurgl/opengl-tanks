@@ -216,15 +216,6 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
 
     }
 
-    // if (k.position.getX == Float.NaN)
-    //enemyMap.foreach {  case (k,v) => println( "pos " +  k.position + " " + v.getLocalTranslation()) }
-
-
-    if(newInUpdate.size > 0) {
-      //println(newInUpdate.size + " new in update")
-      newInUpdate.foreach { case ao:AbstractOwnedGameObject => println(ao.id + ao.getClass.getName + playerIdOpt().get) }
-
-    }
     newInUpdate.foreach {
       case p:PlayerGO =>
         if(p.playerId == playerIdOpt.apply().get) {

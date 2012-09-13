@@ -55,8 +55,6 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
 
   var gameClient:KryoClient = _
 
-
-
   var gameApp:Client = _
 
   var buffer = new StringBuffer()
