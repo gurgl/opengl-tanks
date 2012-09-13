@@ -138,7 +138,7 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
 
   override def simpleInitApp() {
-    //Logger.getLogger("com.jme3").setLevel(Level.OFF);
+    Logger.getLogger("com.jme3").setLevel(Level.OFF);
     settings.setTitle("Tank Showdown")
     setPauseOnLostFocus(false)
     setShowSettings(false)
