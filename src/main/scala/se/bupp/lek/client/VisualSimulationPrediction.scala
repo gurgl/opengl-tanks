@@ -18,17 +18,16 @@ import java.lang
  */
 
 
-class VisualSimulationPrediction(gameWorldUpdates:Queue[Model.ServerGameWorld], val playerId:Int) {
+class VisualSimulationPrediction(val gameWorldUpdates:Queue[Model.ServerGameWorld], val playerId:Int) {
   def projectGameHistoryByGameObjectId() : immutable.Map[OwnedGameObjectId,List[ _ <: AbstractOwnedGameObject with Savable]] = {
     val slots = gameWorldUpdates.last.all.map(_.id).toSet
-
     slots.map { s =>
       val sUpdates = gameWorldUpdates.flatMap { upd =>
          upd.all.find( _.id == s )
       }.toList
 
       (s,sUpdates)
-    }.toMap
+    }.toMap //.ensuring(_.size == gameWorldUpdates.last.all.size)
   }
 
   def simulatePlayer(p:PlayerGO, simTime:Long, snapshots:List[AbstractOwnedGameObject with Savable]) : PlayerGO = {
@@ -130,30 +129,36 @@ class VisualSimulationPrediction(gameWorldUpdates:Queue[Model.ServerGameWorld], 
 
     val lastServerSimToClientSimDurations = lastServerSimInstants.map(simTime - _)
     //println(gameWorldUpdates.last.all.map(_.position).mkString(","))
-    val res = projectGameHistoryByGameObjectId.toList.map {
+    //if(gameWorldUpdates.last.projectiles.size > 0) println(gameWorldUpdates.last.projectiles.size)
+    //gameWorldUpdates.last.all.find( _.isInstanceOf[ProjectileGO]).foreach( p => println("PRO"))
+    //projectGameHistoryByGameObjectId.find( _._2.last.isInstanceOf[ProjectileGO]).foreach( p => println("PRO"))
+    val res = projectGameHistoryByGameObjectId.toList.flatMap {
       case (id,snapshotsUT) =>
 
         val orderedObjectSnapshots = snapshotsUT.asInstanceOf[List[AbstractOwnedGameObject with Savable]]
 
-        val estimate:Option[AbstractOwnedGameObject with Savable] = if(orderedObjectSnapshots.size < 2) {
-          //println("unable to interpolateNonPlayerObjects")
-          None
-        } else {
-            orderedObjectSnapshots.last match {
-            case p:PlayerGO =>
+        val estimate:Option[AbstractOwnedGameObject with Savable] =
+          if(orderedObjectSnapshots.size < 2) {
+            //println("unable to interpolateNonPlayerObjects")
+            Some(orderedObjectSnapshots.last)
+          } else {
+              orderedObjectSnapshots.last match {
+              case p:PlayerGO =>
 
-              if(id._2 == playerId) {
-                None
-                //Some(p)
-              } else {
-                Some(simulatePlayer(p,simTime, orderedObjectSnapshots))
-              }
+                if(id._2 == playerId) {
 
-            case p:ProjectileGO =>
-              Some(simulateProjectile(lastServerSimToClientSimDurations, orderedObjectSnapshots, serverSimsDelta))
+                  None
+                  //Some(p)
+                } else {
+                  Some(simulatePlayer(p,simTime, orderedObjectSnapshots))
+                }
+
+              case p:ProjectileGO =>
+
+                Some(simulateProjectile(lastServerSimToClientSimDurations, orderedObjectSnapshots, serverSimsDelta))
+            }
           }
-        }
-        estimate.getOrElse(orderedObjectSnapshots.last)
+      estimate
     }
     res
   }

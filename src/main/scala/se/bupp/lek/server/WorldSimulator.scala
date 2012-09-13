@@ -265,6 +265,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
       val exploaded = exloadedSinceLastUpdate
       exloadedSinceLastUpdate = Seq.empty[ProjectileGO]
 
+      //if(simulatedProjectiles.size > 0) simulatedProjectiles.foreach { p => print(p.id) }
       lastWorldSimTimeStamp = Some(world.simCurrentTime)
       val deadPlayers = purgeDeadPlayersSinceLastUpdate.ensuring(_.forall( dp => !playerState.exists(_.playerId == dp)))
       val res: ServerGameWorld = new ServerGameWorld(

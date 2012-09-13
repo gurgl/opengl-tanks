@@ -91,7 +91,6 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
             gameApp.postMessage(response)
             gameWorldUpdatesQueue = Queue()
           case response:StartGameRequest =>
-            println("yuihg")
             gameApp.postMessage(response)
 
           case response:PlayerJoinResponse =>

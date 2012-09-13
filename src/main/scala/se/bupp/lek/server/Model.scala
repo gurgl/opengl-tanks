@@ -138,7 +138,7 @@ object Model {
   }
 
   class PlayerGO(pgo: PlayerGO) extends AbstractOwnedGameObject(pgo) with Savable {
-
+    clientSeqId = -1
 
     def this() = this(null)
 

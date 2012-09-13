@@ -188,9 +188,6 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
 
   def syncNonPlayerGameWorld(allUpdates:Set[_ <: AbstractOwnedGameObject with Savable]) {
 
-    import scala.collection.JavaConversions.asScalaBuffer
-    //val enemyNodes = rootNode.getChild(SceneGraphNodeKeys.Enemies).asInstanceOf[Node].getChildren
-    //val projectileNodes = rootNode.getChild(SceneGraphNodeKeys.Projectiles).asInstanceOf[Node].getChildren
     val enemyMap = projectNodeChildrenByData[PlayerGO](SceneGraphNodeKeys.Enemies, SceneGraphUserDataKeys.Player).toMap //enemyNodes.map( e => (e.getUserData[PlayerGO](SceneGraphUserDataKeys.Player),e).ensuring(_._1 != null) ).toMap
     val projectileMap = projectNodeChildrenByData[ProjectileGO](SceneGraphNodeKeys.Projectiles, SceneGraphUserDataKeys.Projectile).toMap  //projectileNodes.map( e => (e.getUserData[ProjectileGO](SceneGraphUserDataKeys.Projectile),e).ensuring(_._1 != null) ).toMap
 
@@ -223,6 +220,11 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
     //enemyMap.foreach {  case (k,v) => println( "pos " +  k.position + " " + v.getLocalTranslation()) }
 
 
+    if(newInUpdate.size > 0) {
+      //println(newInUpdate.size + " new in update")
+      newInUpdate.foreach { case ao:AbstractOwnedGameObject => println(ao.id + ao.getClass.getName + playerIdOpt().get) }
+
+    }
     newInUpdate.foreach {
       case p:PlayerGO =>
         if(p.playerId == playerIdOpt.apply().get) {
@@ -268,6 +270,9 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
 
     val predictor: VisualSimulationPrediction = new VisualSimulationPrediction(currentGameWorldUpdates, playerId)
     val nonPlayerPredictons = predictor.interpolateNonPlayerObjects(simTime)
+
+    //nonPlayerPredictons.find(_.pl)
+
 
     nonPlayerPredictons.distinct.toSet
   }
