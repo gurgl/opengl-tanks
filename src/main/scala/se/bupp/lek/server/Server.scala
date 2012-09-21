@@ -210,7 +210,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
 
     val simTime: Long = System.currentTimeMillis()
 
-    networkState.update(() => worldSimulator.getGameWorld(simTime))
+    networkState.update(() => worldSimulator.generateGameWorldChanges(simTime))
 
 
     leRoot.updateLogicalState(tpf);

@@ -127,8 +127,15 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
   }
 
 
+
   def sendClientUpdate(simTime: Long, visualWorldSimulation:VisualWorldSimulation) {
     val reorientation = MessageQueue.flushAccumulated()
+
+    /*if (lastReorDebug != null && lastReorDebug._1 != reorientation._1) {
+      log.debug(if(reorientation._1 == Vector3f.ZERO) "stop" else "move")
+    }
+    lastReorDebug = reorientation*/
+
     val projectiles = visualWorldSimulation.flushFired()
     val request = gameApp.createPlayerActionRequest(simTime, reorientation, projectiles)
     gameClient.sendUDP(request)

@@ -141,7 +141,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
 
 
 
-  //getGameWorld(simTime)
+  //generateGameWorldChanges(simTime)
 
   def handleStateLogic() {
 
@@ -181,7 +181,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
     world.spawnPlayer(cp)
   }
 
-  def getGameWorld(simTime:Long):  ServerGameWorld = {
+  def generateGameWorldChanges(simTime:Long):  ServerGameWorld = {
 
     import scala.collection.JavaConversions.seqAsJavaList
 
