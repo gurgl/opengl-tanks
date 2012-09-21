@@ -20,7 +20,8 @@ import com.jme3.bullet.BulletAppState.ThreadingType
 import com.jme3.audio.AudioNode
 import com.jme3.app.state.{AppStateManager, AbstractAppState}
 import com.jme3.font.{BitmapFont, BitmapText}
-import java.util.logging.{Level, Logger}
+
+import org.apache.log4j.{Logger, PropertyConfigurator}
 
 
 /**
@@ -72,6 +73,7 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
   var playerIdOpt:Option[Int] = None
 
+  val log = Logger.getLogger(classOf[Client])
 
   //var visualWorldSimulation:VisualWorldSimulation = _
 
@@ -138,7 +140,7 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
 
   override def simpleInitApp() {
-    Logger.getLogger("com.jme3").setLevel(Level.OFF);
+    java.util.logging.Logger.getLogger("com.jme3").setLevel(java.util.logging.Level.OFF);
     settings.setTitle("Tank Showdown")
     setPauseOnLostFocus(false)
     setShowSettings(false)
@@ -183,13 +185,13 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
     //if (gotGO ) println("Start please")
     messages.foreach  {
       m =>
-        println("MESS " + m.getClass)
+        log.debug("MESS " + m.getClass)
         m match {
         case x:RoundOverRequest =>
           val state: PlayState = getStateManager.getState(classOf[PlayState])
           if (state != null) {
             //state.unspawnAllObjects()
-            println("Round over received")
+            log.info("Round over received")
             state.setEnabled(false)
           }
           messages = None
@@ -197,16 +199,16 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
         case x:StartGameRequest =>
 
           var state: PlayState = getStateManager.getState(classOf[PlayState])
-          println("Start game received - checking")
+          log.info("Start game received - checking")
 
           if (state != null) {
-            println("Waiting for state to initialize")
+            log.info("Waiting for state to initialize")
             if (state.isInitialized) {
               getStateManager.detach(state)
             }
             //state.setEnabled(false)
           } else {
-            println("Start game received - starting new game")
+            log.info("Start game received - starting new game")
             state = new PlayState()
             getStateManager.attach(state)
             messages = None
@@ -222,7 +224,7 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
           val state: PlayState = getStateManager.getState(classOf[PlayState])
           if (state != null) {
             getStateManager.detach(state)
-            println("GAme over received")
+            log.info("GAme over received")
           }
           //val mState = getStateManager.getState(classOf[MessageState])
           //if (mState == null) {
@@ -236,7 +238,7 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
         case x:StartRoundRequest =>
           val state: PlayState = getStateManager.getState(classOf[PlayState])
           if (state != null) {
-            println("Start round received")
+            log.info("Start round received")
             state.setEnabled(true)
           }
 
@@ -335,11 +337,14 @@ object Client {
   var spel:Client = _
 
   def main(arguments: Array[String]): Unit = {
+
+
     spel = new Client(new ClientConnectSettings("localhost", 54555, 54777))
     val settings = new AppSettings(true);
     settings.setFrameRate(58)
     settings.setResolution(640,480)
     settings.setTitle("Tank Showdown")
+
 
 
     spel.setSettings(settings)

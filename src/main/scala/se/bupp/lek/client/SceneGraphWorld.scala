@@ -14,6 +14,7 @@ import com.jme3.bullet.collision.shapes.CapsuleCollisionShape
 import com.jme3.bounding.BoundingSphere
 import collection.immutable.HashSet
 import com.jme3.export.Savable
+import org.apache.log4j.Logger
 
 /**
  * Created with IntelliJ IDEA.
@@ -63,6 +64,7 @@ object SceneGraphWorld {
 
 abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager, rootNode:Node) {
 
+  private val log = Logger.getLogger(classOf[SceneGraphWorld])
   def getPhysicsSpace : PhysicsSpace
 
   var playerControl:CharacterControl = _
@@ -258,7 +260,7 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
 
   def materializeProjectile2(p:ProjectileGO) = {
 
-    println("adding projectile " + p.position + "" + p.id)
+    log.info("adding projectile " + p.position + "" + p.id)
     val instance = new Geometry("Box", projectileGeometry);
     instance.setLocalTranslation(p.position.clone())
 
@@ -305,7 +307,7 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
   def cleanNodes(toRemove:List[SceneGraphNodeKeys.SceneGraphNodeKey]) {
     toRemove.foreach( x => Option(getNode(x)) match {
       case Some(y) => rootNode.detachChild(y)
-      case None => println("Cannot remove " + x)
+      case None => log.debug("Cannot remove " + x)
     }
   )
 }

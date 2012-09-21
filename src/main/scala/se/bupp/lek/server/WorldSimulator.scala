@@ -19,6 +19,7 @@ import com.jme3.bullet.collision.{PhysicsCollisionEvent, PhysicsCollisionListene
 import com.jme3.bounding.BoundingSphere
 import se.bupp.lek.common.model.{Playing, Dead}
 import java.util
+import org.apache.log4j.Logger
 
 
 /**
@@ -58,6 +59,8 @@ class ProjectileCollisionControl(cs:CollisionShape) extends RigidBodyControl(cs)
 
 abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionListener {
 
+  val log = Logger.getLogger(classOf[WorldSimulator])
+
   world.getPhysicsSpace.addCollisionListener(this)
 
   def extractUserData(s:Spatial) : Option[_] = {
@@ -87,7 +90,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
     player.state match {
       case Dead(since) =>
       case Playing() =>
-        println("Player " + player.gameState.playerId + " died.")
+        log.info("Player " + player.gameState.playerId + " died.")
 
 
 
@@ -146,14 +149,14 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
   def handleStateLogic() {
 
     if (spatialsToRemoveInUpdatePhase.size > 0) {
-      println("spatialsToRemoveInUpdatePhase " + spatialsToRemoveInUpdatePhase.size)
+      log.info("spatialsToRemoveInUpdatePhase " + spatialsToRemoveInUpdatePhase.size)
     }
 
     spatialsToRemoveInUpdatePhase.foreach {
       case (s:Spatial,pc:PlayerConnection) =>
         val bef = world.getNode(SceneGraphWorld.SceneGraphNodeKeys.Enemies).getChildren.size
         world.unspawnPlayer(s,pc)
-        println(world.getNode(SceneGraphWorld.SceneGraphNodeKeys.Enemies).getChildren.size + " " + bef )
+        log.info(world.getNode(SceneGraphWorld.SceneGraphNodeKeys.Enemies).getChildren.size + " " + bef )
 
       case (s:Spatial,pc:ProjectileGO) => world.unspawnProjectile(s,pc)
       case _ => throw new IllegalStateException("Unhandled object in remove queue")
@@ -175,7 +178,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
 
 
   def respawnDeadPlayer(cp: Model.PlayerConnection) {
-    println("Respawning dead player " + cp.playerId)
+    log.info("Respawning dead player " + cp.playerId)
 
     cp.state = Playing()
     world.spawnPlayer(cp)
@@ -259,7 +262,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
       }
 
       if(exloadedSinceLastUpdate.size > 0) {
-        println(exloadedSinceLastUpdate.size + " exploaded ")
+        log.info(exloadedSinceLastUpdate.size + " exploaded ")
       }
       val exploaded = exloadedSinceLastUpdate
       exloadedSinceLastUpdate = Seq.empty[ProjectileGO]
@@ -270,8 +273,8 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
 
 
       if(deadPlayers.size > 0 ) {
-        println(deadPlayers.size + "DDDDDDDDDDDDDDDDDDDDDDEAD")
-        deadPlayers.foreach( p => println(p))
+        log.info(deadPlayers.size + "DDDDDDDDDDDDDDDDDDDDDDEAD")
+        deadPlayers.foreach( p => log.info(p))
       }
       val res: ServerGameWorld = new ServerGameWorld(
 
@@ -298,7 +301,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
     participatingPlayers = newParticipatingPlayers
     pcOpt match {
       case Nil =>
-      case pc :: rest => world.findPlayerInfo(playerId).foreach { case (_,s) => world.unspawnPlayer(s, pc) }
+      case pc :: rest => world.unspawnPlayer(pc)
     }
   }
 
@@ -347,15 +350,34 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
               case None => firedProjectiles(request.playerId) = request.projectilesFired.toList
             }
            //.ensuring(x.position != null && x.direction != null)
-          case None => throw new IllegalStateException("Player not found but connected and not dead")
+          case None => log.error("BUG: Player not found but connected and not dead")
         }
-        case None => println("Player not connected")
+        case None => log.warn("Player not connected")
       }
     }
   }
 
   def unspawnAllGameObjects() {
+    participatingPlayers.foreach { pc => world.unspawnPlayer(pc) }
+    world.getProjectiles().foreach { case (pgo,s) => world.unspawnProjectile(s,pgo) }
 
+  }
+
+  def spawnAllParticipants() {
+    participatingPlayers.foreach{
+      ps =>
+
+        val pd = new PlayerGO
+        pd.playerId = ps.playerId
+        pd.position = Vector3f.ZERO.clone().setY(0.13499954f)
+        pd.direction = Quaternion.DIRECTION_Z.clone()
+
+        ps.gameState = pd
+
+        ps.state = Playing()
+
+        world.spawnPlayer(ps)
+    }
   }
 
   def removeAndRespawnAll() {

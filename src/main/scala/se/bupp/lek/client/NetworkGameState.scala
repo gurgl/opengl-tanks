@@ -15,6 +15,8 @@ import scala.Some
 import com.jme3.math.Vector3f
 import se.bupp.lek.client.MathUtil._
 import scala.Some
+import org.apache.log4j.Logger
+
 
 /**
  * Created with IntelliJ IDEA.
@@ -61,6 +63,8 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
 
   val GW_UPDATES_SIZE = 4
 
+  val log = Logger.getLogger(classOf[NetworkGameState])
+
   var gameWorldUpdatesQueue:Queue[Model.ServerGameWorld] = Queue()
 
   def initClient() {
@@ -79,7 +83,7 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
               handleWorldUpdate(response)
               //              }
             } else {
-              println("Getting world wo player received.")
+              log.warn("Getting world wo player received.")
             }
           case response:RoundOverRequest =>
             gameApp.postMessage(response)
@@ -92,7 +96,7 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
             gameApp.postMessage(response)
 
           case response:PlayerJoinResponse =>
-            println("join resp received " + response.playerId)
+            log.info("join resp received " + response.playerId)
             gameApp.playerIdOpt = Some(response.playerId)
 
           case _ =>
@@ -101,7 +105,7 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
     });
 
     gameClient.start();
-    println("tcpPort " + clientConnectSettings.tcpPort + ",  updPort " + clientConnectSettings.udpPort)
+    log.info("tcpPort " + clientConnectSettings.tcpPort + ",  updPort " + clientConnectSettings.udpPort)
     gameClient.connect(5000, clientConnectSettings.host, clientConnectSettings.tcpPort, clientConnectSettings.udpPort);
 
     val playerJoinRequest = new PlayerJoinRequest()
@@ -126,7 +130,7 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
   }
 
   override def cleanup() {
-    println(buffer.toString)
+    log.debug(buffer.toString)
     gameClient.close();
   }
 
@@ -146,14 +150,14 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
           //println("ITS INITIALIZED")
           val toKill = serverUpdate.deadPlayers.toList
           if (toKill.size > 0) {
-            println("handle deaths")
+            log.info("handle deaths")
             playState.visualWorldSimulation.handleKilledPlayers(toKill)
           }
 
           if (playState.visualWorldSimulation.playerDead) {
             serverUpdate.alivePlayers.find( p => p.playerId == gameApp.playerIdOpt.get).foreach {
               p =>
-                println("You respawned")
+                log.info("You respawned")
                 playState.visualWorldSimulation.playerDead = false
                 playState.visualWorldSimulation.rootNode.attachChild(playState.visualWorldSimulation.player)
             }

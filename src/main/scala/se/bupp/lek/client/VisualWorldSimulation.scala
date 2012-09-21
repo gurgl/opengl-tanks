@@ -28,6 +28,7 @@ import scala.Tuple3
 import scala.Some
 import com.jme3.scene.control.AbstractControl
 import se.bupp.lek.server.{Model, SceneGraphAccessors}
+import org.apache.log4j.Logger
 
 
 /**
@@ -54,6 +55,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
   import VisualWorldSimulation._
   import SceneGraphWorld._
 
+  private val log = Logger.getLogger(classOf[VisualGameWorld])
   override def getPhysicsSpace = bulletAppState.getPhysicsSpace
 
   var playerDead = false
@@ -172,15 +174,15 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
         if (playerId == playerIdOpt().get) {
           getNode(SceneGraphNodeKeys.Player).detachChild(player)
           playerDead = true
-          println("You died")
+          log.info("You died")
         } else {
           val enemies = projectNodeChildrenByData[PlayerGO](SceneGraphNodeKeys.Enemies, SceneGraphUserDataKeys.Player).toMap
           enemies.find {
             case (p, s) => p.playerId == playerId } match {
               case Some((p,s)) =>
-              println("Player " + playerId + " died")
+              log.info("Player " + playerId + " died")
               getNode(SceneGraphNodeKeys.Enemies).detachChild(s)
-              case None => println("Could not find killed player " + playerId + "")
+              case None => log.error("Could not find killed player " + playerId + "")
             }
           }
     }
@@ -212,7 +214,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
         "matched " + matched.size +
         "allU "+allUpdates.size
       )*/
-      enemyMap.foreach {  case (k,v) => println( "pos " +  k.position + " " + v.getLocalTranslation()) }
+      enemyMap.foreach {  case (k,v) => log.debug( "pos " +  k.position + " " + v.getLocalTranslation()) }
 
     }
 
@@ -319,7 +321,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
       //saved = if(discarded.size > 0) discarded.last +: newSaved else newSaved
       if(saved.size == 0) {
         //server
-        println("Inga ")
+        log.debug("Inga ")
 
       } else {
 
@@ -331,7 +333,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
             case (recalculatedPositions,(time,orientationBeforeReorientation, reorient)) =>
               recalculatedPositions :+ recalculatedPositions.last.reorientate(reorient)
           }
-          println("Bad " + saved.head._2.position + " " + server.position + " " + serverSimTime + " " + diffHeur + " " + serverSnapshotSentByPlayerTime)
+          log.warn("Bad " + saved.head._2.position + " " + server.position + " " + serverSimTime + " " + diffHeur + " " + serverSnapshotSentByPlayerTime)
           saved = newSavedPos.tail.zip(saved).map {case (np, (ts, _ , reor)) => (ts, np, reor) }
           //println("Bad " + saved.head._2.position+ " " + server.position + " " + diffHeur._1) // + " " + newSavedPos.last)
           //println("Bad " + diffHeur)
@@ -359,7 +361,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
   def applyServerWorld(newServerState:ServerGameWorld) {
 
     newServerState.explodedProjectiles.foreach {
-      p => println("explosiion")
+      p => log.debug("explosiion")
       explosion(p.position.clone())
     }
 

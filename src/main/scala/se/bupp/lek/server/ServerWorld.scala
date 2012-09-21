@@ -10,6 +10,7 @@ import com.jme3.bullet.control.{GhostControl, CharacterControl, RigidBodyControl
 import com.jme3.bounding.BoundingSphere
 import com.jme3.math.Vector3f
 import se.bupp.lek.client.SceneGraphWorld.SceneGraphUserDataKeys
+import org.apache.log4j.Logger
 
 /**
  * Created with IntelliJ IDEA.
@@ -20,6 +21,8 @@ import se.bupp.lek.client.SceneGraphWorld.SceneGraphUserDataKeys
  */
 
 class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:PhysicsSpace) extends SceneGraphWorld(true,assetManager,rootNode) with PhysicsSpaceSimAdapter {
+
+  val log = Logger.getLogger(classOf[ServerWorld])
 
   var simCurrentTime:Long = System.currentTimeMillis()
 
@@ -56,8 +59,12 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
     //getPhysicsSpace.addCollisionListener(control)
   }
 
+  def unspawnPlayer(p:PlayerConnection) {
+    findPlayerInfo(p.playerId).foreach { case (_,s) => unspawnPlayer(s, p) }
+  }
+
   def unspawnPlayer(s: Spatial, p:PlayerConnection) = {
-    println("Unspawning player " + p.playerId)
+    log.info("Unspawning player " + p.playerId)
 
     val characterControl = s.getControl(classOf[CharacterControl])
     getPhysicsSpace.remove(characterControl)
@@ -67,7 +74,7 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
   }
 
   def unspawnProjectile(s: Spatial, p:ProjectileGO) = {
-    println("Unspawning projectile" + p.id)
+    log.info("Unspawning projectile" + p.id)
 
     val rigidBodyControl = s.getControl(classOf[RigidBodyControl])
     getPhysicsSpace.remove(rigidBodyControl)
@@ -76,7 +83,7 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
 
 
   def spawnPlayer(ps:PlayerConnection) {
-    println("Spawn player")
+    log.info("Spawn player")
     val tankGeo = materializeTank2(ps.gameState)
     //enemy.setModelBound(new BoundingSphere())
     //enemy.updateModelBound()

@@ -72,7 +72,8 @@ object MyBuild extends Build {
       "com.jme3" % "nifty-style-black" % "3.0.0.20120512-SNAPSHOT",
       "com.jme3" % "stack-alloc" % "3.0.0.20120512-SNAPSHOT",
       "com.jme3" % "vecmath" % "3.0.0.20120512-SNAPSHOT",
-      "com.jme3" % "xmlpull-xpp3" % "3.0.0.20120512-SNAPSHOT"
+      "com.jme3" % "xmlpull-xpp3" % "3.0.0.20120512-SNAPSHOT",
+      "log4j" % "log4j" % "1.2.17"
       /*"com.jmonkey" % "engine" % "3.0beta" from "file:///home/karlw/src/3rdparty/jme3/engine/dist/lib/jME3-core.jar",
       "com.jmonkey" % "engine-terr" % "3.0beta" from "file:///home/karlw/src/3rdparty/jme3/engine/dist/lib/jME3-terrain.jar"*/
     )

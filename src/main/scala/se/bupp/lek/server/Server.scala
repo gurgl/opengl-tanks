@@ -16,7 +16,6 @@ import com.jme3.app.{FlyCamAppState, SimpleApplication}
 import com.jme3.bullet.{PhysicsSpace, PhysicsTickListener, BulletAppState}
 import com.jme3.scene.{Node, Geometry}
 import com.jme3.light.DirectionalLight
-import java.util.logging.{Logger, Level}
 import se.bupp.lek.server.Server.PortSettings
 import com.jme3.system.JmeContext.Type
 import se.bupp.lek.server.Server.GameMatchSettings._
@@ -30,6 +29,8 @@ import java.util.{TimerTask, Timer}
 import se.bupp.lek.server.Server.GameMatchSettings.ScoreReached
 import se.bupp.lek.server.Server.GameMatchSettings.WhenNumOfConnectedPlayersCriteria
 import se.bupp.lek.server.Server.GameMatchSettings.NumOfRoundsPlayed
+
+import org.apache.log4j.Logger
 
 /**
  * Created by IntelliJ IDEA.
@@ -65,9 +66,10 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
 
   var lobby = new Lobby()
 
+  val log = Logger.getLogger(classOf[Server])
   override def simpleInitApp() {
 
-
+    java.util.logging.Logger.getLogger("com.jme3").setLevel(java.util.logging.Level.OFF);
     //val bulletAppState = new BulletAppState();
 
     //bulletAppState.startPhysics()
@@ -111,39 +113,40 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
           ps =>
 
         }
-        println("Game Started")
+        log.info("Game Started")
         networkState.server.sendToAllTCP(new StartGameRequest)
       }
 
       def onIntermediateRoundStart() {
         // send round started message
-        println("Round Started")
+        log.info("Round Started")
         networkState.server.sendToAllTCP(new StartRoundRequest)
-        worldSimulator.unspawnAllGameObjects()
+        worldSimulator.spawnAllParticipants()
       }
 
       def onCompetetitorScored(scoreDescription: AbstractScoreDescription) {
 
-        println("Someone scored")
+        log.info("Someone scored")
         // send displayable score modification
       }
 
       def onIntermediateRoundEnd(roundResults: RoundResults, standing: GameTotalResults) {
         // send countdown message
         // add timer to start round
-        println("Round ended")
+        log.info("Round ended")
         new Timer().schedule(new TimerTask {
           def run() {
            gameLogic.startRound()
           }
         },3000L)
+        worldSimulator.unspawnAllGameObjects()
         networkState.server.sendToAllTCP(new RoundOverRequest)
       }
 
       def onGameEnd(totals: GameTotalResults) {
-        worldSimulator.removeAndRespawnAll()
+        worldSimulator.unspawnAllGameObjects()
         networkState.server.sendToAllTCP(new GameOverRequest)
-        println("Game ended")
+        log.info("Game ended")
         new Timer().schedule(new TimerTask {
           def run() {
             gameLogic.queryStartGame()
@@ -173,7 +176,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
       }
 
       def playerLeave(playerId: Int) {
-        println("Player disconnected")
+        log.info("Player disconnected")
         lobby.removePlayer(playerId)
         worldSimulator.removeParticipant(playerId)
         gameLogic.removePlayer(playerId)
@@ -182,7 +185,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
 
 
 
-    println("Game Launch Complete")
+    log.info("Game Launch Complete")
  }
 
 
@@ -214,6 +217,8 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
 }
 
 object Server {
+
+  val log = Logger.getLogger(classOf[Server])
 
   class PortSettings(val tcpPort:Int, val udpPort:Int)
 
@@ -261,11 +266,12 @@ object Server {
 
   def main(args: Array[String]) {
 
+
     val portSettings = args.toList match {
       case tcpPort :: udpPort :: rest => new PortSettings(tcpPort.toInt, udpPort.toInt)
       case _ => new PortSettings(54555, 54777)
     }
-    println(portSettings.tcpPort + " " + portSettings.udpPort)
+    log.info(portSettings.tcpPort + " " + portSettings.udpPort)
     //Logger.getLogger("com.jme3").setLevel(Level.SEVERE)
     new Server(portSettings).start(JmeContext.Type.Headless)
   }

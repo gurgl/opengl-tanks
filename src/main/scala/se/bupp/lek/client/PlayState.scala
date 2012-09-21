@@ -22,6 +22,7 @@ import com.jme3.input.controls.{KeyTrigger, ActionListener, AnalogListener}
 import com.jme3.bullet.control.CharacterControl
 import com.jme3.input.KeyInput
 import se.bupp.lek.client.SceneGraphWorld.SceneGraphNodeKeys
+import org.apache.log4j.Logger
 
 
 /**
@@ -34,6 +35,8 @@ import se.bupp.lek.client.SceneGraphWorld.SceneGraphNodeKeys
 
 class PlayState() extends AbstractAppState with PhysicsTickListener {
 
+
+  val log = Logger.getLogger(classOf[Client])
 
   var visualWorldSimulation:VisualWorldSimulation = _
 
@@ -134,7 +137,7 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
         if(value == true) {
           val state: PlayState = gameApp.getStateManager.getState(classOf[PlayState])
           state.setEnabled(!state.isEnabled)
-          println("Paused " + state.isEnabled)
+          log.info("Paused " + state.isEnabled)
         }
       }
     }
