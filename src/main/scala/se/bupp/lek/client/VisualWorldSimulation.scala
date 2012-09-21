@@ -360,8 +360,10 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
 
   def applyServerWorld(newServerState:ServerGameWorld) {
 
+
     newServerState.explodedProjectiles.foreach {
-      p => log.debug("explosiion")
+      p =>
+      //log.debug("explosiion")
       explosion(p.position.clone())
     }
 

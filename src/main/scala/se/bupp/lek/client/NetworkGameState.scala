@@ -67,6 +67,8 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
 
   var gameWorldUpdatesQueue:Queue[Model.ServerGameWorld] = Queue()
 
+  var lastReceiveSeqId = -1
+
   def initClient() {
     gameClient = new KryoClient();
 
@@ -80,6 +82,10 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
           case response:ServerGameWorld=>
             if(gameApp.playerIdOpt.isDefined) {
               //                lock.synchronized {
+              if(response.seqId != lastReceiveSeqId + 1) {
+                log.error("bad sequence id. Last " + lastReceiveSeqId + ", new " + response.seqId )
+              }
+              lastReceiveSeqId = response.seqId
               handleWorldUpdate(response)
               //              }
             } else {

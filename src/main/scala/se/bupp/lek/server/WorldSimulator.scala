@@ -140,11 +140,8 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
 
 
 
-  def getGameWorld() :  ServerGameWorld = {
-    val simTime: Long = System.currentTimeMillis()
 
-    getGameWorld(simTime)
-  }
+  //getGameWorld(simTime)
 
   def handleStateLogic() {
 
@@ -261,11 +258,11 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
           p
       }
 
-      if(exloadedSinceLastUpdate.size > 0) {
-        log.info(exloadedSinceLastUpdate.size + " exploaded ")
-      }
-      val exploaded = exloadedSinceLastUpdate
+
+      val exploaded = Seq.empty ++: exloadedSinceLastUpdate
       exloadedSinceLastUpdate = Seq.empty[ProjectileGO]
+
+
 
       //if(simulatedProjectiles.size > 0) simulatedProjectiles.foreach { p => print(p.id) }
       lastWorldSimTimeStamp = Some(world.simCurrentTime)
@@ -282,8 +279,13 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
         alivePlayers = new util.ArrayList[PlayerGO](playerState),
         projectiles = new java.util.ArrayList[ProjectileGO](simulatedProjectiles),
         explodedProjectiles = new java.util.ArrayList[ProjectileGO](exploaded),
-        timeStamp = simTime
+        timeStamp = simTime,
+        seqId = -1
       )
+      if(exploaded.size > 0) {
+        log.info(exploaded.size + " exploaded ")
+      }
+
       res
     }
   }

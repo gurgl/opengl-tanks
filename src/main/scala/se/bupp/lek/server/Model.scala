@@ -158,13 +158,14 @@ object Model {
 
   class ServerGameWorld(
     var timeStamp: Long,
+    var seqId:Int,
     var deadPlayers:java.util.ArrayList[Int],
     var alivePlayers: java.util.ArrayList[PlayerGO],
     var projectiles: java.util.ArrayList[ProjectileGO],
     var explodedProjectiles: java.util.ArrayList[ProjectileGO]
                          ) {
 
-    def this() = this(0,null,null,null,null)
+    def this() = this(0,0, null,null,null,null)
     def all = alivePlayers.toList ++ projectiles.toList
   }
 

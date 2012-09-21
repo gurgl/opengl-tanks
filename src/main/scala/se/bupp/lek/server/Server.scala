@@ -208,7 +208,10 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
 
     worldSimulator.handleStateLogic()
 
-    networkState.update(worldSimulator.getGameWorld())
+    val simTime: Long = System.currentTimeMillis()
+
+    networkState.update(() => worldSimulator.getGameWorld(simTime))
+
 
     leRoot.updateLogicalState(tpf);
 

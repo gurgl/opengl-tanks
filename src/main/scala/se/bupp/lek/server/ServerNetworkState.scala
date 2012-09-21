@@ -53,9 +53,12 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
 
   var lastSentUpdate = 0L
 
-  def update(gameWorld:ServerGameWorld) {
+  var worldSeqId = 0
+  def update(genGameWorld : () => ServerGameWorld) {
     if(System.currentTimeMillis() - lastSentUpdate > 1000/16) {
-
+      worldSeqId = worldSeqId + 1
+      val gameWorld = genGameWorld.apply()
+      gameWorld.seqId = worldSeqId
       //println("" + getPlayers.size)
       server.sendToAllUDP(gameWorld)
       lastSentUpdate = System.currentTimeMillis()
