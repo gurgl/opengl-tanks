@@ -4,6 +4,8 @@ import com.esotericsoftware.kryonet.{Connection, Listener, Server => KryoServer}
 import se.bupp.lek.server.Model.{ServerGameWorld, PlayerJoinResponse, PlayerJoinRequest, PlayerActionRequest}
 import se.bupp.lek.server.Server.PortSettings
 import collection.immutable.HashMap
+import org.apache.log4j.Logger
+import se.bupp.lek.common.FuncUtil.RateProbe
 
 /**
  * Created with IntelliJ IDEA.
@@ -12,6 +14,8 @@ import collection.immutable.HashMap
  * Time: 02:04
  * To change this template use File | Settings | File Templates.
  */
+
+
 
 abstract class ServerNetworkState(portSettings:PortSettings) {
 
@@ -23,6 +27,11 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
   Server.getNetworkMessages.foreach(kryo.register(_))
 
   var connectionIdToPlayerIds = HashMap.empty[Int,Int]
+
+  val log = Logger.getLogger(classOf[ServerNetworkState])
+
+  val actionReqProbe = new RateProbe("ActionReq",1000L, log)
+  val serverSentProbe = new RateProbe("serverSentProbe",1000L, log)
 
   server.addListener(new Listener() {
 
@@ -36,6 +45,8 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
       //println("rec " + obj.getClass.getName)
       obj match {
         case request: PlayerActionRequest =>
+
+          actionReqProbe.tick()
           addPlayerAction(request)
 
 
@@ -62,6 +73,7 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
       //println("" + getPlayers.size)
       server.sendToAllUDP(gameWorld)
       lastSentUpdate = System.currentTimeMillis()
+      serverSentProbe.tick()
     }
   }
 

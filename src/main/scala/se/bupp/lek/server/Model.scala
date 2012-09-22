@@ -31,6 +31,8 @@ object Model {
 
     var playerId: Int = _
 
+    var teamIdentifier: Int = -1
+
     override def read(reader: JmeImporter) {}
 
     override def write(writer: JmeExporter) {}

@@ -146,4 +146,8 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
   }
 
   def getPhysicsSpace = physicsSpace
+
+  override def destroy() {
+    super.destroy()
+  }
 }

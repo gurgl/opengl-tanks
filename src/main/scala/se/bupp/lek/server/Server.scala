@@ -31,6 +31,7 @@ import se.bupp.lek.server.Server.GameMatchSettings.WhenNumOfConnectedPlayersCrit
 import se.bupp.lek.server.Server.GameMatchSettings.NumOfRoundsPlayed
 
 import org.apache.log4j.Logger
+import se.bupp.lek.common.FuncUtil.RateProbe
 
 /**
  * Created by IntelliJ IDEA.
@@ -86,7 +87,9 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
       leRoot = new Node()
     }
 
-    val (worldSimulator, gameLogic) = createWorldSimulator()
+    val (ws, gl) = createWorldSimulator()
+    worldSimulator = ws
+    gameLogic = gl
 
     networkState = new ServerNetworkState(portSettings) {
       def addPlayerAction(pa: PlayerActionRequest) {
@@ -96,12 +99,14 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
 
       override def playerJoined(pjr: PlayerJoinRequest) = {
         val resp = new PlayerJoinResponse
+
         val ps = lobby.addPlayer(pjr)
 
         resp.playerId = ps.playerId
-        val identifier = if(pjr.teamIdentifier == -1) ps.playerId else pjr.teamIdentifier
+
+
         worldSimulator.addParticipant(ps)
-        gameLogic.addCompetitor(new Competitor(ps.playerId,identifier))
+        gameLogic.addCompetitor(new Competitor(ps.playerId,ps.teamIdentifier))
         resp
       }
 
@@ -116,7 +121,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
   }
 
 
-  def createWorldSimulator() = {
+  def createWorldSimulator() : (WorldSimulator, GameLogic)= {
     val physicsSpace = new PhysicsSpace()
     val serverWorld = new ServerWorld(leRoot, assetManager, physicsSpace)
     serverWorld.initEmpty()
@@ -129,7 +134,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
 
     val settings: GameMatchSettings = new GameMatchSettings(
       startCriteria = WhenNumOfConnectedPlayersCriteria(2),
-      roundEndCriteria = ScoreReached(2),
+      roundEndCriteria = ScoreReached(1),
       gameEndCriteria = NumOfRoundsPlayed(2)
     )
 
@@ -144,6 +149,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
           ps =>
         }
         log.info("Game Started")
+        getStateManager.attach(new PlayState(Server.this))
         networkState.server.sendToAllTCP(new StartGameRequest)
       }
 
@@ -175,11 +181,26 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
 
       def onGameEnd(totals: GameTotalResults) {
         worldSimulator.unspawnAllGameObjects()
+
+        var playState: PlayState = getStateManager.getState(classOf[PlayState])
+        playState.setEnabled(false)
+        getStateManager.detach(playState)
+        worldSimulator.destroy()
+        worldSimulator = null
+        gameLogic = null
         networkState.server.sendToAllTCP(new GameOverRequest)
         log.info("Game ended")
         new Timer().schedule(new TimerTask {
           def run() {
-            gameLogic.queryStartGame()
+            val (ws, gl) = createWorldSimulator()
+            worldSimulator = ws
+            gameLogic = gl
+            lobby.connectedPlayers.foreach {
+              p =>
+                worldSimulator.addParticipant(p)
+                gameLogic.addCompetitor(new Competitor(p.playerId,p.teamIdentifier))
+            }
+            //gameLogic.queryStartGame()
           }
         },5000L)
         // lobby mode
@@ -203,9 +224,11 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
     rootNode.addLight(sun);
   }
 
+  var updateProbe = new RateProbe("App Update", 3000L,log)
 
-  override def simpleUpdate(tpf: Float) {
+  override def simpleUpdate(tpf: Float) : Unit = try {
 
+    /*updateProbe.tick()
     worldSimulator.world.simulateToLastUpdated()
 
     worldSimulator.handleStateLogic()
@@ -217,8 +240,8 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
 
     leRoot.updateLogicalState(tpf);
 
-    leRoot.updateGeometricState();
-  }
+    leRoot.updateGeometricState();*/
+  } catch { case e:Exception => log.error(e) }
 }
 
 object Server {

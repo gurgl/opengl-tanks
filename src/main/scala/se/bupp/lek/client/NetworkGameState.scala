@@ -16,6 +16,7 @@ import com.jme3.math.Vector3f
 import se.bupp.lek.client.MathUtil._
 import scala.Some
 import org.apache.log4j.Logger
+import se.bupp.lek.common.FuncUtil.RateProbe
 
 
 /**
@@ -82,6 +83,7 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
 
   var lastReceiveSeqId = -1
 
+  var serverUpdProbe = new RateProbe("Server Upd",1000L,log)
   def initClient() {
     gameClient = new KryoClient();
 
@@ -90,9 +92,11 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
     Server.getNetworkMessages.foreach( kryo.register(_))
 
     gameClient.addListener(new Listener() {
-      override def received (connection:Connection , obj:Object ) {
+      override def received (connection:Connection , obj:Object ) = try {
         obj match {
           case response:ServerGameWorld=>
+            serverUpdProbe.tick()
+
             if(gameApp.playerIdOpt.isDefined) {
               //                lock.synchronized {
               if(response.seqId != lastReceiveSeqId + 1) {
@@ -120,7 +124,7 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
 
           case _ =>
         }
-      }
+      } catch { case e:Exception => e.printStackTrace()}
     });
 
     gameClient.start();

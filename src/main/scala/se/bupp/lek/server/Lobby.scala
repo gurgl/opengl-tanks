@@ -32,6 +32,8 @@ class Lobby() {
 
         var ps = new PlayerConnection
         ps.playerId = playerId
+        ps.teamIdentifier = if(pjr.teamIdentifier == -1) playerId else pjr.teamIdentifier
+
         //ps.lastUpdate = None
         ps
       }

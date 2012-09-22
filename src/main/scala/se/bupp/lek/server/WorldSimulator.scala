@@ -133,7 +133,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
 
   var simulatedUntil:Option[Long] = None
 
-  val RespawnTime = 1000L * 10L
+  val RespawnTime = 1000L * 3L
   //enemy.asInstanceOf[Geometry].collideWith(f.geometry.getWorldBound,res)
 
   //var projectiles = new ArrayBuffer[ProjectileGO]()
@@ -319,7 +319,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
       pjr.gameState = pd
 
       participatingPlayers = participatingPlayers :+ pjr
-
+      //TODO: Really from here? Should be handled by game logic
       world.spawnPlayer(pjr)
     }
 
@@ -384,5 +384,9 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
 
   def removeAndRespawnAll() {
 
+  }
+
+  def destroy() {
+    world.destroy()
   }
 }

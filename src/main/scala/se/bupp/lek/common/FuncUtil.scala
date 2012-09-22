@@ -1,6 +1,7 @@
 package se.bupp.lek.common
 
 import scalaz.NonEmptyList
+import org.apache.log4j.Logger
 
 /**
  * Created with IntelliJ IDEA.
@@ -11,6 +12,25 @@ import scalaz.NonEmptyList
  */
 
 object FuncUtil {
+
+  class RateProbe(val name:String, val interval:Long, log:Logger) {
+    var debugMeasure = 0
+    var debugLastOutput = 0L
+
+    def tick() {
+      debugMeasure = debugMeasure + 1
+      qeury()
+    }
+
+    def qeury() {
+      if (System.currentTimeMillis() - debugLastOutput > interval) {
+        debugLastOutput = System.currentTimeMillis()
+        log.debug(debugMeasure + " " + name + " received")
+        debugMeasure = 0
+      }
+    }
+
+  }
 
   implicit def toDeluxeList[A](l:Seq[A]) = new DeluxeList(l)
 
