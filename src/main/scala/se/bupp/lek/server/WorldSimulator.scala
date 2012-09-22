@@ -169,8 +169,10 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
       val s = Seq.empty ++: updateLoopMessages
       updateLoopMessages = updateLoopMessages.companion.empty
       s
-    }.foreach {
-      case m : PlayerKillPlayerMessage => handlePlayerDeathMessage(m)
+    }.foreach { mm => mm match {
+        case m : PlayerKillPlayerMessage => handlePlayerDeathMessage(m)
+      }
+      if(destroyed) return
     }
 
     // Deal with the fact that game can have ended
