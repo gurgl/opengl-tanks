@@ -13,6 +13,18 @@ import org.apache.log4j.Logger
 
 object FuncUtil {
 
+  class SampleProbe(val name:String, val interval:Long, log:Logger) {
+    var debugLastOutput = 0L
+
+    def tick(output:() => String) {
+      if (System.currentTimeMillis() - debugLastOutput > interval) {
+        debugLastOutput = System.currentTimeMillis()
+        log.debug(output + " " + name + " sample")
+      }
+    }
+
+  }
+
   class RateProbe(val name:String, val interval:Long, log:Logger) {
     var debugMeasure = 0
     var debugLastOutput = 0L
@@ -25,7 +37,7 @@ object FuncUtil {
     def qeury() {
       if (System.currentTimeMillis() - debugLastOutput > interval) {
         debugLastOutput = System.currentTimeMillis()
-        log.debug(debugMeasure + " " + name + " received")
+        log.debug(debugMeasure + " " + name + " rate")
         debugMeasure = 0
       }
     }

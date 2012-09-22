@@ -4,7 +4,7 @@ import com.jme3.scene.{Spatial, Node}
 import com.jme3.asset.AssetManager
 import com.jme3.bullet.PhysicsSpace
 import se.bupp.lek.client.SceneGraphWorld
-import se.bupp.lek.server.Model.{PlayerConnection, ProjectileGO}
+import se.bupp.lek.server.Model.{GameParticipant, ProjectileGO}
 import com.jme3.bullet.collision.shapes.{CapsuleCollisionShape, SphereCollisionShape}
 import com.jme3.bullet.control.{GhostControl, CharacterControl, RigidBodyControl}
 import com.jme3.bounding.BoundingSphere
@@ -59,11 +59,11 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
     //getPhysicsSpace.addCollisionListener(control)
   }
 
-  def unspawnPlayer(p:PlayerConnection) {
+  def unspawnPlayer(p:GameParticipant) {
     findPlayerInfo(p.playerId).foreach { case (_,s) => unspawnPlayer(s, p) }
   }
 
-  def unspawnPlayer(s: Spatial, p:PlayerConnection) = {
+  def unspawnPlayer(s: Spatial, p:GameParticipant) = {
     log.info("Unspawning player " + p.playerId)
 
     val characterControl = s.getControl(classOf[CharacterControl])
@@ -82,7 +82,7 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
   }
 
 
-  def spawnPlayer(ps:PlayerConnection) {
+  def spawnPlayer(ps:GameParticipant) {
     log.info("Spawn player")
     val tankGeo = materializeTank2(ps.gameState)
     //enemy.setModelBound(new BoundingSphere())
@@ -114,7 +114,7 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
     playerControl.setPhysicsLocation(new Vector3f(0, 2.5f, 0));
 
     val ghost: GhostControl = new GhostControl(capsuleShapeGhost) /*{
-      override def update(tpf:Float) {
+      override def querySendUpdate(tpf:Float) {
 
         if (!enabled) {
           return;
@@ -133,7 +133,7 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
         }
         setPhysicsRotation(quaternion);
 
-        //println("ghost update" + vectorf + " " + quaternion)
+        //println("ghost querySendUpdate" + vectorf + " " + quaternion)
       }
     }*/
 
@@ -149,5 +149,6 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
 
   override def destroy() {
     super.destroy()
+    physicsSpace.destroy()
   }
 }

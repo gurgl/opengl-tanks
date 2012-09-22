@@ -19,6 +19,16 @@ import se.bupp.lek.common.model.{ServerPlayerGO, Playing, PlayerConnectionState}
 object Model {
 
   class PlayerConnection extends Savable {
+    var playerId: Int = _
+
+    var teamIdentifier: Int = -1
+
+    override def read(reader: JmeImporter) {}
+
+    override def write(writer: JmeExporter) {}
+  }
+
+  class GameParticipant extends Savable {
     var gameState: PlayerGO = _
 
     var state:PlayerConnectionState = Playing()
@@ -32,6 +42,7 @@ object Model {
     var playerId: Int = _
 
     var teamIdentifier: Int = -1
+
 
     override def read(reader: JmeImporter) {}
 

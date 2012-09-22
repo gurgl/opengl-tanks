@@ -1,6 +1,6 @@
 package se.bupp.lek.server
 
-import se.bupp.lek.server.Model.{MotionGO, PlayerConnection}
+import se.bupp.lek.server.Model.{MotionGO, GameParticipant}
 import com.jme3.scene.{Spatial, Node}
 import se.bupp.lek.client.SceneGraphWorld
 import scalaz.NonEmptyList
@@ -25,10 +25,10 @@ trait PhysicsSpaceSimAdapter extends SceneGraphAccessors {
   lazy val minSimDuration = math.ceil(getPhysicsSpace.getAccuracy * 1000).toLong
   def isTest:Boolean = false
 
-  def spawnPlayer(ps: PlayerConnection): Unit
+  def spawnPlayer(ps: GameParticipant): Unit
 
 
-  def getPlayers() = projectNodeChildrenByData[PlayerConnection](SceneGraphWorld.SceneGraphNodeKeys.Enemies, SceneGraphWorld.SceneGraphUserDataKeys.Player)
+  def getPlayers() = projectNodeChildrenByData[GameParticipant](SceneGraphWorld.SceneGraphNodeKeys.Enemies, SceneGraphWorld.SceneGraphUserDataKeys.Player)
 
 
   def findPlayer(playerId: Int) = {
@@ -62,7 +62,7 @@ trait PhysicsSpaceSimAdapter extends SceneGraphAccessors {
 
           simulateUpdatesUntil(updates, playerSpatials)
         }
-      case None => //println("No oldest update")
+      case None => //println("No oldest querySendUpdate")
     }
 
     simCurrentTime
@@ -70,7 +70,7 @@ trait PhysicsSpaceSimAdapter extends SceneGraphAccessors {
 
   var timeBank = 0L
 
-  def simulateUpdatesUntil(updates: scala.Seq[(Long, NonEmptyList[(Model.PlayerConnection, Spatial, Model.MotionGO)])], playerSpatials: Seq[Spatial]) {
+  def simulateUpdatesUntil(updates: scala.Seq[(Long, NonEmptyList[(Model.GameParticipant, Spatial, Model.MotionGO)])], playerSpatials: Seq[Spatial]) {
     updates.foreach {
       case (time, playerUpdatesAtTime) =>
         var nextSimDuration = time - simCurrentTime
@@ -106,7 +106,7 @@ trait PhysicsSpaceSimAdapter extends SceneGraphAccessors {
     }
   }
 
-  def popPlayerUpdatesLessOrEqualToTimeSorted(players: mutable.Buffer[(Model.PlayerConnection, Spatial)], oldestPlayerUpdate: Long): Seq[(Long, NonEmptyList[(Model.PlayerConnection, Spatial, Model.MotionGO)])] = {
+  def popPlayerUpdatesLessOrEqualToTimeSorted(players: mutable.Buffer[(Model.GameParticipant, Spatial)], oldestPlayerUpdate: Long): Seq[(Long, NonEmptyList[(Model.GameParticipant, Spatial, Model.MotionGO)])] = {
     import se.bupp.lek.common.FuncUtil._
     players.map {
       case (playerStatus, s) =>
@@ -121,7 +121,7 @@ trait PhysicsSpaceSimAdapter extends SceneGraphAccessors {
     }.toListMap.toSeq.sortWith(_._1 < _._1)
   }
 
-  def getOldestUpdateTimeLastReceived(players: mutable.Buffer[(Model.PlayerConnection, Spatial)]): Option[Long] = {
+  def getOldestUpdateTimeLastReceived(players: mutable.Buffer[(Model.GameParticipant, Spatial)]): Option[Long] = {
     if (players.forall(_._1.updates.size > 0)) {
       val oldestPlayerUpdate = players.foldLeft(Long.MaxValue) {
         case (least, (st, sp)) =>
@@ -151,7 +151,7 @@ trait PhysicsSpaceSimAdapter extends SceneGraphAccessors {
         ctrl.setWalkDirection(u.translation.divide(simSteps.toFloat))
         s.setLocalRotation(u.rotation.mult(s.getLocalRotation))
         if (isTest) {
-          val status: PlayerConnection = s.getUserData[PlayerConnection](SceneGraphWorld.SceneGraphUserDataKeys.Player)
+          val status: GameParticipant = s.getUserData[GameParticipant](SceneGraphWorld.SceneGraphUserDataKeys.Player)
           preMap = preMap + (status.gameState.playerId -> ctrl.getPhysicsLocation.clone())
           val ss = "Setting trans " + u.translation + " p " + status.gameState.playerId + " " + duration + " time " + simCurrentTime + ctrl.getWalkDirection + " " + simSteps
           str  = str + (status.gameState.playerId ->  ss)
@@ -168,7 +168,7 @@ trait PhysicsSpaceSimAdapter extends SceneGraphAccessors {
 
         val ctrl: CharacterControl = s.getControl(classOf[CharacterControl])
 
-        val status: PlayerConnection = s.getUserData[PlayerConnection](SceneGraphWorld.SceneGraphUserDataKeys.Player)
+        val status: GameParticipant = s.getUserData[GameParticipant](SceneGraphWorld.SceneGraphUserDataKeys.Player)
         var post = ctrl.getPhysicsLocation
         var pre = preMap(status.gameState.playerId)
         var actual = post.subtract(pre).length()

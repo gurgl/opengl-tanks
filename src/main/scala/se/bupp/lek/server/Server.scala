@@ -70,7 +70,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
   val log = Logger.getLogger(classOf[Server])
   override def simpleInitApp() {
 
-    java.util.logging.Logger.getLogger("com.jme3").setLevel(java.util.logging.Level.OFF);
+    //java.util.logging.Logger.getLogger("com.jme3").setLevel(java.util.logging.Level.OFF);
     //val bulletAppState = new BulletAppState();
 
     //bulletAppState.startPhysics()
@@ -93,8 +93,14 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
 
     networkState = new ServerNetworkState(portSettings) {
       def addPlayerAction(pa: PlayerActionRequest) {
-          pa.ensuring(pa.motion.translation != null && pa.motion.rotation != null)
-          worldSimulator.addPlayerAction(pa)
+        pa.ensuring(pa.motion.translation != null && pa.motion.rotation != null)
+        Option(getStateManager.getState(classOf[PlayState])).foreach { ps =>
+          if (ps.isEnabled && ps.isInitialized) {
+            ps.addPlayerAction(pa)
+          }
+        }
+
+
       }
 
       override def playerJoined(pjr: PlayerJoinRequest) = {
@@ -235,7 +241,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
 
     val simTime: Long = System.currentTimeMillis()
 
-    networkState.update(() => worldSimulator.generateGameWorldChanges(simTime))
+    networkState.querySendUpdate(() => worldSimulator.generateGameWorldChanges(simTime))
 
 
     leRoot.updateLogicalState(tpf);

@@ -34,7 +34,7 @@ import org.apache.log4j.Logger
 class ProjectileCollisionControl(cs:CollisionShape) extends RigidBodyControl(cs) with PhysicsCollisionListener {
 
   def extractUserData(s:Spatial) : Option[_] = {
-    var proj = (Option[ProjectileGO](s.getUserData(SceneGraphWorld.SceneGraphUserDataKeys.Projectile)),Option[PlayerConnection](s.getUserData(SceneGraphWorld.SceneGraphUserDataKeys.Player)))
+    var proj = (Option[ProjectileGO](s.getUserData(SceneGraphWorld.SceneGraphUserDataKeys.Projectile)),Option[GameParticipant](s.getUserData(SceneGraphWorld.SceneGraphUserDataKeys.Player)))
     proj match {
       case (Some(pro),None) => Some(pro)
       case (None, Some(pro))  => Some(pro)
@@ -45,8 +45,8 @@ class ProjectileCollisionControl(cs:CollisionShape) extends RigidBodyControl(cs)
   def collision(p1: PhysicsCollisionEvent) {
     //println("collision")
     (extractUserData(p1.getNodeA),extractUserData(p1.getNodeB)) match {
-      case (Some(proj:ProjectileGO),Some(player:PlayerConnection)) => println("Player " + player.gameState.playerId + " died.")
-      case (Some(player:PlayerConnection),Some(proj:ProjectileGO)) => println("Player " + player.gameState.playerId + " died.")
+      case (Some(proj:ProjectileGO),Some(player:GameParticipant)) => println("Player " + player.gameState.playerId + " died.")
+      case (Some(player:GameParticipant),Some(proj:ProjectileGO)) => println("Player " + player.gameState.playerId + " died.")
       case (Some(proj:ProjectileGO),None) => println("Projectile lvl")
       case (None, Some(proj:ProjectileGO)) => println("Projectile lvl")
       case _ => //println("unknown collision")
@@ -59,12 +59,14 @@ class ProjectileCollisionControl(cs:CollisionShape) extends RigidBodyControl(cs)
 
 abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionListener {
 
+  var destroyed = false
+
   val log = Logger.getLogger(classOf[WorldSimulator])
 
   world.getPhysicsSpace.addCollisionListener(this)
 
   def extractUserData(s:Spatial) : Option[_] = {
-    var proj = (Option[ProjectileGO](s.getUserData(SceneGraphWorld.SceneGraphUserDataKeys.Projectile)),Option[PlayerConnection](s.getUserData(SceneGraphWorld.SceneGraphUserDataKeys.Player)))
+    var proj = (Option[ProjectileGO](s.getUserData(SceneGraphWorld.SceneGraphUserDataKeys.Projectile)),Option[GameParticipant](s.getUserData(SceneGraphWorld.SceneGraphUserDataKeys.Player)))
     proj match {
     case (Some(pro),None) => Some(pro)
     case (None, Some(pro))  => Some(pro)
@@ -75,8 +77,8 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
   def collision(p1: PhysicsCollisionEvent) {
   //println("collision")
     (extractUserData(p1.getNodeA),extractUserData(p1.getNodeB)) match {
-    case (Some(proj:ProjectileGO),Some(player:PlayerConnection)) => playerDied(p1.getNodeB, player, proj.playerId) ; explodeProjectile(p1.getNodeA,proj)
-    case (Some(player:PlayerConnection),Some(proj:ProjectileGO)) => playerDied(p1.getNodeA, player, proj.playerId) ; explodeProjectile(p1.getNodeB,proj)
+    case (Some(proj:ProjectileGO),Some(player:GameParticipant)) => playerDied(p1.getNodeB, player, proj.playerId) ; explodeProjectile(p1.getNodeA,proj)
+    case (Some(player:GameParticipant),Some(proj:ProjectileGO)) => playerDied(p1.getNodeA, player, proj.playerId) ; explodeProjectile(p1.getNodeB,proj)
     case (Some(proj:ProjectileGO), None) => explodeProjectile(p1.getNodeA,proj)
     case (None, Some(proj:ProjectileGO)) => explodeProjectile(p1.getNodeB,proj)
 
@@ -86,27 +88,44 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
 
   def playerKilledPlayer(killer:Int, victim:Int)
 
-  def playerDied(s: Spatial, player: Model.PlayerConnection, killer:Int) {
-    player.state match {
+  def playerDied(s: Spatial, player: Model.GameParticipant, killer:Int) {
+    updateLoopMessages = updateLoopMessages :+ PlayerKillPlayerMessage(player,killer)
+  }
+
+  var updateLoopMessages = mutable.Seq.empty[ServerPlayStateMessage]
+
+
+
+  def handlePlayerDeathMessage(pkpm: PlayerKillPlayerMessage) {
+
+    pkpm.player.state match {
       case Dead(since) =>
       case Playing() =>
-        log.info("Player " + player.gameState.playerId + " died.")
+        world.findPlayerInfo(pkpm.player.playerId) match {
+          case Some((_,s)) =>
+            log.info("Player " + pkpm.player.gameState.playerId + " died.")
 
 
 
-        deadSinceLastUpdate = deadSinceLastUpdate :+ player.playerId
-        player.state = Dead(System.currentTimeMillis())
-        //world.unspawnPlayer(s,player)
-        spatialsToRemoveInUpdatePhase = spatialsToRemoveInUpdatePhase :+ (s, player)
-        playerKilledPlayer(killer,player.playerId)
-
+            deadSinceLastUpdate = deadSinceLastUpdate :+ pkpm.player.playerId
+            pkpm.player.state = Dead(System.currentTimeMillis())
+            //world.unspawnPlayer(s,player)
+            spatialsToRemoveInUpdatePhase = spatialsToRemoveInUpdatePhase :+ (s, pkpm.player)
+            playerKilledPlayer(pkpm.killer,pkpm.player.playerId)
+          case None => throw new IllegalStateException("Bad")
+        }
     }
+
+
   }
+
+  type ServerUpdateLoopMessage = (Spatial,_ <: ScalaObject)
+
 
   var exloadedSinceLastUpdate = Seq.empty[ProjectileGO]
   var deadSinceLastUpdate = Seq.empty[Int]
 
-  var spatialsToRemoveInUpdatePhase = immutable.Seq.empty[(Spatial,_ <: ScalaObject)]
+  var spatialsToRemoveInUpdatePhase = immutable.Seq.empty[ServerUpdateLoopMessage]
 
 
   def explodeProjectile(s:Spatial,proj:ProjectileGO) {
@@ -129,7 +148,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
 
   //var projectiles = List[ProjectileGO]()
 
-  var participatingPlayers = List[PlayerConnection]()
+  var participatingPlayers = List[GameParticipant]()
 
   var simulatedUntil:Option[Long] = None
 
@@ -145,12 +164,24 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
 
   def handleStateLogic() {
 
+
+    updateLoopMessages.synchronized {
+      val s = Seq.empty ++: updateLoopMessages
+      updateLoopMessages = updateLoopMessages.companion.empty
+      s
+    }.foreach {
+      case m : PlayerKillPlayerMessage => handlePlayerDeathMessage(m)
+    }
+
+    // Deal with the fact that game can have ended
+    if(destroyed) return
+
     if (spatialsToRemoveInUpdatePhase.size > 0) {
       log.info("spatialsToRemoveInUpdatePhase " + spatialsToRemoveInUpdatePhase.size)
     }
 
     spatialsToRemoveInUpdatePhase.foreach {
-      case (s:Spatial,pc:PlayerConnection) =>
+      case (s:Spatial,pc:GameParticipant) =>
         val bef = world.getNode(SceneGraphWorld.SceneGraphNodeKeys.Enemies).getChildren.size
         world.unspawnPlayer(s,pc)
         log.info(world.getNode(SceneGraphWorld.SceneGraphNodeKeys.Enemies).getChildren.size + " " + bef )
@@ -174,7 +205,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
   }
 
 
-  def respawnDeadPlayer(cp: Model.PlayerConnection) {
+  def respawnDeadPlayer(cp: Model.GameParticipant) {
     log.info("Respawning dead player " + cp.playerId)
 
     cp.state = Playing()
@@ -307,20 +338,22 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
     }
   }
 
-  def addParticipant(pjr: PlayerConnection) = {
+  def addParticipant(pc: PlayerConnection) = {
 
     lock.synchronized {
 
       val pd = new PlayerGO
-      pd.playerId = pjr.playerId
+      val pp = new GameParticipant
+      pd.playerId = pc.playerId
+      pp.playerId = pc.playerId
       pd.position = Vector3f.ZERO.clone().setY(0.13499954f)
       pd.direction = Quaternion.DIRECTION_Z.clone()
 
-      pjr.gameState = pd
+      pp.gameState = pd
 
-      participatingPlayers = participatingPlayers :+ pjr
+      participatingPlayers = participatingPlayers :+ pp
       //TODO: Really from here? Should be handled by game logic
-      world.spawnPlayer(pjr)
+      world.spawnPlayer(pp)
     }
 
   }
@@ -332,7 +365,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
 
 
       participatingPlayers.find(_.playerId == request.playerId).map(_.state) match {
-        case Some(Dead(since)) => //println("Discarding dead player " + request.playerId + " update")
+        case Some(Dead(since)) => //println("Discarding dead player " + request.playerId + " querySendUpdate")
         case Some(Playing()) =>
 
         world.findPlayer(request.playerId) match {
@@ -387,6 +420,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
   }
 
   def destroy() {
+    destroyed = true
     world.destroy()
   }
 }

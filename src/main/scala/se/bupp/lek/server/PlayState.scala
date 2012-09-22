@@ -4,6 +4,7 @@ import com.jme3.app.state.{AppStateManager, AbstractAppState, AppState}
 import se.bupp.lek.common.FuncUtil.RateProbe
 import org.apache.log4j.Logger
 import com.jme3.app.Application
+import se.bupp.lek.server.Model.PlayerActionRequest
 
 /**
  * Created with IntelliJ IDEA.
@@ -12,6 +13,11 @@ import com.jme3.app.Application
  * Time: 18:57
  * To change this template use File | Settings | File Templates.
  */
+
+sealed abstract class ServerPlayStateMessage
+case class PlayerKillPlayerMessage(player: Model.GameParticipant, killer:Int) extends ServerPlayStateMessage
+
+
 class PlayState(val server:Server) extends AbstractAppState {
   val log = Logger.getLogger(classOf[PlayState])
   var updateProbe = new RateProbe("App Update", 3000L,log)
@@ -25,16 +31,20 @@ class PlayState(val server:Server) extends AbstractAppState {
 
     val simTime: Long = System.currentTimeMillis()
 
-    server.networkState.update(() => server.worldSimulator.generateGameWorldChanges(simTime))
+    server.networkState.querySendUpdate(() => server.worldSimulator.generateGameWorldChanges(simTime))
 
 
     server.leRoot.updateLogicalState(tpf);
 
     server.leRoot.updateGeometricState();
-  } catch { case e:Exception => e.printStackTrace() }
+  } catch { case e:Exception => e.printStackTrace() ; throw e }
 
   override def initialize(stateManager: AppStateManager, app: Application) {
     super.initialize(stateManager, app)
     log.debug("Playstate init done")
+  }
+
+  def addPlayerAction(request: PlayerActionRequest) {
+    server.worldSimulator.addPlayerAction(request)
   }
 }

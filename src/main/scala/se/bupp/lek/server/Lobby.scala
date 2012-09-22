@@ -1,6 +1,6 @@
 package se.bupp.lek.server
 
-import se.bupp.lek.server.Model.{PlayerConnection, PlayerGO, PlayerJoinRequest}
+import se.bupp.lek.server.Model.{PlayerConnection, GameParticipant, PlayerGO, PlayerJoinRequest}
 import com.jme3.math.{Quaternion, Vector3f}
 
 /**

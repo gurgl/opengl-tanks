@@ -3,7 +3,7 @@ package se.bupp.lek
 import client.SceneGraphWorld.SceneGraphUserDataKeys
 import client.{SceneGraphWorld, MathUtil}
 import server.PhysicsSpaceSimAdapter
-import server.Model.{Orientation, MotionGO, PlayerGO, PlayerConnection}
+import server.Model.{Orientation, MotionGO, PlayerGO, GameParticipant}
 import com.jme3.math.{Quaternion, Vector3f}
 import com.jme3.bullet.control.CharacterControl
 import com.jme3.system.{JmeContext, JmeSystem, AppSettings}
@@ -71,7 +71,7 @@ class PhysicsWorldTest extends Specification {
         .getResource("com/jme3/asset/Desktop.cfg"))
 
 
-    def spawnPlayer(ps: PlayerConnection) = {
+    def spawnPlayer(ps: GameParticipant) = {
       val p = Physics.addPlayerBare(pSpace,ps.gameState, rootNode, assetManager)
       p.setUserData(SceneGraphUserDataKeys.Player, ps)
       getNode(SceneGraphWorld.SceneGraphNodeKeys.Enemies).attachChild(p)
@@ -105,7 +105,7 @@ class PhysicsWorldTest extends Specification {
 
       var clock: Long = 10000
 
-      val ps1 = new PlayerConnection()
+      val ps1 = new GameParticipant()
       val p1 = new PlayerGO()
       ps1.gameState = p1
       p1.position = new Vector3f(0f,1f,0f)
@@ -135,7 +135,7 @@ class PhysicsWorldTest extends Specification {
               }
               case _ => failure("bad")
             }
-          case _ => failure("should contain one update")
+          case _ => failure("should contain one querySendUpdate")
         }
         case _ => failure("should be list")
       }
@@ -155,7 +155,7 @@ class PhysicsWorldTest extends Specification {
       var seqGen = new SeqGen(1)
       var clock = new Clock(10000)
 
-      val ps1 = new PlayerConnection()
+      val ps1 = new GameParticipant()
       val p1 = new PlayerGO()
       ps1.gameState = p1
       p1.position = new Vector3f(0f,1f,0f)
@@ -164,7 +164,7 @@ class PhysicsWorldTest extends Specification {
       p1.playerId = 1
       p1.clientSeqId = 2
 
-      val ps2 = new PlayerConnection()
+      val ps2 = new GameParticipant()
       val p2 = new PlayerGO()
       ps2.gameState = p2
       p2.position = new Vector3f(0f,1f,0f)
@@ -194,7 +194,7 @@ class PhysicsWorldTest extends Specification {
       //val su = myWorld.popPlayerUpdatesLessOrEqualToTimeSorted(myWorld.getPlayers(),10030L) // + step)
       //su.size should be equalTo(2)
 
-      //myWorld.pSpace.update(1f/100f)
+      //myWorld.pSpace.querySendUpdate(1f/100f)
       myWorld.pSpace.update(1f/100f)
 
       val oldestUpdate = myWorld.getOldestUpdateTimeLastReceived(myWorld.getPlayers)
@@ -257,7 +257,7 @@ class PhysicsWorldTest extends Specification {
       var seqGen = new SeqGen(1)
       var clock = new Clock(10000)
 
-      val ps1 = new PlayerConnection()
+      val ps1 = new GameParticipant()
       val p1 = new PlayerGO()
       ps1.gameState = p1
       p1.position = new Vector3f(0f,0f,0f)
@@ -266,7 +266,7 @@ class PhysicsWorldTest extends Specification {
       p1.playerId = 1
       p1.clientSeqId = 2
 
-      val ps2 = new PlayerConnection()
+      val ps2 = new GameParticipant()
       val p2 = new PlayerGO()
       ps2.gameState = p2
       p2.position = new Vector3f(0f,0f,0f)

@@ -61,7 +61,7 @@ object TestClient {
           val gameWorld = new ServerGameWorld()
           import scala.collection.JavaConversions.seqAsJavaList
           //gameWorld.getPlayers = new java.FuncUtil$.ArrayList[PlayerGO](getPlayers)
-          println("sendin update")
+          println("sendin querySendUpdate")
           val p = new PlayerActionRequest()
 
           p.playerId = playerIdOpt.get

@@ -94,7 +94,7 @@ class PhysicsTest extends Specification {
       val playerControl = player.getControl(classOf[CharacterControl])
       playerControl.setWalkDirection(new Vector3f(.3f,0f,0f))
 
-      /*pSpace.update( 0.016f)
+      /*pSpace.querySendUpdate( 0.016f)
       pSpace.distributeEvents()
 
       playerControl.getPhysicsLocation should be equalTo(pd.position.add(0.3f,0f,0f))

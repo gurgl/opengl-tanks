@@ -387,7 +387,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
     newServerState.alivePlayers.find(_.playerId == playerIdOpt().get).foreach {
       x =>
 
-      // TODO: Might be able to do this when server state arrives instead of on update
+      // TODO: Might be able to do this when server state arrives instead of on querySendUpdate
         applyCorrectionIfDiffers(x.sentToServerByClient, newServerState.timeStamp, x)
 
       //player.move(playerinput.translation)
