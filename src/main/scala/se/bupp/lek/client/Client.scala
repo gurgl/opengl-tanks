@@ -89,7 +89,7 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
 
       import JavaConversions.seqAsJavaList
-      request.projectilesFired = new java.util.ArrayList[ProjectileFireGO](projectiles)//gameWorld.flushFired)
+      request.projectilesFired = new java.util.ArrayList[ProjectileFireGO](projectiles)//gameWorld.flushProjectiles)
       request.timeStamp = lastRecordedActionTime
       request.playerId = playerIdOpt.get
       request.seqId = seqId

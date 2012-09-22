@@ -173,7 +173,7 @@ trait PhysicsSpaceSimAdapter extends SceneGraphAccessors {
         var pre = preMap(status.gameState.playerId)
         var actual = post.subtract(pre).length()
         val ss = str(status.gameState.playerId) + ( " " + actual + " " + u.translation.length() + " " + timeBank + " " + (if (math.abs(u.translation.length() - actual) > 0.001) "***" else "---"))
-        println(ss)
+        //println(ss)
     }
   }
 

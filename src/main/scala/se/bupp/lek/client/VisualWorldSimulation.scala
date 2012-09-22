@@ -29,6 +29,7 @@ import scala.Some
 import com.jme3.scene.control.AbstractControl
 import se.bupp.lek.server.{Model, SceneGraphAccessors}
 import org.apache.log4j.Logger
+import com.jme3.texture.Texture
 
 
 /**
@@ -51,6 +52,23 @@ abstract class LogicalSimulation() {
 
 }
 
+class LocalObjectFactory {
+  var projectileSeqId = 0
+
+  def createProjectile(pos:Vector3f, dir:Quaternion) = {
+    val p = new ProjectileFireGO(
+      new OrientationGO(pos.add(0f,0.33f,0.0f).add(dir.getRotationColumn(0).mult(0.7f)),dir.clone()),
+      4.5f,
+      System.currentTimeMillis(),
+      projectileSeqId
+    )
+
+
+    projectileSeqId += 1
+    p
+  }
+}
+
 class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:() => Option[Int],val playerInput:PlayerInput, viewPort:ViewPort, val bulletAppState:BulletAppState) extends SceneGraphWorld(false,assetManager,rootNode) with SceneGraphAccessors {
   import VisualWorldSimulation._
   import SceneGraphWorld._
@@ -58,21 +76,23 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
   private val log = Logger.getLogger(classOf[VisualGameWorld])
   override def getPhysicsSpace = bulletAppState.getPhysicsSpace
 
+  val localObjectFactory = new LocalObjectFactory
+
   var playerDead = false
 
-  var projectileSeqId = 0
-
-  var fired = Stack[ProjectileFireGO]()
 
   val lock:AnyRef = new Object
 
   val LocalInputLogSize = 20
 
-  var saved = Queue.empty[(Long, Orientation, Reorientation)] //:+ ((System.currentTimeMillis(),startPosition, MathUtil.noMotion))
+  var playerMovementLog = Queue.empty[(Long, Orientation, Reorientation)] //:+ ((System.currentTimeMillis(),startPosition, MathUtil.noMotion))
 
 
   var sun:DirectionalLight = _
   var al:AmbientLight = _
+
+  var flameTexture: Texture = _
+  var mat_red:Material = _
 
 
   def storePlayerLastInputAndOutput(simTime:Long, input:Reorientation) = {
@@ -82,20 +102,25 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
     saveReorientation(simTime, new Orientation(physicalPosition, physicalRotation), input)
   }
 
-  def saveReorientation(timeStamp:Long, orientation: Orientation, reorientation:Reorientation) {
+  private def saveReorientation(timeStamp:Long, orientation: Orientation, reorientation:Reorientation) {
     lock.synchronized {
-      while(saved.size >= LocalInputLogSize) {
-        saved = saved.dequeue._2
+      while(playerMovementLog.size >= LocalInputLogSize) {
+        playerMovementLog = playerMovementLog.dequeue._2
       }
 
       //val orientation = saved.last._2.reorientate(input)
-      saved =  saved + (timeStamp, orientation, reorientation)
+      playerMovementLog =  playerMovementLog + (timeStamp, orientation, reorientation)
     }
   }
+
 
   def init(playerPosition:Orientation) {
     super.init()
 
+    mat_red = new Material(assetManager,
+      "Common/MatDefs/Misc/Particle.j3md");
+    flameTexture = assetManager.loadTexture(
+      "Effects/Explosion/flame.png")
 
     rootNode.setShadowMode(ShadowMode.Off)
 
@@ -135,24 +160,17 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
     //rootNode.setShadowMode(ShadowMode.CastAndReceive);
   }
 
-  def flushFired() : List[ProjectileFireGO] = {
 
-    val res = fired.toList
-    fired = Stack[ProjectileFireGO]()
-    res
+  def respawnPlayer() {
+    log.info("You respawned")
+    playerDead = false
+    rootNode.attachChild(player)
   }
 
-  def fireProjectile(pos:Vector3f, dir:Quaternion) = {
-
-      fired = fired.push(
-        new ProjectileFireGO(
-          new OrientationGO(pos.add(0f,0.33f,0.0f).add(dir.getRotationColumn(0).mult(0.7f)),dir.clone()),
-          4.5f,
-          System.currentTimeMillis(),
-          projectileSeqId
-        ))
-      projectileSeqId += 1
-    }
+  def fireProjectile() {
+    val p = localObjectFactory.createProjectile(player.getControl(classOf[CharacterControl]).getPhysicsLocation.clone(),player.getLocalRotation)
+    PlayerActionQueue.accumulateProjectile(p)
+  }
 
   def getCamPosition() : (Vector3f,Quaternion) = {
 
@@ -259,7 +277,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
     } else None
   }
 
-  def calculatePrediction(simTime: Long,currentGameWorldUpdates:Queue[ServerGameWorld], playerId:Int) = {
+  private def calculatePrediction(simTime: Long,currentGameWorldUpdates:Queue[ServerGameWorld], playerId:Int) = {
 
     val predictor: VisualSimulationPrediction = new VisualSimulationPrediction(currentGameWorldUpdates, playerId)
     val nonPlayerPredictons = predictor.interpolateNonPlayerObjects(simTime)
@@ -296,9 +314,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
 
   }
 
-
-
-  def diff(client:Orientation,server:Orientation) = {
+  private def diff(client:Orientation,server:Orientation) = {
     val transDiff = client.position.subtract(server.position)
 
     //println(client.position + " " + server.position + " " + transDiff + " " + transDiff.length())
@@ -316,31 +332,31 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
 
     lock.synchronized {
 
-      val(discarded, newSaved) = saved.partition ( _._1 < serverSnapshotSentByPlayerTime)
-      saved = newSaved
+      val(discarded, newSaved) = playerMovementLog.partition ( _._1 < serverSnapshotSentByPlayerTime)
+      playerMovementLog = newSaved
       //saved = if(discarded.size > 0) discarded.last +: newSaved else newSaved
-      if(saved.size == 0) {
+      if(playerMovementLog.size == 0) {
         //server
         log.debug("Inga ")
 
       } else {
 
-        val diffHeur = diff(saved.head._2,server)
+        val diffHeur = diff(playerMovementLog.head._2,server)
         //val newPos =
         if(diffHeur._1 > 0.2 || diffHeur._2 > FastMath.PI / 90) {
 
-          val newSavedPos = saved.foldLeft(Queue(server)) {
+          val newSavedPos = playerMovementLog.foldLeft(Queue(server)) {
             case (recalculatedPositions,(time,orientationBeforeReorientation, reorient)) =>
               recalculatedPositions :+ recalculatedPositions.last.reorientate(reorient)
           }
-          log.warn("Bad " + saved.head._2.position + " " + server.position + " " + serverSimTime + " " + diffHeur + " " + serverSnapshotSentByPlayerTime)
-          saved = newSavedPos.tail.zip(saved).map {case (np, (ts, _ , reor)) => (ts, np, reor) }
+          log.warn("Bad " + playerMovementLog.head._2.position + " " + server.position + " " + serverSimTime + " " + diffHeur + " " + serverSnapshotSentByPlayerTime)
+          playerMovementLog = newSavedPos.tail.zip(playerMovementLog).map {case (np, (ts, _ , reor)) => (ts, np, reor) }
           //println("Bad " + saved.head._2.position+ " " + server.position + " " + diffHeur._1) // + " " + newSavedPos.last)
           //println("Bad " + diffHeur)
           //newSavedPos.last
           val control: CharacterControl = player.getControl(classOf[CharacterControl])
-          control.setPhysicsLocation(saved.last._2.position)
-          player.setLocalRotation(saved.last._2.direction)
+          control.setPhysicsLocation(playerMovementLog.last._2.position)
+          player.setLocalRotation(playerMovementLog.last._2.direction)
           //Client.spel.gameWorld.player.setLocalRotation(saved.last._2.direction)
           //control.setViewDirection(saved.last._2.direction.getRotationColumn(0))
         } /*else {
@@ -358,7 +374,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
 
   var lastSynchedGameWorldUpdate:ServerGameWorld = _
 
-  def applyServerWorld(newServerState:ServerGameWorld) {
+  private def applyServerWorld(newServerState:ServerGameWorld) {
 
 
     newServerState.explodedProjectiles.foreach {
@@ -379,7 +395,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
 
     }
   }
-  def applyPlayerInput(lastGameWorldUpdate: ServerGameWorld, input:Reorientation) {
+  private def applyPlayerInput(lastGameWorldUpdate: ServerGameWorld, input:Reorientation) {
 
       // Only check if player alive (TODO: Rewrite for readablity)
     lastGameWorldUpdate.alivePlayers.find(_.playerId == playerIdOpt().get).foreach {
@@ -433,13 +449,11 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
   }
 
 
-  def explosion(pos:Vector3f) {
+  private def explosion(pos:Vector3f) {
     val fire =
       new ParticleEmitter("Emitter", ParticleMesh.Type.Triangle, 30);
-    val mat_red = new Material(assetManager,
-      "Common/MatDefs/Misc/Particle.j3md");
-    mat_red.setTexture("Texture", assetManager.loadTexture(
-      "Effects/Explosion/flame.png"));
+
+    mat_red.setTexture("Texture", flameTexture);
     fire.setMaterial(mat_red);
     fire.setImagesX(2);
     fire.setImagesY(2); // 2x2 texture animation

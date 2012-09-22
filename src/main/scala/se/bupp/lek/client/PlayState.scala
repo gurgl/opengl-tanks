@@ -129,7 +129,7 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
 
       if (name.equals("Fire")) {
         if(value == true) {
-          val p = visualWorldSimulation.fireProjectile(visualWorldSimulation.player.getControl(classOf[CharacterControl]).getPhysicsLocation.clone(),visualWorldSimulation.player.getLocalRotation)
+          val p = visualWorldSimulation.fireProjectile()
           gameApp.audio_gun.playInstance()
           //rootNode.attachChild(p)
         }

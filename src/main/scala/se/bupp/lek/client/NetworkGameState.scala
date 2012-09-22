@@ -9,7 +9,7 @@ import collection.immutable.Queue
 import com.jme3.app.Application
 import VisualWorldSimulation._
 
-import collection.JavaConversions
+import collection.{mutable, JavaConversions}
 import JavaConversions.asScalaBuffer
 import scala.Some
 import com.jme3.math.Vector3f
@@ -26,22 +26,35 @@ import org.apache.log4j.Logger
  * To change this template use File | Settings | File Templates.
  */
 
-object MessageQueue {
+object PlayerActionQueue {
 
   var accTranslation = Vector3f.ZERO.clone()
   var accRotation = noRotation
 
-  def accumulate(reorientation:Reorientation) {
+  var fired = mutable.Stack[ProjectileFireGO]()
+
+  def accumulateMotion(reorientation:Reorientation) {
     accTranslation = accTranslation.add(reorientation._1)
     accRotation = reorientation._2.mult(accRotation)
   }
 
-  def flushAccumulated() : Reorientation = {
+  def flushMotion() : Reorientation = {
     val r = (accTranslation,accRotation)
     accTranslation = Vector3f.ZERO.clone()
     accRotation = noRotation
     r
   }
+
+  def accumulateProjectile(p: ProjectileFireGO) {
+    fired = fired.push(p)
+  }
+
+  def flushProjectiles() : List[ProjectileFireGO] = {
+    val res = fired.toList
+    fired = mutable.Stack[ProjectileFireGO]()
+    res
+  }
+
 
 
 }
@@ -126,17 +139,15 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
     initClient()
   }
 
-
-
   def sendClientUpdate(simTime: Long, visualWorldSimulation:VisualWorldSimulation) {
-    val reorientation = MessageQueue.flushAccumulated()
+    val projectiles = PlayerActionQueue.flushProjectiles()
+    val reorientation = PlayerActionQueue.flushMotion()
 
     /*if (lastReorDebug != null && lastReorDebug._1 != reorientation._1) {
       log.debug(if(reorientation._1 == Vector3f.ZERO) "stop" else "move")
     }
     lastReorDebug = reorientation*/
 
-    val projectiles = visualWorldSimulation.flushFired()
     val request = gameApp.createPlayerActionRequest(simTime, reorientation, projectiles)
     gameClient.sendUDP(request)
 
@@ -160,22 +171,27 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
     getPlayState.foreach {
       playState =>
         if(playState.isInitialized) {
-          //println("ITS INITIALIZED")
-          val toKill = serverUpdate.deadPlayers.toList
-          if (toKill.size > 0) {
-            log.info("handle deaths")
-            playState.visualWorldSimulation.handleKilledPlayers(toKill)
-          }
-
-          if (playState.visualWorldSimulation.playerDead) {
-            serverUpdate.alivePlayers.find( p => p.playerId == gameApp.playerIdOpt.get).foreach {
-              p =>
-                log.info("You respawned")
-                playState.visualWorldSimulation.playerDead = false
-                playState.visualWorldSimulation.rootNode.attachChild(playState.visualWorldSimulation.player)
-            }
-          }
+          applyWorldUpdate(playState, serverUpdate)
         }
+    }
+  }
+
+  /**
+   * TODO: Evaluate why this "copy" should be done separate of movement etc
+   */
+  def applyWorldUpdate(playState: PlayState, serverUpdate: Model.ServerGameWorld) {
+    //println("ITS INITIALIZED")
+    val toKill = serverUpdate.deadPlayers.toList
+    if (toKill.size > 0) {
+      log.info("handle deaths")
+      playState.visualWorldSimulation.handleKilledPlayers(toKill)
+    }
+
+    if (playState.visualWorldSimulation.playerDead) {
+      serverUpdate.alivePlayers.find( p => p.playerId == gameApp.playerIdOpt.get).foreach {
+        p =>
+          playState.visualWorldSimulation.respawnPlayer()
+      }
     }
   }
 
@@ -186,10 +202,8 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
     def postUpdate(simTime: Long) {
 
       if ((System.currentTimeMillis() - lastSentUpdate).toFloat > 1000f / 15f) {
-          sendClientUpdate(simTime,visualWorldSimulation)
-
-          lastSentUpdate = System.currentTimeMillis()
-
+        sendClientUpdate(simTime,visualWorldSimulation)
+        lastSentUpdate = System.currentTimeMillis()
       }
     }
 
@@ -199,7 +213,7 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
           visualWorldSimulation.storePlayerLastInputAndOutput(lastSimTime, lastInput)
       }
 
-      MessageQueue.accumulate(input)
+      PlayerActionQueue.accumulateMotion(input)
     }
 
     var currentGameWorldUpdates:Queue[ServerGameWorld] = null

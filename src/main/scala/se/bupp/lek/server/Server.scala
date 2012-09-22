@@ -86,77 +86,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
       leRoot = new Node()
     }
 
-    val physicsSpace = new PhysicsSpace()
-    val serverWorld = new ServerWorld(leRoot, assetManager, physicsSpace)
-    serverWorld.initEmpty()
-    worldSimulator = new WorldSimulator(serverWorld) {
-      def playerKilledPlayer(killer: Int, victim: Int) {
-        gameLogic.scoreStrategy.playerKilledByPlayer(killer,victim)
-      }
-    }
-
-
-    val settings: GameMatchSettings = new GameMatchSettings(
-      startCriteria = WhenNumOfConnectedPlayersCriteria(2),
-      roundEndCriteria = ScoreReached(2),
-      gameEndCriteria = NumOfRoundsPlayed(2)
-    )
-
-    var listener = new GameLogicListener() {
-      def onGameStart() {
-
-        // send countdown message
-        // add timer to start round
-        // leave lobby mode
-        // enter game mode
-        lobby.connectedPlayers.foreach {
-          ps =>
-
-        }
-        log.info("Game Started")
-        networkState.server.sendToAllTCP(new StartGameRequest)
-      }
-
-      def onIntermediateRoundStart() {
-        // send round started message
-        log.info("Round Started")
-        networkState.server.sendToAllTCP(new StartRoundRequest)
-        worldSimulator.spawnAllParticipants()
-      }
-
-      def onCompetetitorScored(scoreDescription: AbstractScoreDescription) {
-
-        log.info("Someone scored")
-        // send displayable score modification
-      }
-
-      def onIntermediateRoundEnd(roundResults: RoundResults, standing: GameTotalResults) {
-        // send countdown message
-        // add timer to start round
-        log.info("Round ended")
-        new Timer().schedule(new TimerTask {
-          def run() {
-           gameLogic.startRound()
-          }
-        },3000L)
-        worldSimulator.unspawnAllGameObjects()
-        networkState.server.sendToAllTCP(new RoundOverRequest)
-      }
-
-      def onGameEnd(totals: GameTotalResults) {
-        worldSimulator.unspawnAllGameObjects()
-        networkState.server.sendToAllTCP(new GameOverRequest)
-        log.info("Game ended")
-        new Timer().schedule(new TimerTask {
-          def run() {
-            gameLogic.queryStartGame()
-          }
-        },5000L)
-        // lobby mode
-      }
-    }
-
-    gameLogic = GameLogicFactory.create(settings, listener, new KillBasedStrategy())
+    val (worldSimulator, gameLogic) = createWorldSimulator()
 
     networkState = new ServerNetworkState(portSettings) {
       def addPlayerAction(pa: PlayerActionRequest) {
@@ -182,11 +112,83 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
         gameLogic.removePlayer(playerId)
       }
     }
-
-
-
     log.info("Game Launch Complete")
- }
+  }
+
+
+  def createWorldSimulator() = {
+    val physicsSpace = new PhysicsSpace()
+    val serverWorld = new ServerWorld(leRoot, assetManager, physicsSpace)
+    serverWorld.initEmpty()
+    worldSimulator = new WorldSimulator(serverWorld) {
+      def playerKilledPlayer(killer: Int, victim: Int) {
+        gameLogic.scoreStrategy.playerKilledByPlayer(killer,victim)
+      }
+    }
+
+
+    val settings: GameMatchSettings = new GameMatchSettings(
+      startCriteria = WhenNumOfConnectedPlayersCriteria(2),
+      roundEndCriteria = ScoreReached(2),
+      gameEndCriteria = NumOfRoundsPlayed(2)
+    )
+
+    var listener = new GameLogicListener() {
+      def onGameStart() {
+
+        // send countdown message
+        // add timer to start round
+        // leave lobby mode
+        // enter game mode
+        lobby.connectedPlayers.foreach {
+          ps =>
+        }
+        log.info("Game Started")
+        networkState.server.sendToAllTCP(new StartGameRequest)
+      }
+
+      def onIntermediateRoundStart() {
+        // send round started message
+        log.info("Round Started")
+        networkState.server.sendToAllTCP(new StartRoundRequest)
+        worldSimulator.spawnAllParticipants()
+      }
+
+      def onCompetetitorScored(scoreDescription: AbstractScoreDescription) {
+
+        log.info("Someone scored")
+        // send displayable score modification
+      }
+
+      def onIntermediateRoundEnd(roundResults: RoundResults, standing: GameTotalResults) {
+        // send countdown message
+        // add timer to start round
+        log.info("Round ended")
+        new Timer().schedule(new TimerTask {
+          def run() {
+            gameLogic.startRound()
+          }
+        },3000L)
+        worldSimulator.unspawnAllGameObjects()
+        networkState.server.sendToAllTCP(new RoundOverRequest)
+      }
+
+      def onGameEnd(totals: GameTotalResults) {
+        worldSimulator.unspawnAllGameObjects()
+        networkState.server.sendToAllTCP(new GameOverRequest)
+        log.info("Game ended")
+        new Timer().schedule(new TimerTask {
+          def run() {
+            gameLogic.queryStartGame()
+          }
+        },5000L)
+        // lobby mode
+      }
+    }
+
+    gameLogic = GameLogicFactory.create(settings, listener, new KillBasedStrategy())
+    (worldSimulator,gameLogic)
+  }
 
 
   def createDebug() {
