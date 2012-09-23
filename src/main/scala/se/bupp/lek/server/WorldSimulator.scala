@@ -164,7 +164,6 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
 
   def handleStateLogic() {
 
-
     updateLoopMessages.synchronized {
       val s = Seq.empty ++: updateLoopMessages
       updateLoopMessages = updateLoopMessages.companion.empty

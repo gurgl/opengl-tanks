@@ -164,7 +164,8 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
   def respawnPlayer() {
     log.info("You respawned")
     playerDead = false
-    rootNode.attachChild(player)
+    getNode(SceneGraphNodeKeys.Player).attachChild(player)
+
   }
 
   def fireProjectile() {
@@ -493,9 +494,13 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
   }
 
   override def destroy() {
+    println("b1")
     super.destroy()
+    println("b2")
     rootNode.removeLight(al)
+    println("b3")
     rootNode.removeLight(sun)
+    println("b4")
 
   }
 

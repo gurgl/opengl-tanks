@@ -216,7 +216,7 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
     //enemy.updateModelBound()
     tank.setUserData(SceneGraphUserDataKeys.Player, pd)
 
-    rootNode.getChild(SceneGraphNodeKeys.Enemies).asInstanceOf[Node].attachChild(tank)
+    getNode(SceneGraphNodeKeys.Enemies).attachChild(tank)
   }
 
   def materializePlayer(orientation:Orientation) {
@@ -306,7 +306,7 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
 
   def cleanNodes(toRemove:List[SceneGraphNodeKeys.SceneGraphNodeKey]) {
     toRemove.foreach( x => Option(getNode(x)) match {
-      case Some(y) => rootNode.detachChild(y)
+      case Some(y) => log.debug("Detatching " + y.getName) ; rootNode.detachChild(y)
       case None => log.debug("Cannot remove " + x)
     }
   )

@@ -8,7 +8,7 @@ import collection.immutable.Queue
 import collection.immutable.Queue._
 import MathUtil._
 import com.jme3.app.SimpleApplication._
-import com.jme3.scene.Node
+import com.jme3.scene.{Spatial, SceneGraphVisitor, Node}
 import com.jme3.export.Savable
 import com.jme3.math.{Quaternion, Vector3f}
 import collection.{JavaConversions, immutable}
@@ -108,6 +108,7 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
 
     setupInput()
     initialized = true
+    printSceneGraph(visualWorldSimulation.rootNode)
   }
 
   val lock : AnyRef = new Object()
@@ -197,13 +198,62 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
   }
 
   override def cleanup() {
+    println("a1")
+    printSceneGraph(visualWorldSimulation.rootNode)
+    /*visualWorldSimulation.rootNode.depthFirstTraversal(new SceneGraphVisitor {
+      def visit(p1: Spatial) {
+
+        println("aftercleanup " + p1.getName + " " + p1.getClass.getName)
+      }
+    })*/
+
     super.cleanup()
+    println("a2")
     visualWorldSimulation.destroy()
-
+    println("a3")
     gameApp.getInputManager.removeListener(actionListener)
-
+    println("a4")
     mappings.foreach {
       case (key, trigger) => gameApp.getInputManager.deleteMapping(key)
     }
+    println("a5")
+    printSceneGraph(visualWorldSimulation.rootNode)
+    /*visualWorldSimulation.rootNode.depthFirstTraversal(new SceneGraphVisitor {
+      def visit(p1: Spatial) {
+
+        println("aftercleanup " + p1.getName + " " + p1.getClass.getName)
+      }
+    })*/
   }
+
+  def printSceneGraph(s:Spatial, level:Int = 0, indent:Int = 0, first:Boolean = true) {
+    var pCnt = 0
+
+    //def ident() = { val res = if(pCnt == 0) "" else (" " * indent) ; pCnt = pCnt + 1 ; res }
+
+    def printIt(pre:String, str:String) = {if(first) print(pre + str) else println(" " * indent + pre + str)}
+    s match {
+      case n:Node =>
+        print((if(first) "" else " " * indent ) + "+" +  n.getName)
+        Option(n.getChildren).getOrElse(new java.util.ArrayList).toList match {
+        case Nil => println("")
+        case head :: tail =>
+          //print((if(first) "" else " " * indent ) + "+" +  n.getName)
+
+          var nextLevel: Int = level + 1
+          var indentNext: Int = indent + n.getName.size + 1
+          printSceneGraph(head,nextLevel, indentNext,true)
+          tail.foreach( c => printSceneGraph(c,nextLevel, indentNext,false) )
+      }
+        //val max = children.foldLeft(0) { case (m, c) => math.max(m,if(c.getName !=null) c.getName.length else 0) }
+
+
+
+
+        //println("")
+      case s:Spatial => {if(first) println("-" + s.getName) else println(" " * indent + "-" + s.getName)}
+    }
+    ()
+  }
+
 }

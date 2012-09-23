@@ -140,7 +140,7 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
 
   override def simpleInitApp() {
-    java.util.logging.Logger.getLogger("com.jme3").setLevel(java.util.logging.Level.OFF);
+    java.util.logging.Logger.getLogger("com.jme3").setLevel(java.util.logging.Level.WARNING);
     settings.setTitle("Tank Showdown")
     setPauseOnLostFocus(false)
     setShowSettings(false)
@@ -154,19 +154,7 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
     stateManager.attach(networkState)
 
 
-    val bulletAppState = new BulletAppState() {
-      override
-      def render(rm:RenderManager) {
-        if (!active) {
-
-        } else if (threadingType == ThreadingType.PARALLEL) {
-          //physicsFuture = executor.submit(parallelPhysicsUpdate);
-        } else if (threadingType == ThreadingType.SEQUENTIAL) {
-          pSpace.update(tpf * 1.00000001f, 1);
-        } else {
-        }
-      }
-    }
+    val bulletAppState = createBulletAppState
     stateManager.attach(bulletAppState);
 
     stateManager.attach(new MessageState("Tja"))
@@ -178,6 +166,23 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
     initAudio()
 
     //playState.setupInput()
+  }
+
+
+  def createBulletAppState: BulletAppState {def render(rm: RenderManager): Unit} = {
+    new BulletAppState() {
+      override
+      def render(rm: RenderManager) {
+        if (!active) {
+
+        } else if (threadingType == ThreadingType.PARALLEL) {
+          //physicsFuture = executor.submit(parallelPhysicsUpdate);
+        } else if (threadingType == ThreadingType.SEQUENTIAL) {
+          pSpace.update(tpf * 1.00000001f, 1);
+        } else {
+        }
+      }
+    }
   }
 
   override def simpleUpdate(tpf: Float) {
@@ -211,6 +216,7 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
             log.info("Start game received - starting new game")
             state = new PlayState()
             getStateManager.attach(state)
+            getStateManager.attach(createBulletAppState)
             messages = None
 
           }
@@ -223,12 +229,18 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
         case x:GameOverRequest =>
           val state: PlayState = getStateManager.getState(classOf[PlayState])
           if (state != null) {
-            getStateManager.detach(state)
             log.info("GAme over received")
+            state.setEnabled(false)
+            log.info("detaching")
+            getStateManager.detach(state)
+
+            val bState = getStateManager.getState(classOf[BulletAppState])
+            getStateManager.detach(bState)
           }
-          //val mState = getStateManager.getState(classOf[MessageState])
           //if (mState == null) {
-            getStateManager.attach(new MessageState("Game Over"))
+          getStateManager.attach(new MessageState("Game Over"))
+
+          log.info("GameOver done")
 
           //}
 
@@ -264,7 +276,7 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
     if (playState != null) {
       stateManager.detach( playState)
-      playState.cleanup()
+      //playState.cleanup()
     }
 
 

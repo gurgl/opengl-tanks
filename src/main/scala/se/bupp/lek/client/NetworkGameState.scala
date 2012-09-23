@@ -158,7 +158,7 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
   }
 
   override def cleanup() {
-    log.debug(buffer.toString)
+    log.debug("cleanup " + buffer.toString)
     gameClient.close();
   }
 
