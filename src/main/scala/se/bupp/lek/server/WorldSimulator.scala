@@ -343,7 +343,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
 
       val wastInLastUpdate = lastGeneratedUpdate match {
         case Some(l) => var lastAlivePlayers = l.alivePlayers.toList
-          val (newPlayers, seenBefore) = playerState.partition( p => lastAlivePlayers.exists( p2 => p.playerId == p.playerId))
+          val (_ , newPlayers) = playerState.partition( p => lastAlivePlayers.exists( p2 => p.playerId == p.playerId))
           newPlayers
         case None => playerState
       }
@@ -352,7 +352,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
         .map(p => new PlayerInfo(p.playerId, "Player " + p.playerId, p.teamIdentifier)).toList
 
 
-      newAlivePlayers.foreach(log.info(_))
+      newAlivePlayers.foreach( n => log.info(n + " entered"))
 
       val res: ServerGameWorld = new ServerGameWorld(
 

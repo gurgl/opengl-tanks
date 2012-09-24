@@ -154,7 +154,7 @@ object Model {
   }
 
   class PlayerInfo(val playerId: Int, val name:String, val teamId: Int) {
-    override def toString() = name + " with playerid = " + playerId + " representing " + teamId + " entered"
+    override def toString() = name + " with playerid = " + playerId + " representing " + teamId
     def this() = this(-1,"",-1)
   }
   class PlayerGO(pgo: PlayerGO) extends AbstractOwnedGameObject(pgo) with Savable {
