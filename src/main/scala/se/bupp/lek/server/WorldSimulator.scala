@@ -189,7 +189,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
 
   //var projectiles = new ArrayBuffer[ProjectileGO]()
 
-
+  var lastGeneratedUpdate:Option[ServerGameWorld] = None
 
 
   //generateGameWorldChanges(simTime)
@@ -330,6 +330,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
 
       //if(simulatedProjectiles.size > 0) simulatedProjectiles.foreach { p => print(p.id) }
       lastWorldSimTimeStamp = Some(world.simCurrentTime)
+      // TODO: Fix this sometime failing assert
       val deadPlayers = purgeDeadPlayersSinceLastUpdate.ensuring(_.forall( dp => !playerState.exists(_.playerId == dp)))
 
 
@@ -337,6 +338,22 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
         log.info(deadPlayers.size + "DDDDDDDDDDDDDDDDDDDDDDEAD")
         deadPlayers.foreach( p => log.info(p))
       }
+
+
+
+      val wastInLastUpdate = lastGeneratedUpdate match {
+        case Some(l) => var lastAlivePlayers = l.alivePlayers.toList
+          val (newPlayers, seenBefore) = playerState.partition( p => lastAlivePlayers.exists( p2 => p.playerId == p.playerId))
+          newPlayers
+        case None => playerState
+      }
+
+      val newAlivePlayers:List[PlayerInfo] = wastInLastUpdate.flatMap(p => participatingPlayers.find(p2 => p.playerId == p2.playerId))
+        .map(p => new PlayerInfo(p.playerId, "Player " + p.playerId, p.teamIdentifier)).toList
+
+
+      newAlivePlayers.foreach(log.info(_))
+
       val res: ServerGameWorld = new ServerGameWorld(
 
         deadPlayers = new java.util.ArrayList[Int](deadPlayers),
@@ -344,12 +361,14 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
         projectiles = new java.util.ArrayList[ProjectileGO](simulatedProjectiles),
         explodedProjectiles = new java.util.ArrayList[ProjectileGO](exploaded),
         timeStamp = simTime,
+        newAlivePlayersInfo = new util.ArrayList(newAlivePlayers ),
         seqId = -1
       )
       if(exploaded.size > 0) {
         log.info(exploaded.size + " exploaded ")
       }
 
+      lastGeneratedUpdate = Some(res)
       res
     }
   }

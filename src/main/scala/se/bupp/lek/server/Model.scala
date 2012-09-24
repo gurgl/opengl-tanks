@@ -153,6 +153,9 @@ object Model {
     def this() = this(null)
   }
 
+  class PlayerInfo(val playerId: Int, val name:String, val teamId: Int) {
+    override def toString() = name + " with playerid = " + playerId + " representing " + teamId + " entered"
+  }
   class PlayerGO(pgo: PlayerGO) extends AbstractOwnedGameObject(pgo) with Savable {
     clientSeqId = -1
 
@@ -178,10 +181,11 @@ object Model {
     var deadPlayers:java.util.ArrayList[Int],
     var alivePlayers: java.util.ArrayList[PlayerGO],
     var projectiles: java.util.ArrayList[ProjectileGO],
-    var explodedProjectiles: java.util.ArrayList[ProjectileGO]
+    var explodedProjectiles: java.util.ArrayList[ProjectileGO],
+    var newAlivePlayersInfo: java.util.ArrayList[PlayerInfo]
                          ) {
 
-    def this() = this(0,0, null,null,null,null)
+    def this() = this(0,0, null,null,null,null,null)
     def all = alivePlayers.toList ++ projectiles.toList
   }
 

@@ -297,7 +297,8 @@ object Server {
       classOf[RoundOverRequest],
       classOf[StartRoundRequest],
       classOf[StartGameRequest],
-      classOf[GameOverRequest]
+      classOf[GameOverRequest],
+      classOf[PlayerInfo]
 
     )
 
