@@ -7,7 +7,7 @@ import JavaConversions.asScalaBuffer
 import se.bupp.lek.client.SceneGraphWorld
 import com.jme3.asset.AssetManager
 import com.jme3.bullet.control.{GhostControl, RigidBodyControl, CharacterControl}
-import se.bupp.lek.client.SceneGraphWorld.SceneGraphUserDataKeys
+import se.bupp.lek.client.SceneGraphWorld.{SceneGraphNodeKeys, SceneGraphUserDataKeys}
 import com.jme3.bullet.collision.shapes.{CollisionShape, SphereCollisionShape, CapsuleCollisionShape}
 import util.Random
 import com.jme3.scene.{Spatial, Node}
@@ -15,7 +15,7 @@ import scalaz.NonEmptyList
 import collection.mutable.{Buffer, HashMap, ArrayBuffer}
 import com.jme3.bullet.{PhysicsSpace, BulletAppState}
 import com.jme3.scene.control.Control
-import com.jme3.bullet.collision.{PhysicsCollisionEvent, PhysicsCollisionListener}
+import com.jme3.bullet.collision.{PhysicsCollisionObject, PhysicsCollisionGroupListener, PhysicsCollisionEvent, PhysicsCollisionListener}
 import com.jme3.bounding.BoundingSphere
 import se.bupp.lek.common.model.{Playing, Dead}
 import java.util
@@ -57,16 +57,19 @@ class ProjectileCollisionControl(cs:CollisionShape) extends RigidBodyControl(cs)
 
 
 
-abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionListener {
+abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionListener {
 
   var destroyed = false
 
   val log = Logger.getLogger(classOf[WorldSimulator])
 
+  //world.getPhysicsSpace.addCollisionGroupListener(this, PhysicsCollisionObject.COLLISION_GROUP_02 | PhysicsCollisionObject.COLLISION_GROUP_03)
   world.getPhysicsSpace.addCollisionListener(this)
 
   def extractUserData(s:Spatial) : Option[_] = {
-    var proj = (Option[ProjectileGO](s.getUserData(SceneGraphWorld.SceneGraphUserDataKeys.Projectile)),Option[GameParticipant](s.getUserData(SceneGraphWorld.SceneGraphUserDataKeys.Player)))
+    var projOpt = s.getUserData[ProjectileGO](SceneGraphWorld.SceneGraphUserDataKeys.Projectile)
+    var playOpt = s.getUserData[GameParticipant](SceneGraphWorld.SceneGraphUserDataKeys.Player)
+    var proj = (Option(projOpt),Option(playOpt))
     proj match {
     case (Some(pro),None) => Some(pro)
     case (None, Some(pro))  => Some(pro)
@@ -74,15 +77,40 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
     }
   }
 
-  def collision(p1: PhysicsCollisionEvent) {
-  //println("collision")
-    (extractUserData(p1.getNodeA),extractUserData(p1.getNodeB)) match {
-    case (Some(proj:ProjectileGO),Some(player:GameParticipant)) => playerDied(p1.getNodeB, player, proj.playerId) ; explodeProjectile(p1.getNodeA,proj)
-    case (Some(player:GameParticipant),Some(proj:ProjectileGO)) => playerDied(p1.getNodeA, player, proj.playerId) ; explodeProjectile(p1.getNodeB,proj)
-    case (Some(proj:ProjectileGO), None) => explodeProjectile(p1.getNodeA,proj)
-    case (None, Some(proj:ProjectileGO)) => explodeProjectile(p1.getNodeB,proj)
+  val levelProjColl = PhysicsCollisionObject.COLLISION_GROUP_01 | PhysicsCollisionObject.COLLISION_GROUP_03
+  val tankProjColl = PhysicsCollisionObject.COLLISION_GROUP_02 | PhysicsCollisionObject.COLLISION_GROUP_03
 
-    case _ => //println("unknown collision")
+  def collision(p1: PhysicsCollisionEvent) {
+    val a = p1.getObjectA.getCollisionGroup
+    val b = p1.getObjectB.getCollisionGroup
+
+    val colType = a | b
+    //log.debug("collision " + colType)
+
+
+    if (colType == levelProjColl || colType == tankProjColl) {
+      log.debug("spat " + p1.getNodeA + " " + p1.getNodeB)
+      (extractUserData(p1.getNodeA),extractUserData(p1.getNodeB)) match {
+      case (Some(proj:ProjectileGO),Some(player:GameParticipant)) => playerDied(p1.getNodeB, player, proj.playerId) ; explodeProjectile(p1.getNodeA,proj)
+      case (Some(player:GameParticipant),Some(proj:ProjectileGO)) => playerDied(p1.getNodeA, player, proj.playerId) ; explodeProjectile(p1.getNodeB,proj)
+      case (Some(proj:ProjectileGO), None) => explodeProjectile(p1.getNodeA,proj)
+      case (None, Some(proj:ProjectileGO)) => explodeProjectile(p1.getNodeB,proj)
+
+      case _ => log.error("Collision with unknown objects " + colType + " " + p1.getNodeA.getName + " " + p1.getNodeB.getName)
+      }
+    }
+  }
+  def collides(p1: PhysicsCollisionObject, p2: PhysicsCollisionObject) = {
+
+    log.debug("collision group")
+    (p1.getUserObject,p2.getUserObject) match {
+      case (Some(proj:ProjectileGO),Some(player:GameParticipant)) => playerDied(null, player, proj.playerId) ; explodeProjectile(null,proj); true
+      case (Some(player:GameParticipant),Some(proj:ProjectileGO)) => playerDied(null, player, proj.playerId) ; explodeProjectile(null,proj); true
+      case (Some(proj:ProjectileGO), None) => explodeProjectile(null ,proj) ; true
+      case (None, Some(proj:ProjectileGO)) => explodeProjectile(null ,proj) ; true
+
+      case _ => //log.error("Collision with unknown objects")
+        false
     }
   }
 
@@ -128,14 +156,18 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
   var spatialsToRemoveInUpdatePhase = immutable.Seq.empty[ServerUpdateLoopMessage]
 
 
-  def explodeProjectile(s:Spatial,proj:ProjectileGO) {
+  def explodeProjectile(s:Spatial,proj1:ProjectileGO) {
 
-    if (exloadedSinceLastUpdate.forall(_.id != proj.id)) {
-      //world.unspawnProjectile(s,proj)
-      proj.position = s.getControl(classOf[RigidBodyControl]).getPhysicsLocation
-      exloadedSinceLastUpdate = exloadedSinceLastUpdate :+ proj
+    world.find[ProjectileGO](SceneGraphNodeKeys.Projectiles,SceneGraphUserDataKeys.Projectile,proj1).foreach {
+    //world.getNode(SceneGraphNodeKeys.Projectiles).
+      case (proj,s) =>
+      if (exloadedSinceLastUpdate.forall(_.id != proj.id)) {
+        //world.unspawnProjectile(s,proj)
+        proj.position = s.getControl(classOf[RigidBodyControl]).getPhysicsLocation
+        exloadedSinceLastUpdate = exloadedSinceLastUpdate :+ proj
 
-      spatialsToRemoveInUpdatePhase = spatialsToRemoveInUpdatePhase :+ (s, proj)
+        spatialsToRemoveInUpdatePhase = spatialsToRemoveInUpdatePhase :+ (s, proj)
+      }
     }
   }
 
@@ -421,6 +453,9 @@ abstract class WorldSimulator(val world:ServerWorld) extends  PhysicsCollisionLi
   }
 
   def destroy() {
+    world.getPhysicsSpace.removeCollisionListener(this)
+    //world.getPhysicsSpace.removeCollisionGroupListener(PhysicsCollisionObject.COLLISION_GROUP_02)
+    //world.getPhysicsSpace.removeCollisionGroupListener(PhysicsCollisionObject.COLLISION_GROUP_03)
     destroyed = true
     world.destroy()
   }

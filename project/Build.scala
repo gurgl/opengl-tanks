@@ -31,6 +31,34 @@ object MyBuild extends Build {
   	customJars.classpath
   }
 
+  val jmeMaven = Seq(
+    "com.jme3" % "eventbus" % JME_VERSION,
+    "com.jme3" % "jbullet" % JME_VERSION,
+    "com.jme3" % "jinput" % JME_VERSION,
+    "com.jme3" % "jME3-blender" % JME_VERSION,
+    "com.jme3" % "jME3-core" % JME_VERSION,
+    "com.jme3" % "jME3-desktop" % JME_VERSION,
+    "com.jme3" % "jME3-effects" % JME_VERSION,
+    "com.jme3" % "jME3-jbullet" % JME_VERSION,
+    "com.jme3" % "jME3-jogg" % JME_VERSION,
+    "com.jme3" % "jME3-lwjgl" % JME_VERSION,
+    "com.jme3" % "jME3-lwjgl-natives" % JME_VERSION,
+    "com.jme3" % "jME3-networking" % JME_VERSION,
+    "com.jme3" % "jME3-niftygui" % JME_VERSION,
+    "com.jme3" % "jME3-plugins" % JME_VERSION,
+    "com.jme3" % "jME3-terrain" % JME_VERSION,
+    "com.jme3" % "jME3-testdata" % JME_VERSION,
+    "com.jme3" % "j-ogg-oggd" % JME_VERSION,
+    "com.jme3" % "j-ogg-vorbisd" % JME_VERSION,
+    "com.jme3" % "lwjgl" % JME_VERSION,
+    "com.jme3" % "nifty" % JME_VERSION,
+    "com.jme3" % "nifty-default-controls" % JME_VERSION,
+    "com.jme3" % "nifty-examples" % JME_VERSION,
+    "com.jme3" % "nifty-style-black" % JME_VERSION,
+    "com.jme3" % "stack-alloc" % JME_VERSION,
+    "com.jme3" % "vecmath" % JME_VERSION,
+    "com.jme3" % "xmlpull-xpp3" % JME_VERSION)
+
   val projSettings = Seq(
     version := "0.1",
     organization := "se.bupp",
@@ -48,36 +76,10 @@ object MyBuild extends Build {
       "org.mockito" % "mockito-all" % "1.9.0" % "test",
       "org.scalaz" %% "scalaz-core" % "6.0.4",
       "org.objenesis" % "objenesis" % "1.2",
-      "com.jme3" % "eventbus" % JME_VERSION,
-      //"com.jme3" % "jbullet" % JME_VERSION,
-      "com.jme3" % "jinput" % JME_VERSION,
-      "com.jme3" % "jME3-blender" % JME_VERSION,
-      "com.jme3" % "jME3-core" % JME_VERSION,
-      "com.jme3" % "jME3-desktop" % JME_VERSION,
-      "com.jme3" % "jME3-effects" % JME_VERSION,
-      //"com.jme3" % "jME3-jbullet" % JME_VERSION,
-      "com.jme3" % "jME3-jogg" % JME_VERSION,
-      "com.jme3" % "jME3-lwjgl" % JME_VERSION,
-      "com.jme3" % "jME3-lwjgl-natives" % JME_VERSION,
-      "com.jme3" % "jME3-networking" % JME_VERSION,
-      "com.jme3" % "jME3-niftygui" % JME_VERSION,
-      "com.jme3" % "jME3-plugins" % JME_VERSION,
-      "com.jme3" % "jME3-terrain" % JME_VERSION,
-      "com.jme3" % "jME3-testdata" % JME_VERSION,
-      "com.jme3" % "j-ogg-oggd" % JME_VERSION,
-      "com.jme3" % "j-ogg-vorbisd" % JME_VERSION,
-      "com.jme3" % "lwjgl" % JME_VERSION,
-      "com.jme3" % "nifty" % JME_VERSION,
-      "com.jme3" % "nifty-default-controls" % JME_VERSION,
-      "com.jme3" % "nifty-examples" % JME_VERSION,
-      "com.jme3" % "nifty-style-black" % JME_VERSION,
-      "com.jme3" % "stack-alloc" % JME_VERSION,
-      "com.jme3" % "vecmath" % JME_VERSION,
-      "com.jme3" % "xmlpull-xpp3" % JME_VERSION,
       "log4j" % "log4j" % "1.2.17"
       /*"com.jmonkey" % "engine" % "3.0beta" from "file:///home/karlw/src/3rdparty/jme3/engine/dist/lib/jME3-core.jar",
       "com.jmonkey" % "engine-terr" % "3.0beta" from "file:///home/karlw/src/3rdparty/jme3/engine/dist/lib/jME3-terrain.jar"*/
-    )
+    ) ++ jmeMaven
   )
 
   // defines a new configuration "samples" that will delegate to "compile"

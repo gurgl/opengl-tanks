@@ -109,6 +109,9 @@ object Model {
 
   }
 
+  /*trait IsUniquelyIdentifieble {
+    def id:OwnedGameObjectId
+  }*/
   type OwnedGameObjectId = (Int, Int)
 
   class AbstractOwnedGameObject(aogo:AbstractOwnedGameObject) extends AbstractGameObject(aogo) {

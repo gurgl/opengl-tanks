@@ -79,9 +79,9 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
 
   def addPlayerAction(pa:PlayerActionRequest)
 
-  def playerJoined(pjr:PlayerJoinRequest) : PlayerJoinResponse
-
   def playerLeave(playerId:Int)
+
+  def playerJoined(pjr:PlayerJoinRequest) : PlayerJoinResponse
 
 
 }

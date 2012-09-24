@@ -6,7 +6,7 @@ import management.ManagementFactory
 import com.jme3.math.{ColorRGBA, Quaternion, Vector3f}
 import com.jme3.export.{JmeExporter, JmeImporter, Savable}
 import com.jme3.system.JmeContext
-import collection.JavaConversions
+import collection.{mutable, JavaConversions}
 import se.bupp.lek.server.Model._
 
 import JavaConversions.asScalaBuffer
@@ -44,17 +44,19 @@ import se.bupp.lek.common.FuncUtil.RateProbe
 
 
 
-class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTickListener {
+class Server(portSettings:PortSettings) extends SimpleApplication
+//with PhysicsTickListener
+{
 
 
 
   import Model._
   import Server._
 
-  override def prePhysicsTick(p1: PhysicsSpace, p2: Float) {}
+  /*override def prePhysicsTick(p1: PhysicsSpace, p2: Float) {}
 
   override def physicsTick(p1: PhysicsSpace, p2: Float) {}
-
+    */
   var updateMaxTimeStamp = System.currentTimeMillis()
 
   var worldSimulator: WorldSimulator = _
@@ -87,9 +89,9 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
       leRoot = new Node()
     }
 
-    val (ws, gl) = createWorldSimulator()
-    worldSimulator = ws
-    gameLogic = gl
+    //val (ws, gl) = createWorldSimulator()
+    //worldSimulator = ws
+    gameLogic = createGameLogic()
 
     networkState = new ServerNetworkState(portSettings) {
       def addPlayerAction(pa: PlayerActionRequest) {
@@ -99,8 +101,6 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
             ps.addPlayerAction(pa)
           }
         }
-
-
       }
 
       override def playerJoined(pjr: PlayerJoinRequest) = {
@@ -109,9 +109,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
         val ps = lobby.addPlayer(pjr)
 
         resp.playerId = ps.playerId
-
-
-        worldSimulator.addParticipant(ps)
+        //worldSimulator.addParticipant(ps)
         gameLogic.addCompetitor(new Competitor(ps.playerId,ps.teamIdentifier))
         resp
       }
@@ -126,17 +124,73 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
     log.info("Game Launch Complete")
   }
 
+  sealed abstract class AbstractServerMessage
+  case class GameStarted() extends AbstractServerMessage
+  case class GameEnded() extends AbstractServerMessage
+  var serverMessageQueue = mutable.Queue.empty[AbstractServerMessage]
 
-  def createWorldSimulator() : (WorldSimulator, GameLogic)= {
-    val physicsSpace = new PhysicsSpace()
-    val serverWorld = new ServerWorld(leRoot, assetManager, physicsSpace)
-    serverWorld.initEmpty()
-    worldSimulator = new WorldSimulator(serverWorld) {
-      def playerKilledPlayer(killer: Int, victim: Int) {
-        gameLogic.scoreStrategy.playerKilledByPlayer(killer,victim)
-      }
+
+  override def simpleUpdate(tpf: Float) : Unit = try {
+
+
+    val toHandle = serverMessageQueue.dequeueAll(p => true)
+    if (toHandle.size > 0 ) {
+      log.debug("Server messages to handle " + toHandle.size)
     }
+    serverMessageQueue = mutable.Queue.empty[AbstractServerMessage]
+    toHandle.foreach {
+      case GameStarted()  =>
+        log.info("Game Started")
 
+        worldSimulator = createWorldSimulator()
+        getStateManager.attach(new PlayState(Server.this))
+
+        lobby.connectedPlayers.foreach {
+          ps => worldSimulator.addParticipant(ps)
+        }
+        //gameLogic = gl
+
+        networkState.server.sendToAllTCP(new StartGameRequest)
+      case GameEnded() =>
+        worldSimulator.unspawnAllGameObjects()
+
+        var playState: PlayState = getStateManager.getState(classOf[PlayState])
+        playState.setEnabled(false)
+        getStateManager.detach(playState)
+        worldSimulator.destroy()
+        worldSimulator = null
+        //gameLogic = null
+        networkState.server.sendToAllTCP(new GameOverRequest)
+        log.info("Game ended")
+        new Timer().schedule(new TimerTask {
+          def run() {
+            gameLogic.queryStartGame()
+
+            /*lobby.connectedPlayers.foreach {
+              p =>
+                gameLogic.addCompetitor(new Competitor(p.playerId,p.teamIdentifier))
+            }*/
+            //gameLogic.queryStartGame()
+          }
+        },5000L)
+      // lobby mode
+    }
+    /*updateProbe.tick()
+    worldSimulator.world.simulateToLastUpdated()
+
+    worldSimulator.handleStateLogic()
+
+    val simTime: Long = System.currentTimeMillis()
+
+    networkState.querySendUpdate(() => worldSimulator.generateGameWorldChanges(simTime))
+
+
+    leRoot.updateLogicalState(tpf);
+
+    leRoot.updateGeometricState();*/
+  } catch { case e:Exception => log.error(e) }
+
+  def createGameLogic() = {
 
     val settings: GameMatchSettings = new GameMatchSettings(
       startCriteria = WhenNumOfConnectedPlayersCriteria(2),
@@ -144,19 +198,15 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
       gameEndCriteria = NumOfRoundsPlayed(2)
     )
 
-    var listener = new GameLogicListener() {
+    var gameLogicListener = new GameLogicListener() {
       def onGameStart() {
 
         // send countdown message
         // add timer to start round
         // leave lobby mode
         // enter game mode
-        lobby.connectedPlayers.foreach {
-          ps =>
-        }
-        log.info("Game Started")
-        getStateManager.attach(new PlayState(Server.this))
-        networkState.server.sendToAllTCP(new StartGameRequest)
+        serverMessageQueue.enqueue(GameStarted())
+
       }
 
       def onIntermediateRoundStart() {
@@ -186,35 +236,24 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
       }
 
       def onGameEnd(totals: GameTotalResults) {
-        worldSimulator.unspawnAllGameObjects()
-
-        var playState: PlayState = getStateManager.getState(classOf[PlayState])
-        playState.setEnabled(false)
-        getStateManager.detach(playState)
-        worldSimulator.destroy()
-        worldSimulator = null
-        gameLogic = null
-        networkState.server.sendToAllTCP(new GameOverRequest)
-        log.info("Game ended")
-        new Timer().schedule(new TimerTask {
-          def run() {
-            val (ws, gl) = createWorldSimulator()
-            worldSimulator = ws
-            gameLogic = gl
-            lobby.connectedPlayers.foreach {
-              p =>
-                worldSimulator.addParticipant(p)
-                gameLogic.addCompetitor(new Competitor(p.playerId,p.teamIdentifier))
-            }
-            //gameLogic.queryStartGame()
-          }
-        },5000L)
-        // lobby mode
+        serverMessageQueue.enqueue(GameEnded())
       }
     }
 
-    gameLogic = GameLogicFactory.create(settings, listener, new KillBasedStrategy())
-    (worldSimulator,gameLogic)
+    GameLogicFactory.create(settings, gameLogicListener, new KillBasedStrategy())
+  }
+
+  def createWorldSimulator() : WorldSimulator = {
+    val physicsSpace = new PhysicsSpace()
+    val serverWorld = new ServerWorld(leRoot, assetManager, physicsSpace)
+    serverWorld.initEmpty()
+    worldSimulator = new WorldSimulator(serverWorld) {
+      def playerKilledPlayer(killer: Int, victim: Int) {
+        gameLogic.scoreStrategy.playerKilledByPlayer(killer,victim)
+      }
+    }
+
+    worldSimulator
   }
 
 
@@ -232,22 +271,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PhysicsTi
 
   var updateProbe = new RateProbe("App Update", 3000L,log)
 
-  override def simpleUpdate(tpf: Float) : Unit = try {
 
-    /*updateProbe.tick()
-    worldSimulator.world.simulateToLastUpdated()
-
-    worldSimulator.handleStateLogic()
-
-    val simTime: Long = System.currentTimeMillis()
-
-    networkState.querySendUpdate(() => worldSimulator.generateGameWorldChanges(simTime))
-
-
-    leRoot.updateLogicalState(tpf);
-
-    leRoot.updateGeometricState();*/
-  } catch { case e:Exception => log.error(e) }
 }
 
 object Server {

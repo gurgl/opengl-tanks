@@ -1,6 +1,6 @@
 package se.bupp.lek.server
 
-import se.bupp.lek.server.Model.{MotionGO, GameParticipant}
+import se.bupp.lek.server.Model.{AbstractOwnedGameObject, MotionGO, GameParticipant}
 import com.jme3.scene.{Spatial, Node}
 import se.bupp.lek.client.SceneGraphWorld
 import scalaz.NonEmptyList
@@ -9,6 +9,7 @@ import com.jme3.bullet.control.CharacterControl
 import collection.mutable
 import com.jme3.bullet.PhysicsSpace
 import scala.collection.JavaConversions.asScalaBuffer
+import se.bupp.lek.client.SceneGraphWorld.SceneGraphNodeKeys
 
 trait SceneGraphAccessors {
   def projectNodeChildrenByData[U](nodeKey: String, userDataKey: String) = {
@@ -42,6 +43,12 @@ trait PhysicsSpaceSimAdapter extends SceneGraphAccessors {
       case (p, s) => p.gameState.playerId == playerId
     }
   }
+
+  def find[T <: AbstractOwnedGameObject](k:SceneGraphNodeKeys.SceneGraphNodeKey, udKey:String, t:T) = {
+    projectNodeChildrenByData[T](k,udKey).find { case (tt,s) => tt.id == t.id}
+  }
+
+
 
   def simulateToLastUpdated(): Long = {
 

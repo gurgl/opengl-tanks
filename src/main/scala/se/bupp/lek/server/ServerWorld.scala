@@ -11,6 +11,7 @@ import com.jme3.bounding.BoundingSphere
 import com.jme3.math.Vector3f
 import se.bupp.lek.client.SceneGraphWorld.SceneGraphUserDataKeys
 import org.apache.log4j.Logger
+import com.jme3.bullet.collision.PhysicsCollisionObject
 
 /**
  * Created with IntelliJ IDEA.
@@ -33,7 +34,7 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
   def getProjectiles() = projectNodeChildrenByData[ProjectileGO](SceneGraphWorld.SceneGraphNodeKeys.Projectiles, SceneGraphWorld.SceneGraphUserDataKeys.Projectile)
 
   def spawnProjectile(pr:ProjectileGO) {
-    val instance = materializeProjectile2(pr)
+    val instance = materializeProjectileServer(pr)
 
     //val ctrl = new ProjectileCollisionControl()
 
@@ -41,6 +42,10 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
     val sphereShape =
       new SphereCollisionShape(0.1f)
     val control = new RigidBodyControl(sphereShape)
+    control.setCollisionGroup(PhysicsCollisionObject.COLLISION_GROUP_03)
+
+    control.setCollideWithGroups(PhysicsCollisionObject.COLLISION_GROUP_01)
+    control.addCollideWithGroup(PhysicsCollisionObject.COLLISION_GROUP_02)
     instance.setModelBound(new BoundingSphere())
     instance.updateModelBound()
     control.setLinearVelocity(pr.direction.getRotationColumn(0).mult(pr.speed))
@@ -53,6 +58,7 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
     control.setKinematic(false)
 
     instance.addControl(control)
+    //control.setUserObject(pr)
     getPhysicsSpace.add(control)
 
 
@@ -84,7 +90,7 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
 
   def spawnPlayer(ps:GameParticipant) {
     log.info("Spawn player")
-    val tankGeo = materializeTank2(ps.gameState)
+    val tankGeo = materializeTankServer(ps.gameState)
     //enemy.setModelBound(new BoundingSphere())
     //enemy.updateModelBound()
     //val tank = new Node("Bupp")
@@ -106,6 +112,7 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
 
     getPhysicsSpace.add(playerControl)
 
+
     playerControl.setUseViewDirection(false)
 
     playerControl.setJumpSpeed(0);
@@ -113,7 +120,14 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
     playerControl.setGravity(0.3f);
     playerControl.setPhysicsLocation(new Vector3f(0, 2.5f, 0));
 
-    val ghost: GhostControl = new GhostControl(capsuleShapeGhost) /*{
+    val ghost: GhostControl = new GhostControl(capsuleShapeGhost)
+    ghost.setCollisionGroup(PhysicsCollisionObject.COLLISION_GROUP_02)
+    ghost.setCollideWithGroups(PhysicsCollisionObject.COLLISION_GROUP_01)
+    //ghost.addCollideWithGroup(PhysicsCollisionObject.COLLISION_GROUP_03)
+
+    //ghost.setUserObject(ps)
+   /*{
+
       override def querySendUpdate(tpf:Float) {
 
         if (!enabled) {

@@ -39,6 +39,7 @@ class GameLogic(var gameSettings:GameMatchSettings, var listener:GameLogicListen
   }
 
   def queryStartGame() {
+    println("query game start")
     gameSettings.startCriteria match {
       case WhenNumOfConnectedPlayersCriteria(s) =>
         if(competitors.size == s) {

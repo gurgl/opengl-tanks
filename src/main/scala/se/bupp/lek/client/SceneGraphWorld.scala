@@ -15,6 +15,7 @@ import com.jme3.bounding.BoundingSphere
 import collection.immutable.HashSet
 import com.jme3.export.Savable
 import org.apache.log4j.Logger
+import com.jme3.bullet.collision.PhysicsCollisionObject
 
 /**
  * Created with IntelliJ IDEA.
@@ -141,6 +142,9 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
     //level.setLocalScale(0.2f)
     val sceneCollisionShape = CollisionShapeFactory.createMeshShape(level.asInstanceOf[Node])
     val landscape = new RigidBodyControl(sceneCollisionShape, 0)
+    landscape.setCollisionGroup(PhysicsCollisionObject.COLLISION_GROUP_01)
+    landscape.setCollideWithGroups(0)
+    //landscape.setCollisionGroup(PhysicsCollisionObject.COLLISION_GROUP_03)
     level.addControl(landscape);
 
     getPhysicsSpace.add(landscape)
@@ -197,7 +201,7 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
 
   def tankCollisionShape = new CapsuleCollisionShape(0.35f, 0.45f, 0)
 
-  def materializeTank2(pd: Orientation): Spatial = {
+  def materializeTankServer(pd: Orientation): Spatial = {
     val tank = assetManager.loadModel(new ModelKey("tank2.blend"))
     //enemy.setMaterial(mat_default)
 
@@ -258,7 +262,7 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
 
 
 
-  def materializeProjectile2(p:ProjectileGO) = {
+  def materializeProjectileServer(p:ProjectileGO) = {
 
     log.info("adding projectile " + p.position + "" + p.id)
     val instance = new Geometry("Box", projectileGeometry);
