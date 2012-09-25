@@ -109,6 +109,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication
         val ps = lobby.addPlayer(pjr)
 
         resp.playerId = ps.playerId
+
         //worldSimulator.addParticipant(ps)
         gameLogic.addCompetitor(new Competitor(ps.playerId,ps.teamIdentifier))
         resp
@@ -194,7 +195,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication
 
     val settings: GameMatchSettings = new GameMatchSettings(
       startCriteria = WhenNumOfConnectedPlayersCriteria(2),
-      roundEndCriteria = ScoreReached(1),
+      roundEndCriteria = ScoreReached(2),
       gameEndCriteria = NumOfRoundsPlayed(2)
     )
 

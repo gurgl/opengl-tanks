@@ -46,7 +46,7 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
       obj match {
         case request: PlayerActionRequest =>
 
-          actionReqProbe.tick()
+          //actionReqProbe.tick()
           addPlayerAction(request)
 
 
@@ -73,7 +73,7 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
       //println("" + getPlayers.size)
       server.sendToAllUDP(gameWorld)
       lastSentUpdate = System.currentTimeMillis()
-      serverSentProbe.tick()
+      //serverSentProbe.tick()
     }
   }
 

@@ -24,7 +24,7 @@ class PlayState(val server:Server) extends AbstractAppState {
 
   override def update(tpf: Float) : Unit = try {
 
-    updateProbe.tick()
+    //updateProbe.tick()
     server.worldSimulator.world.simulateToLastUpdated()
 
     server.worldSimulator.handleStateLogic()

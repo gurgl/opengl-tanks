@@ -60,6 +60,7 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
 
   override def update(tpf: Float) {
 
+    // MOVE to after?
     val (pos,rot) = visualWorldSimulation.getCamPosition
     gameApp.getCamera.setFrame(pos,rot)
 
@@ -74,7 +75,8 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
 
     val worldToPaintOpt = worldUpdater.generateGameWorld(simTime)
 
-    worldToPaintOpt.foreach( visualWorldSimulation.updateGameWorld(this, _ , input) )
+    //visualWorldSimulation.handleServerStateReplication()
+    worldToPaintOpt.foreach( world => visualWorldSimulation.updateGameWorld(this, world , input) )
 
     lastUpdate.foreach {
         case _ => worldUpdater.postUpdate(simTime)
@@ -191,6 +193,9 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
       case (key, trigger) => gameApp.getInputManager.addMapping(key,trigger)
     }
   }
+  def unspawnAllPlayers() {
+    visualWorldSimulation.playerDead = true
+  }
 
   def unspawnAllGameObject() {
     import SceneGraphNodeKeys._
@@ -198,8 +203,7 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
   }
 
   override def cleanup() {
-    println("a1")
-    printSceneGraph(visualWorldSimulation.rootNode)
+    //printSceneGraph(visualWorldSimulation.rootNode)
     /*visualWorldSimulation.rootNode.depthFirstTraversal(new SceneGraphVisitor {
       def visit(p1: Spatial) {
 
@@ -208,16 +212,12 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
     })*/
 
     super.cleanup()
-    println("a2")
     visualWorldSimulation.destroy()
-    println("a3")
     gameApp.getInputManager.removeListener(actionListener)
-    println("a4")
     mappings.foreach {
       case (key, trigger) => gameApp.getInputManager.deleteMapping(key)
     }
-    println("a5")
-    printSceneGraph(visualWorldSimulation.rootNode)
+    //printSceneGraph(visualWorldSimulation.rootNode)
     /*visualWorldSimulation.rootNode.depthFirstTraversal(new SceneGraphVisitor {
       def visit(p1: Spatial) {
 

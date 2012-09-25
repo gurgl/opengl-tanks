@@ -196,6 +196,8 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
 
   def handleStateLogic() {
 
+
+
     updateLoopMessages.synchronized {
       val s = Seq.empty ++: updateLoopMessages
       updateLoopMessages = updateLoopMessages.companion.empty
@@ -339,11 +341,11 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
         deadPlayers.foreach( p => log.info(p))
       }
 
-
+      log.debug("playerState " + playerState.size + " alivePlayers " + deadPlayers.size)
 
       val wastInLastUpdate = lastGeneratedUpdate match {
         case Some(l) => var lastAlivePlayers = l.alivePlayers.toList
-          val (_ , newPlayers) = playerState.partition( p => lastAlivePlayers.exists( p2 => p.playerId == p.playerId))
+          val (_ , newPlayers) = playerState.partition( p => lastAlivePlayers.exists( p2 => p.playerId == p2.playerId))
           newPlayers
         case None => playerState
       }
@@ -398,6 +400,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
       val pp = new GameParticipant
       pd.playerId = pc.playerId
       pp.playerId = pc.playerId
+      pp.teamIdentifier = pc.teamIdentifier
       pd.position = Vector3f.ZERO.clone().setY(0.13499954f)
       pd.direction = Quaternion.DIRECTION_Z.clone()
 

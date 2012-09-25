@@ -30,6 +30,7 @@ import com.jme3.scene.control.AbstractControl
 import se.bupp.lek.server.{Model, SceneGraphAccessors}
 import org.apache.log4j.Logger
 import com.jme3.texture.Texture
+import se.bupp.lek.client.VisualWorldSimulation.ServerStateChanges
 
 
 /**
@@ -43,7 +44,11 @@ import com.jme3.texture.Texture
 
 object VisualWorldSimulation {
 
-  type VisualGameWorld = (Set[Model.AbstractOwnedGameObject with Savable] , Model.ServerGameWorld)
+  sealed abstract class ServerStateChanges()
+  case class SpawnPlayers(val pis:List[(PlayerInfo,PlayerGO)]) extends ServerStateChanges
+  case class KillPlayers(val pis:List[Int]) extends ServerStateChanges
+
+  type VisualGameWorld = (Set[Model.AbstractOwnedGameObject with Savable] , Model.ServerGameWorld, Seq[ServerStateChanges])
 }
 
 
@@ -69,11 +74,11 @@ class LocalObjectFactory {
   }
 }
 
-class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, playerIdOpt:() => Option[Int],val playerInput:PlayerInput, viewPort:ViewPort, val bulletAppState:BulletAppState) extends SceneGraphWorld(false,assetManager,rootNode) with SceneGraphAccessors {
+class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val playerIdOpt:() => Option[Int],val playerInput:PlayerInput, viewPort:ViewPort, val bulletAppState:BulletAppState) extends SceneGraphWorld(false,assetManager,rootNode) with SceneGraphAccessors {
   import VisualWorldSimulation._
   import SceneGraphWorld._
 
-  private val log = Logger.getLogger(classOf[VisualGameWorld])
+  private val log = Logger.getLogger(classOf[VisualWorldSimulation])
   override def getPhysicsSpace = bulletAppState.getPhysicsSpace
 
   val localObjectFactory = new LocalObjectFactory
@@ -161,8 +166,11 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
   }
 
 
-  def respawnPlayer(pgo:PlayerGO, pi:PlayerInfo) {
-    log.info("You respawned")
+  def respawnLocalPlayer(pgo:PlayerGO, pi:PlayerInfo) {
+    log.info("You respawned (rep + " + pi.teamId + ")")
+    if(!playerDead) {
+      throw new IllegalStateException("cannot respawn alive player")
+    }
     playerDead = false
     if (player == null) {
       //materializePlayer(pgo.orientation, pi.teamId)
@@ -272,14 +280,14 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
       case (o, spatial) =>
         o match {
           case p:ProjectileGO => rootNode.getChild(SceneGraphNodeKeys.Projectiles).asInstanceOf[Node].detachChild(spatial)
-          case p:PlayerGO => rootNode.getChild(SceneGraphNodeKeys.Enemies).asInstanceOf[Node].detachChild(spatial)
+          case p:PlayerGO => //rootNode.getChild(SceneGraphNodeKeys.Enemies).asInstanceOf[Node].detachChild(spatial)
         }
     }
   }
 
   var dbgLastPlayerPos:Vector3f = _
 
-  def generateLocalGameWorld(simTime: Long,currentGameWorldUpdates:Queue[Model.ServerGameWorld]): Option[VisualGameWorld] = {
+  def generateLocalGameWorld(simTime: Long,currentGameWorldUpdates:Queue[Model.ServerGameWorld]): Option[(Set[Model.AbstractOwnedGameObject with Savable] , Model.ServerGameWorld)] = {
     if(currentGameWorldUpdates.size > 0) {
 
       val prediction: Set[AbstractOwnedGameObject with Savable] = calculatePrediction(simTime, currentGameWorldUpdates, playerIdOpt().get)
@@ -299,30 +307,41 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
     nonPlayerPredictons.distinct.toSet
   }
 
+
   def updateGameWorld(playState:PlayState, visualGameWorld:VisualGameWorld, reorientation:Reorientation) {
 
-    val (nonPlayerPredictons:Set[AbstractOwnedGameObject with Savable], lastGameWorldUpdate: ServerGameWorld) = visualGameWorld
+    val (nonPlayerPredictons:Set[AbstractOwnedGameObject with Savable], lastGameWorldUpdate: ServerGameWorld, stateChanges:Seq[ServerStateChanges]) = visualGameWorld
     syncNonPlayerGameWorld(nonPlayerPredictons)
+
+    /*
+    val toKill = lastGameWorldUpdate.deadPlayers.toList
+    if (toKill.size > 0) {
+      log.info("handle deaths")
+
+    }
+
+    if (playState.visualWorldSimulation.playerDead) {
+      lastGameWorldUpdate.newAlivePlayersInfo.find( pi => pi.playerId == playerIdOpt.apply().get).foreach {
+        //lastGameWorldUpdate.alivePlayers.find( p => p.playerId == playerIdOpt.apply().get).foreach {
+        pi =>
+          log.debug("Spawning player")
+          val p = lastGameWorldUpdate.alivePlayers.find(p => pi.playerId == p.playerId).getOrElse(throw new IllegalStateException("bad"))
+          playState.visualWorldSimulation.respawnLocalPlayer(p,pi)
+      }
+    }                                                         */
+
+    stateChanges.foreach {
+      case KillPlayers(lst) => playState.visualWorldSimulation.handleKilledPlayers(lst)
+      case SpawnPlayers(pis) =>
+        pis.foreach {
+          case (pi,p) => if(pi.playerId == playerIdOpt().get) { playState.visualWorldSimulation.respawnLocalPlayer(p,pi) }
+
+        }
+
+    }
 
     if(lastSynchedGameWorldUpdate != lastGameWorldUpdate) {
       //lastGameWorldUpdate.newAlivePlayersInfo(
-
-      val toKill = lastGameWorldUpdate.deadPlayers.toList
-      if (toKill.size > 0) {
-        log.info("handle deaths")
-        playState.visualWorldSimulation.handleKilledPlayers(toKill)
-      }
-
-      if (playState.visualWorldSimulation.playerDead) {
-        lastGameWorldUpdate.newAlivePlayersInfo.find( pi => pi.playerId == playerIdOpt.apply().get).foreach {
-        //lastGameWorldUpdate.alivePlayers.find( p => p.playerId == playerIdOpt.apply().get).foreach {
-          pi =>
-            log.debug("Spawning player")
-            val p = lastGameWorldUpdate.alivePlayers.find(p => pi.playerId == p.playerId).getOrElse(throw new IllegalStateException("bad"))
-            playState.visualWorldSimulation.respawnPlayer(p,pi)
-        }
-      }
-
       applyServerWorld(lastGameWorldUpdate)
       lastSynchedGameWorldUpdate = lastGameWorldUpdate
     }
@@ -522,13 +541,9 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
   }
 
   override def destroy() {
-    println("b1")
     super.destroy()
-    println("b2")
     rootNode.removeLight(al)
-    println("b3")
     rootNode.removeLight(sun)
-    println("b4")
 
   }
 

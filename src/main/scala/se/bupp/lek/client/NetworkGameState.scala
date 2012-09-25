@@ -17,6 +17,7 @@ import se.bupp.lek.client.MathUtil._
 import scala.Some
 import org.apache.log4j.Logger
 import se.bupp.lek.common.FuncUtil.RateProbe
+import com.jme3.export.Savable
 
 
 /**
@@ -80,6 +81,7 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
   val log = Logger.getLogger(classOf[NetworkGameState])
 
   var gameWorldUpdatesQueue:Queue[Model.ServerGameWorld] = Queue()
+  var gameWorldStateChangeQueue:Queue[Model.ServerGameWorld] = Queue()
 
   var lastReceiveSeqId = -1
 
@@ -95,7 +97,7 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
       override def received (connection:Connection , obj:Object ) = try {
         obj match {
           case response:ServerGameWorld=>
-            serverUpdProbe.tick()
+            //serverUpdProbe.tick()
 
             if(gameApp.playerIdOpt.isDefined) {
               //                lock.synchronized {
@@ -143,6 +145,7 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
     initClient()
   }
 
+  // TODO: Remove unused variable
   def sendClientUpdate(simTime: Long, visualWorldSimulation:VisualWorldSimulation) {
     val projectiles = PlayerActionQueue.flushProjectiles()
     val reorientation = PlayerActionQueue.flushMotion()
@@ -172,12 +175,16 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
         }
       ).head.enqueue(serverUpdate);
 
+    gameWorldStateChangeQueue = gameWorldStateChangeQueue.enqueue(serverUpdate)
+
+    /*
     getPlayState.foreach {
       playState =>
         if(playState.isInitialized) {
           applyWorldUpdate(playState, serverUpdate)
         }
-    }
+    }*/
+
   }
 
   /**
@@ -194,7 +201,7 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
     if (playState.visualWorldSimulation.playerDead) {
       serverUpdate.alivePlayers.find( p => p.playerId == gameApp.playerIdOpt.get).foreach {
         p =>
-          playState.visualWorldSimulation.respawnPlayer()
+          playState.visualWorldSimulation.respawnLocalPlayer()
       }
     }*/
   }
@@ -224,7 +231,59 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
     def generateGameWorld(simTime: Long) : Option[VisualGameWorld] = {
       currentGameWorldUpdates = Queue(gameWorldUpdatesQueue: _*)
 
-      visualWorldSimulation.generateLocalGameWorld(simTime, currentGameWorldUpdates)
+      val worldStateChangeToHandle = Seq(gameWorldStateChangeQueue:_*)
+      gameWorldStateChangeQueue = gameWorldStateChangeQueue.companion.empty
+
+      var stateChanges = Seq.empty[ServerStateChanges]
+
+
+      worldStateChangeToHandle.foreach { u =>
+        val toKill = u.deadPlayers.toList
+        if (toKill.size > 0) {
+          log.info("handle deaths")
+          stateChanges = stateChanges :+ KillPlayers(toKill)
+        }
+
+        //if (playState.visualWorldSimulation.playerDead) {
+        //val playerId = visualWorldSimulation.playerIdOpt.apply().get
+        val list = u.newAlivePlayersInfo.map { pi =>
+
+          log.info("respawn mess")
+            val p = u.alivePlayers.find( p => p.playerId == pi.playerId).get
+            (pi,p)
+            /*pi =>
+              log.debug("Spawning player")
+              val p = lastGameWorldUpdate.alivePlayers.find(p => pi.playerId == p.playerId).getOrElse(throw new IllegalStateException("bad"))
+              playState.visualWorldSimulation.respawnLocalPlayer(p,pi)*/
+
+        //}
+
+        }.toList
+        if (list.size > 0) {
+          stateChanges = stateChanges :+ SpawnPlayers(list)
+        }
+      }
+      /*
+      val toKill = lastGameWorldUpdate.deadPlayers.toList
+      if (toKill.size > 0) {
+        log.info("handle deaths")
+        playState.visualWorldSimulation.handleKilledPlayers(toKill)
+      }
+
+      if (playState.visualWorldSimulation.playerDead) {
+        lastGameWorldUpdate.newAlivePlayersInfo.find( pi => pi.playerId == playerIdOpt.apply().get).foreach {
+          //lastGameWorldUpdate.alivePlayers.find( p => p.playerId == playerIdOpt.apply().get).foreach {
+          pi =>
+            log.debug("Spawning player")
+            val p = lastGameWorldUpdate.alivePlayers.find(p => pi.playerId == p.playerId).getOrElse(throw new IllegalStateException("bad"))
+            playState.visualWorldSimulation.respawnLocalPlayer(p,pi)
+        }
+      }
+       */
+
+      var buppOpt: Option[(Set[AbstractOwnedGameObject with Savable], ServerGameWorld)] = visualWorldSimulation.generateLocalGameWorld(simTime, currentGameWorldUpdates)
+      buppOpt.map(bupp => (bupp._1,bupp._2, stateChanges))
+
     }
   }
 }
