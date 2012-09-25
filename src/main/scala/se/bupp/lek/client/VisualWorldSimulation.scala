@@ -260,7 +260,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
         if(p.playerId == playerIdOpt.apply().get) {
           // TODO (player spawn etc)
         } else {
-          materializeEnemy(p)
+          //materializeEnemy(p)
         }
       case p:ProjectileGO =>
         materializeProjectile(p)
@@ -334,7 +334,10 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
       case KillPlayers(lst) => playState.visualWorldSimulation.handleKilledPlayers(lst)
       case SpawnPlayers(pis) =>
         pis.foreach {
-          case (pi,p) => if(pi.playerId == playerIdOpt().get) { playState.visualWorldSimulation.respawnLocalPlayer(p,pi) }
+          case (pi,p) => if(pi.playerId == playerIdOpt().get) { playState.visualWorldSimulation.respawnLocalPlayer(p,pi) }  else {
+            var enemy: Spatial = materializeEnemy(p)
+            enemy.setMaterial(if(pi.teamId % 2 == 0) mat_default_blue else mat_default_red)
+          }
 
         }
 

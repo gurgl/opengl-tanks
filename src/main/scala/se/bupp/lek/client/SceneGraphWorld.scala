@@ -225,7 +225,7 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
   }
 
 
-  def materializeEnemy(pd:PlayerGO) {
+  def materializeEnemy(pd:PlayerGO) = {
     val tank = materializeTank(pd)
 
     //enemy.setModelBound(new BoundingSphere())
@@ -233,6 +233,7 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
     tank.setUserData(SceneGraphUserDataKeys.Player, pd)
 
     getNode(SceneGraphNodeKeys.Enemies).attachChild(tank)
+    tank
   }
 
   def materializePlayer(orientation:Orientation) {

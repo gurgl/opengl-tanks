@@ -17,6 +17,7 @@ sealed abstract class PlayerConnectionState {
 
 }
 
+case class NotPlaying() extends PlayerConnectionState
 case class Playing() extends PlayerConnectionState {
 
 }

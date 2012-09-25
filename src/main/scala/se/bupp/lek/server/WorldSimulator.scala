@@ -17,7 +17,7 @@ import com.jme3.bullet.{PhysicsSpace, BulletAppState}
 import com.jme3.scene.control.Control
 import com.jme3.bullet.collision.{PhysicsCollisionObject, PhysicsCollisionGroupListener, PhysicsCollisionEvent, PhysicsCollisionListener}
 import com.jme3.bounding.BoundingSphere
-import se.bupp.lek.common.model.{Playing, Dead}
+import se.bupp.lek.common.model.{NotPlaying, Playing, Dead}
 import java.util
 import org.apache.log4j.Logger
 
@@ -127,6 +127,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
   def handlePlayerDeathMessage(pkpm: PlayerKillPlayerMessage) {
 
     pkpm.player.state match {
+      case NotPlaying() => log.warn("Non playing player cannot die - round over?")
       case Dead(since) =>
       case Playing() =>
         world.findPlayerInfo(pkpm.player.playerId) match {
@@ -234,6 +235,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
           respawnDeadPlayer(cp)
         }
         case Playing() =>
+        case NotPlaying() =>
       }
     }
 
@@ -341,7 +343,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
         deadPlayers.foreach( p => log.info(p))
       }
 
-      log.debug("playerState " + playerState.size + " alivePlayers " + deadPlayers.size)
+      //log.debug("playerState " + playerState.size + " alivePlayers " + deadPlayers.size)
 
       val wastInLastUpdate = lastGeneratedUpdate match {
         case Some(l) => var lastAlivePlayers = l.alivePlayers.toList
@@ -388,7 +390,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
     participatingPlayers = newParticipatingPlayers
     pcOpt match {
       case Nil =>
-      case pc :: rest => world.unspawnPlayer(pc)
+      case pc :: rest => pc.state = NotPlaying() ; world.unspawnPlayer(pc)
     }
   }
 
@@ -408,6 +410,8 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
 
       participatingPlayers = participatingPlayers :+ pp
       //TODO: Really from here? Should be handled by game logic
+      pp.state = Playing()
+
       world.spawnPlayer(pp)
     }
 
@@ -420,6 +424,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
 
 
       participatingPlayers.find(_.playerId == request.playerId).map(_.state) match {
+        case Some(NotPlaying()) => log.warn("Cannot add action when not playing - player might not have respawned completly")
         case Some(Dead(since)) => //println("Discarding dead player " + request.playerId + " querySendUpdate")
         case Some(Playing()) =>
 
@@ -448,7 +453,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
   }
 
   def unspawnAllGameObjects() {
-    participatingPlayers.foreach { pc => world.unspawnPlayer(pc) }
+    participatingPlayers.foreach { pc => pc.state = NotPlaying() ; world.unspawnPlayer(pc) }
     world.getProjectiles().foreach { case (pgo,s) => world.unspawnProjectile(s,pgo) }
 
   }
