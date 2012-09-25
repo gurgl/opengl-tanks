@@ -72,6 +72,8 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
   var player:Spatial = _
 
   var mat_default : Material = _
+  var mat_default_red : Material = _
+  var mat_default_blue: Material = _
   var mat_default_lgt : Material = _
   var mat_default_ush : Material = _
 
@@ -91,7 +93,17 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
 
     if(!isHeadLess) {
       mat_default = new Material(assetManager, "Common/MatDefs/Misc/ShowNormals.j3md");
+      mat_default_red  = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+      mat_default_blue  = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
       mat_default_lgt = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+
+      //mat_default_red.setBoolean("UseMaterialColors",false);  // Set some parameters, e.g. blue.
+      //mat_default_red.setBoolean("m_UseMaterialColors", false);
+      mat_default_red.setColor("Color",  ColorRGBA.Orange);
+
+      //mat_default_blue.setBoolean("UseMaterialColors",false);  // Set some parameters, e.g. blue.
+      //mat_default_blue.setBoolean("m_UseMaterialColors", false);
+      mat_default_blue.setColor("Color",  ColorRGBA.Cyan);
 
       //mat_default_lgt.setBoolean("UseMaterialColors",true);  // Set some parameters, e.g. blue.
       /*mat_default_lgt.setBoolean("m_UseMaterialColors", true);
@@ -203,7 +215,7 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
 
   def materializeTankServer(pd: Orientation): Spatial = {
     val tank = assetManager.loadModel(new ModelKey("tank2.blend"))
-    //enemy.setMaterial(mat_default)
+
 
     tank.setLocalScale(0.5f)
     if(!isHeadLess) {
@@ -227,7 +239,7 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
 
     //player = assetManager.loadModel("Models/Teapot/Teapot.obj")
     player = materializeTank(orientation)
-
+    //player.setMaterial(if(teamId % 2 == 0) mat_default_blue else mat_default_red)
 
     val capsuleShape = tankCollisionShape
     val playerControl = new CharacterControl(capsuleShape, 0.1f)
@@ -257,7 +269,7 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
     */
     //player.setMaterial(mat_default);
 
-    getNode(SceneGraphNodeKeys.Player).attachChild(player);
+
   }
 
 

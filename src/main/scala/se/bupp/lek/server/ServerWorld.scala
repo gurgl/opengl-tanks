@@ -91,6 +91,7 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
   def spawnPlayer(ps:GameParticipant) {
     log.info("Spawn player")
     val tankGeo = materializeTankServer(ps.gameState)
+    //tankGeo.setMaterial(if(ps.playerId % 2 == 0 ) mat_default_blue else mat_default_red)
     //enemy.setModelBound(new BoundingSphere())
     //enemy.updateModelBound()
     //val tank = new Node("Bupp")

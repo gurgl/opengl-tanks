@@ -185,7 +185,7 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
    */
   def applyWorldUpdate(playState: PlayState, serverUpdate: Model.ServerGameWorld) {
     //println("ITS INITIALIZED")
-    val toKill = serverUpdate.deadPlayers.toList
+    /*val toKill = serverUpdate.deadPlayers.toList
     if (toKill.size > 0) {
       log.info("handle deaths")
       playState.visualWorldSimulation.handleKilledPlayers(toKill)
@@ -196,7 +196,7 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
         p =>
           playState.visualWorldSimulation.respawnPlayer()
       }
-    }
+    }*/
   }
 
   class ServerWorldUpdater(visualWorldSimulation:VisualWorldSimulation) extends WorldUpdater {

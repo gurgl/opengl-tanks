@@ -78,7 +78,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
 
   val localObjectFactory = new LocalObjectFactory
 
-  var playerDead = false
+  var playerDead = true
 
 
   val lock:AnyRef = new Object
@@ -161,9 +161,13 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
   }
 
 
-  def respawnPlayer() {
+  def respawnPlayer(pgo:PlayerGO, pi:PlayerInfo) {
     log.info("You respawned")
     playerDead = false
+    if (player == null) {
+      //materializePlayer(pgo.orientation, pi.teamId)
+    }
+    player.setMaterial(if(pi.teamId % 2 == 0) mat_default_blue else mat_default_red)
     getNode(SceneGraphNodeKeys.Player).attachChild(player)
 
   }
@@ -175,7 +179,13 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
 
   def getCamPosition() : (Vector3f,Quaternion) = {
 
-    val pos = player.getLocalTranslation
+    val pos = if (player != null) {
+      player.getLocalTranslation
+    } else {
+      Vector3f.ZERO.clone()
+    }
+
+
     val camPos = pos.add(Vector3f.UNIT_XYZ.clone().mult(5))
 
     val dir = pos.subtract(camPos).normalize()
@@ -289,30 +299,49 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
     nonPlayerPredictons.distinct.toSet
   }
 
-  def updateGameWorld(visualGameWorld:VisualGameWorld, reorientation:Reorientation) {
+  def updateGameWorld(playState:PlayState, visualGameWorld:VisualGameWorld, reorientation:Reorientation) {
 
     val (nonPlayerPredictons:Set[AbstractOwnedGameObject with Savable], lastGameWorldUpdate: ServerGameWorld) = visualGameWorld
     syncNonPlayerGameWorld(nonPlayerPredictons)
 
     if(lastSynchedGameWorldUpdate != lastGameWorldUpdate) {
+      //lastGameWorldUpdate.newAlivePlayersInfo(
+
+      val toKill = lastGameWorldUpdate.deadPlayers.toList
+      if (toKill.size > 0) {
+        log.info("handle deaths")
+        playState.visualWorldSimulation.handleKilledPlayers(toKill)
+      }
+
+      if (playState.visualWorldSimulation.playerDead) {
+        lastGameWorldUpdate.newAlivePlayersInfo.find( pi => pi.playerId == playerIdOpt.apply().get).foreach {
+        //lastGameWorldUpdate.alivePlayers.find( p => p.playerId == playerIdOpt.apply().get).foreach {
+          pi =>
+            log.debug("Spawning player")
+            val p = lastGameWorldUpdate.alivePlayers.find(p => pi.playerId == p.playerId).getOrElse(throw new IllegalStateException("bad"))
+            playState.visualWorldSimulation.respawnPlayer(p,pi)
+        }
+      }
+
       applyServerWorld(lastGameWorldUpdate)
       lastSynchedGameWorldUpdate = lastGameWorldUpdate
     }
 
 
-    applyPlayerInput(lastGameWorldUpdate,reorientation)
+    if (!playerDead) {
+      applyPlayerInput(lastGameWorldUpdate,reorientation)
 
-    val dbgPlayerPos = player.getControl(classOf[CharacterControl]).getPhysicsLocation.clone()
+      val dbgPlayerPos = player.getControl(classOf[CharacterControl]).getPhysicsLocation.clone()
 
-    /*
-    if (dbgLastPlayerPos != null) {
-      val dist: Float = dbgLastPlayerPos.subtract(dbgPlayerPos).length()
-      if (math.abs(dist) < 0.001 ) {
-        println("Zero dist" + dist + dbgLastPlayerPos + " " + dbgPlayerPos)
-      }
-    }*/
-    dbgLastPlayerPos = dbgPlayerPos
-
+      /*
+      if (dbgLastPlayerPos != null) {
+        val dist: Float = dbgLastPlayerPos.subtract(dbgPlayerPos).length()
+        if (math.abs(dist) < 0.001 ) {
+          println("Zero dist" + dist + dbgLastPlayerPos + " " + dbgPlayerPos)
+        }
+      }*/
+      dbgLastPlayerPos = dbgPlayerPos
+    }
   }
 
   private def diff(client:Orientation,server:Orientation) = {
@@ -399,21 +428,20 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, pla
   private def applyPlayerInput(lastGameWorldUpdate: ServerGameWorld, input:Reorientation) {
 
       // Only check if player alive (TODO: Rewrite for readablity)
-    lastGameWorldUpdate.alivePlayers.find(_.playerId == playerIdOpt().get).foreach {
-      x =>
-        val control = player.getControl(classOf[CharacterControl])
+    /*lastGameWorldUpdate.alivePlayers.find(_.playerId == playerIdOpt().get).foreach {
+      x =>*/
+
+    val control = player.getControl(classOf[CharacterControl])
+
+    //println(direction + " " + bulletAppState.getSpeed + " " + bulletAppState.getPhysicsSpace.getAccuracy)
+    control.setWalkDirection(input._1)
+    //control.setviewdirection(player.setlocalrotation(p.direction))
+    //control.setViewDirection(p.direction.getRotationColumn(0))
+    player.rotate(input._2)
 
 
-      //println(direction + " " + bulletAppState.getSpeed + " " + bulletAppState.getPhysicsSpace.getAccuracy)
-      control.setWalkDirection(input._1)
-      //control.setviewdirection(player.setlocalrotation(p.direction))
-      //control.setViewDirection(p.direction.getRotationColumn(0))
-      player.rotate(input._2)
-
-
-      //player.setlocaltranslation(p.position)
-      //player.setLocalRotation(p.direction)
-    }
+    //player.setlocaltranslation(p.position)
+    //player.setLocalRotation(p.direction)
 
 
   }

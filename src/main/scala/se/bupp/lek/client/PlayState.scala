@@ -74,7 +74,7 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
 
     val worldToPaintOpt = worldUpdater.generateGameWorld(simTime)
 
-    worldToPaintOpt.foreach( visualWorldSimulation.updateGameWorld(_ , input) )
+    worldToPaintOpt.foreach( visualWorldSimulation.updateGameWorld(this, _ , input) )
 
     lastUpdate.foreach {
         case _ => worldUpdater.postUpdate(simTime)
