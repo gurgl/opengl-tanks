@@ -93,17 +93,27 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
 
     if(!isHeadLess) {
       mat_default = new Material(assetManager, "Common/MatDefs/Misc/ShowNormals.j3md");
-      mat_default_red  = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-      mat_default_blue  = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+      mat_default_red  = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+      mat_default_blue  = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
       mat_default_lgt = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
 
       //mat_default_red.setBoolean("UseMaterialColors",false);  // Set some parameters, e.g. blue.
       //mat_default_red.setBoolean("m_UseMaterialColors", false);
-      mat_default_red.setColor("Color",  ColorRGBA.Orange);
+      ///mat_default_red.setColor("Color",  ColorRGBA.Orange);
+      mat_default_red.setBoolean("m_UseMaterialColors", true);
+      mat_default_red.setColor("m_Ambient",  new ColorRGBA(1f,0f,0f,1.0f));
+      mat_default_red.setColor("m_Diffuse",  new ColorRGBA(1f,0.5f,0.5f,0.5f));
+      mat_default_red.setColor("m_Specular", ColorRGBA.White);
+      mat_default_red.setFloat("m_Shininess", 128);
 
+      mat_default_blue.setBoolean("m_UseMaterialColors", true);
+      mat_default_blue.setColor("m_Ambient",  new ColorRGBA(0f,0f,1f,1f));
+      mat_default_blue.setColor("m_Diffuse",  new ColorRGBA(0.5f,0.5f,1f,0.5f));
+      mat_default_blue.setColor("m_Specular", ColorRGBA.White);
+      mat_default_blue.setFloat("m_Shininess", 128);
       //mat_default_blue.setBoolean("UseMaterialColors",false);  // Set some parameters, e.g. blue.
       //mat_default_blue.setBoolean("m_UseMaterialColors", false);
-      mat_default_blue.setColor("Color",  ColorRGBA.Cyan);
+      //mat_default_blue.setColor("Color",  ColorRGBA.Cyan);
 
       //mat_default_lgt.setBoolean("UseMaterialColors",true);  // Set some parameters, e.g. blue.
       /*mat_default_lgt.setBoolean("m_UseMaterialColors", true);
