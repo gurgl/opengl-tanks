@@ -22,6 +22,7 @@ import com.jme3.app.state.{AppStateManager, AbstractAppState}
 import com.jme3.font.{BitmapFont, BitmapText}
 
 import org.apache.log4j.{Logger, PropertyConfigurator}
+import se.bupp.lek.common.FuncUtil.RateProbe
 
 
 /**
@@ -113,10 +114,14 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
   }*/
 
 
+  var serverUpdProbe = new RateProbe("Messages ",1000L,log)
 
-  var messages:Option[AnyRef] = None
-  def postMessage(b:AnyRef) {
-    messages = Some(b)
+  var messages = List[OrderedMessage]()
+  def postMessage(b:OrderedMessage) {
+
+    //log.info("MESSA")
+    serverUpdProbe.tick()
+    messages = messages :+ b
   }
 
   def initAudio() {
@@ -164,7 +169,6 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
     //bulletAppState.getPhysicsSpace.addTickListener(playState)
 
     initAudio()
-
     //playState.setupInput()
   }
 
@@ -188,7 +192,8 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
   override def simpleUpdate(tpf: Float) {
 
     //if (gotGO ) println("Start please")
-    messages.foreach  {
+    var keepHead = false
+    messages.headOption.foreach {
       m =>
         log.debug("MESS " + m.getClass)
         m match {
@@ -199,8 +204,8 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
             log.info("Round over received")
             state.setEnabled(false)
           }
-          messages = None
           getStateManager.attach(new MessageState("Round Over"))
+
         case x:StartGameRequest =>
 
           var state: PlayState = getStateManager.getState(classOf[PlayState])
@@ -211,13 +216,13 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
             if (state.isInitialized) {
               getStateManager.detach(state)
             }
+            keepHead = true
             //state.setEnabled(false)
           } else {
             log.info("Start game received - starting new game")
             state = new PlayState()
             getStateManager.attach(state)
             getStateManager.attach(createBulletAppState)
-            messages = None
 
           }
 
@@ -243,9 +248,7 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
           log.info("GameOver done")
 
           //}
-
-          messages = None
-          //getStateManager.attach(new MessageState("Game Over"))
+            //getStateManager.attach(new MessageState("Game Over"))
 
         case x:StartRoundRequest =>
           val state: PlayState = getStateManager.getState(classOf[PlayState])
@@ -258,9 +261,12 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
           if (mstate != null) {
             getStateManager.detach(mstate)
           }
-          messages = None
         case _ => println("WTF")
       }
+    }
+    messages = messages match {
+      case x :: tail => if (keepHead) messages else tail
+      case Nil => Nil
     }
 
 

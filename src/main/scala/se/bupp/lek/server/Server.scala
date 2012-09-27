@@ -151,7 +151,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication
         }
         //gameLogic = gl
 
-        networkState.server.sendToAllTCP(new StartGameRequest)
+        networkState.createSimple(new StartGameRequest)
       case GameEnded() =>
         worldSimulator.unspawnAllGameObjects()
 
@@ -161,7 +161,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication
         worldSimulator.destroy()
         worldSimulator = null
         //gameLogic = null
-        networkState.server.sendToAllTCP(new GameOverRequest)
+        networkState.createSimple(new GameOverRequest())
         log.info("Game ended")
         new Timer().schedule(new TimerTask {
           def run() {
@@ -213,7 +213,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication
       def onIntermediateRoundStart() {
         // send round started message
         log.info("Round Started")
-        networkState.server.sendToAllTCP(new StartRoundRequest)
+        networkState.createSimple(new StartRoundRequest)
         worldSimulator.spawnAllParticipants()
       }
 
@@ -233,7 +233,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication
           }
         },3000L)
         worldSimulator.unspawnAllGameObjects()
-        networkState.server.sendToAllTCP(new RoundOverRequest)
+        networkState.createSimple(new RoundOverRequest)
       }
 
       def onGameEnd(totals: GameTotalResults) {
@@ -299,7 +299,8 @@ object Server {
       classOf[StartRoundRequest],
       classOf[StartGameRequest],
       classOf[GameOverRequest],
-      classOf[PlayerInfo]
+      classOf[PlayerInfo],
+      classOf[OrderedMessage]
 
     )
 

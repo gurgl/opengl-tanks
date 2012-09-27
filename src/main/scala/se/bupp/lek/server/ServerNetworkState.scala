@@ -1,7 +1,7 @@
 package se.bupp.lek.server
 
 import com.esotericsoftware.kryonet.{Connection, Listener, Server => KryoServer}
-import se.bupp.lek.server.Model.{ServerGameWorld, PlayerJoinResponse, PlayerJoinRequest, PlayerActionRequest}
+import se.bupp.lek.server.Model._
 import se.bupp.lek.server.Server.PortSettings
 import collection.immutable.HashMap
 import org.apache.log4j.Logger
@@ -19,6 +19,8 @@ import se.bupp.lek.common.FuncUtil.RateProbe
 
 abstract class ServerNetworkState(portSettings:PortSettings) {
 
+  type TimeStamp = Long
+
   val server = new KryoServer();
   server.start();
   server.bind(portSettings.tcpPort, portSettings.udpPort);
@@ -32,6 +34,8 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
 
   val actionReqProbe = new RateProbe("ActionReq",1000L, log)
   val serverSentProbe = new RateProbe("serverSentProbe",1000L, log)
+
+  var orderedChannelBuffer:Seq[(TimeStamp,_ <: OrderedMessage)] = Nil
 
   server.addListener(new Listener() {
 
@@ -48,7 +52,6 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
 
           //actionReqProbe.tick()
           addPlayerAction(request)
-
 
 
         case req: PlayerJoinRequest =>
@@ -83,5 +86,39 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
 
   def playerJoined(pjr:PlayerJoinRequest) : PlayerJoinResponse
 
+
+  def createSimple(m:OrderedMessage) = {
+    worldSeqId = worldSeqId + 1
+    val me = m match {
+      case go:GameOverRequest => new GameOverRequest(worldSeqId)
+      case go:RoundOverRequest => new RoundOverRequest(worldSeqId)
+      case go:StartGameRequest => new StartGameRequest(worldSeqId)
+      case go:StartRoundRequest => new StartRoundRequest(worldSeqId)
+    }
+    /*
+    orderedChannelBuffer.synchronized {
+      orderedChannelBuffer = orderedChannelBuffer :+ (System.currentTimeMillis(), me)
+    }
+    */
+    server.sendToAllTCP(me)
+  }
+
+  /*def run() {
+    while(true) {
+      try {
+        Thread.currentThread().sleep(10)
+        var time: Long = System.currentTimeMillis()
+        orderedChannelBuffer.synchronized {
+          orderedChannelBuffer.foreach {
+            case (lastSent,me) if lastSent - time > 100 =>
+          }
+        }
+      } catch {
+        case ie:InterruptedException =>
+        case e => e.printStackTrace()
+      }
+    }
+
+  }*/
 
 }

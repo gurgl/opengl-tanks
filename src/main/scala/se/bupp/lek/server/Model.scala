@@ -173,18 +173,20 @@ object Model {
     }
   }
 
-
+  abstract class OrderedMessage(var seqId:Int) {
+    def this() = this(-1)
+  }
 
 
   class ServerGameWorld(
     var timeStamp: Long,
-    var seqId:Int,
+    seqId:Int,
     var deadPlayers:java.util.ArrayList[Int],
     var alivePlayers: java.util.ArrayList[PlayerGO],
     var projectiles: java.util.ArrayList[ProjectileGO],
     var explodedProjectiles: java.util.ArrayList[ProjectileGO],
     var newAlivePlayersInfo: java.util.ArrayList[PlayerInfo]
-                         ) {
+                         ) extends OrderedMessage(seqId) {
 
     def this() = this(0,0, null,null,null,null,null)
     def all = alivePlayers.toList ++ projectiles.toList
@@ -199,20 +201,20 @@ object Model {
     var playerId: Int = _
   }
 
-  class GameOverRequest {
-
+  class GameOverRequest(seqId:Int) extends OrderedMessage(seqId) {
+    def this() = this(-1)
   }
 
-  class StartGameRequest {
-
+  class StartGameRequest(seqId:Int) extends OrderedMessage(seqId) {
+    def this() = this(-1)
   }
 
-  class RoundOverRequest {
-
+  class RoundOverRequest(seqId:Int) extends OrderedMessage(seqId) {
+    def this() = this(-1)
   }
 
-  class StartRoundRequest {
-
+  class StartRoundRequest(seqId:Int) extends OrderedMessage(seqId) {
+    def this() = this(-1)
   }
 
   class MotionGO(
