@@ -88,6 +88,7 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
 
 
   def sendRoundOver() {
+    worldSeqId = worldSeqId + 1
     val me = new RoundOverRequest(worldSeqId)
     server.sendToAllUDP(me)
   }
