@@ -84,6 +84,7 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
   var seqId = 0
 
+
   def getSettings = settings
   def createPlayerActionRequest(lastRecordedActionTime:Long, reorientation:Reorientation,projectiles:List[ProjectileFireGO]): Model.PlayerActionRequest = {
       val request: PlayerActionRequest = new PlayerActionRequest
@@ -116,12 +117,13 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
   var serverUpdProbe = new RateProbe("Messages ",1000L,log)
 
-  var messages = List[OrderedMessage]()
+  var messages = collection.mutable.Queue[AnyRef]()
+
   def postMessage(b:OrderedMessage) {
 
     //log.info("MESSA")
     serverUpdProbe.tick()
-    messages = messages :+ b
+    messages.enqueue(b)
   }
 
   def initAudio() {
@@ -149,6 +151,8 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
     settings.setTitle("Tank Showdown")
     setPauseOnLostFocus(false)
     setShowSettings(false)
+    setDisplayStatView(false)
+    setDisplayFps(false)
 
     //setDisplayStatView(false)
     //setDisplayFps(false)
@@ -188,23 +192,29 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
       }
     }
   }
+  class DoRoundOver()
 
   override def simpleUpdate(tpf: Float) {
 
     //if (gotGO ) println("Start please")
-    var keepHead = false
-    messages.headOption.foreach {
+    val toHandle  = messages.dequeueFirst( p => true)
+
+    toHandle.foreach {
       m =>
         log.debug("MESS " + m.getClass)
         m match {
+          case x:DoRoundOver =>
+            val state: PlayState = getStateManager.getState(classOf[PlayState])
+            if (state != null) {
+
+              state.cleanForReuse()
+              log.info("Round over received")
+              state.setEnabled(false)
+            }
+            getStateManager.attach(new MessageState("Round Over"))
+
         case x:RoundOverRequest =>
-          val state: PlayState = getStateManager.getState(classOf[PlayState])
-          if (state != null) {
-            state.cleanForReuse()
-            log.info("Round over received")
-            state.setEnabled(false)
-          }
-          getStateManager.attach(new MessageState("Round Over"))
+          new DoRoundOver() +=: messages
 
         case x:StartGameRequest =>
 
@@ -216,7 +226,7 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
             if (state.isInitialized) {
               getStateManager.detach(state)
             }
-            keepHead = true
+            x +=: messages
             //state.setEnabled(false)
           } else {
             log.info("Start game received - starting new game")
@@ -264,10 +274,10 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
         case _ => println("WTF")
       }
     }
-    messages = messages match {
+    /*messages = messages match {
       case x :: tail => if (keepHead) messages else tail
       case Nil => Nil
-    }
+    }*/
 
 
   }

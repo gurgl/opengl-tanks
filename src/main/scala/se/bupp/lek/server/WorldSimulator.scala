@@ -364,6 +364,9 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
 
       newAlivePlayers.foreach( n => log.info(n + " entered"))
 
+      if(scoreSinceLastUpdate.size > 0) {
+        log.debug("Sending Score Notif")
+      }
 
       val stateChanges = newAlivePlayers ::: deadPlayers ::: scoreSinceLastUpdate.toList
 

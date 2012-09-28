@@ -6,6 +6,7 @@ import org.apache.log4j.Logger
 import com.jme3.app.Application
 import se.bupp.lek.server.Model.{ScoreMessage, PlayerActionRequest}
 import collection.mutable
+import java.util.{TimerTask, Timer}
 
 /**
  * Created with IntelliJ IDEA.
@@ -18,12 +19,25 @@ import collection.mutable
 sealed abstract class ServerPlayStateMessage
 case class PlayerKillPlayerMessage(player: Model.GameParticipant, killer:Int) extends ServerPlayStateMessage
 
+trait PlayStateListener {
+  def onUpdateSent() : Unit
+}
 
 class PlayState(val server:Server) extends AbstractAppState {
+  var listeners = List.empty[PlayStateListener]
+
   val log = Logger.getLogger(classOf[PlayState])
   var updateProbe = new RateProbe("App Update", 3000L,log)
 
   var playMessageQueue = mutable.Queue.empty[ScoreMessage]
+
+  var roundEnded = false
+
+  addUpdateSentLister(server)
+
+  def addUpdateSentLister(psl:PlayStateListener) {
+    listeners = listeners :+ psl
+  }
 
   override def update(tpf: Float) : Unit = try {
 
@@ -37,8 +51,9 @@ class PlayState(val server:Server) extends AbstractAppState {
 
     val simTime: Long = System.currentTimeMillis()
 
-    server.networkState.querySendUpdate(() => server.worldSimulator.generateGameWorldChanges(simTime))
-
+    if(server.networkState.querySendUpdate(() => server.worldSimulator.generateGameWorldChanges(simTime))) {
+       listeners.foreach(_.onUpdateSent())
+    }
 
     server.leRoot.updateLogicalState(tpf);
 
@@ -52,8 +67,10 @@ class PlayState(val server:Server) extends AbstractAppState {
 
   def postMessage(ref:ScoreMessage) {
     //playMessageQueue.enqueue(ref)
-
-    server.worldSimulator.scoreSinceLastUpdate = server.worldSimulator.scoreSinceLastUpdate :+ ref
+    ref match {
+      case sm: ScoreMessage => server.worldSimulator.scoreSinceLastUpdate = server.worldSimulator.scoreSinceLastUpdate :+ sm
+      //case re: RoundEndMessage => playMessageQueue.enqueue(re)
+    }
 
 
   }

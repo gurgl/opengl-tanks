@@ -45,7 +45,7 @@ import se.bupp.lek.server.GameLogicFactory.KillBasedStrategy.PlayerKill
 
 
 
-class Server(portSettings:PortSettings) extends SimpleApplication
+class Server(portSettings:PortSettings) extends SimpleApplication with PlayStateListener
 //with PhysicsTickListener
 {
 
@@ -71,6 +71,8 @@ class Server(portSettings:PortSettings) extends SimpleApplication
   var lobby = new Lobby()
 
   val log = Logger.getLogger(classOf[Server])
+
+
   override def simpleInitApp() {
 
     //java.util.logging.Logger.getLogger("com.jme3").setLevel(java.util.logging.Level.OFF);
@@ -126,12 +128,25 @@ class Server(portSettings:PortSettings) extends SimpleApplication
     }
     log.info("Game Launch Complete")
   }
+  //sealed abstract class PlayStateUpdateMessage
+  case class RoundEnded() extends AbstractServerMessage
 
   sealed abstract class AbstractServerMessage
   case class GameStarted() extends AbstractServerMessage
-  case class GameEnded() extends AbstractServerMessage
-  var serverMessageQueue = mutable.Queue.empty[AbstractServerMessage]
 
+  case class GameEnded() extends AbstractServerMessage
+
+  var serverMessageQueue = mutable.Queue.empty[AbstractServerMessage]
+  var onUpdateSentMessageQueue = mutable.Queue.empty[AbstractServerMessage]
+
+
+  def onUpdateSent() {
+    if(onUpdateSentMessageQueue.size > 0) {
+      serverMessageQueue.enqueue(onUpdateSentMessageQueue:_*)
+      onUpdateSentMessageQueue = mutable.Queue.empty
+    }
+
+  }
 
   override def simpleUpdate(tpf: Float) : Unit = try {
 
@@ -142,6 +157,17 @@ class Server(portSettings:PortSettings) extends SimpleApplication
     }
     serverMessageQueue = mutable.Queue.empty[AbstractServerMessage]
     toHandle.foreach {
+      case RoundEnded() =>
+
+          log.info("Round ended")
+          new Timer().schedule(new TimerTask {
+            def run() {
+              gameLogic.startRound()
+            }
+          },3000L)
+          worldSimulator.unspawnAllGameObjects()
+          networkState.sendRoundOver()
+
       case GameStarted()  =>
         log.info("Game Started")
 
@@ -191,7 +217,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication
     leRoot.updateLogicalState(tpf);
 
     leRoot.updateGeometricState();*/
-  } catch { case e:Exception => log.error(e) }
+  } catch { case e:Exception => e.printStackTrace() ; log.error(e) }
 
   def createGameLogic() = {
 
@@ -232,14 +258,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication
       def onIntermediateRoundEnd(roundResults: RoundResults, standing: GameTotalResults) {
         // send countdown message
         // add timer to start round
-        log.info("Round ended")
-        new Timer().schedule(new TimerTask {
-          def run() {
-            gameLogic.startRound()
-          }
-        },3000L)
-        worldSimulator.unspawnAllGameObjects()
-        networkState.sendRoundOver()
+        onUpdateSentMessageQueue.enqueue(RoundEnded())
       }
 
       def onGameEnd(totals: GameTotalResults) {
