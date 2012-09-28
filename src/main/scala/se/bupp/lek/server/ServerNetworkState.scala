@@ -87,11 +87,16 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
   def playerJoined(pjr:PlayerJoinRequest) : PlayerJoinResponse
 
 
+  def sendRoundOver() {
+    val me = new RoundOverRequest(worldSeqId)
+    server.sendToAllUDP(me)
+  }
+
+
   def createSimple(m:OrderedMessage) = {
     worldSeqId = worldSeqId + 1
     val me = m match {
       case go:GameOverRequest => new GameOverRequest(worldSeqId)
-      case go:RoundOverRequest => new RoundOverRequest(worldSeqId)
       case go:StartGameRequest => new StartGameRequest(worldSeqId)
       case go:StartRoundRequest => new StartRoundRequest(worldSeqId)
     }
@@ -100,7 +105,7 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
       orderedChannelBuffer = orderedChannelBuffer :+ (System.currentTimeMillis(), me)
     }
     */
-    server.sendToAllTCP(me)
+    server.sendToAllUDP(me)
   }
 
   /*def run() {

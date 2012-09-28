@@ -117,6 +117,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication
 
       def playerLeave(playerId: Int) {
         log.info("Player disconnected")
+        // TOOD: Make update loop message out of me
         lobby.removePlayer(playerId)
         worldSimulator.removeParticipant(playerId)
         gameLogic.removePlayer(playerId)
@@ -233,7 +234,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication
           }
         },3000L)
         worldSimulator.unspawnAllGameObjects()
-        networkState.createSimple(new RoundOverRequest)
+        networkState.sendRoundOver()
       }
 
       def onGameEnd(totals: GameTotalResults) {
