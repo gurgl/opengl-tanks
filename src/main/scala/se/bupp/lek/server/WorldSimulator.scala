@@ -335,7 +335,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
       //if(simulatedProjectiles.size > 0) simulatedProjectiles.foreach { p => print(p.id) }
       lastWorldSimTimeStamp = Some(world.simCurrentTime)
       // TODO: Fix this sometime failing assert
-      val deadPlayers = purgeDeadPlayersSinceLastUpdate.ensuring(_.forall( dp => !playerState.exists(_.playerId == dp)))
+      val deadPlayers = purgeDeadPlayersSinceLastUpdate.ensuring(_.forall( dp => !playerState.exists(_.playerId == dp))).map(new KillPlayer(_))
 
 
       if(deadPlayers.size > 0 ) {
@@ -352,20 +352,23 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
         case None => playerState
       }
 
-      val newAlivePlayers:List[PlayerInfo] = wastInLastUpdate.flatMap(p => participatingPlayers.find(p2 => p.playerId == p2.playerId))
-        .map(p => new PlayerInfo(p.playerId, "Player " + p.playerId, p.teamIdentifier)).toList
+      val newAlivePlayers:List[_ <: ServerWorldStateChange] = wastInLastUpdate.flatMap(p => participatingPlayers.find(p2 => p.playerId == p2.playerId))
+        .map(p => new SpawnPlayer(p.playerId, "Player " + p.playerId, p.teamIdentifier)).toList
 
 
       newAlivePlayers.foreach( n => log.info(n + " entered"))
 
+      val stateChanges = newAlivePlayers ::: deadPlayers
+
+
       val res: ServerGameWorld = new ServerGameWorld(
 
-        deadPlayers = new java.util.ArrayList[Int](deadPlayers),
+        //deadPlayers = new java.util.ArrayList[Int](deadPlayers),
         alivePlayers = new util.ArrayList[PlayerGO](playerState),
         projectiles = new java.util.ArrayList[ProjectileGO](simulatedProjectiles),
         explodedProjectiles = new java.util.ArrayList[ProjectileGO](exploaded),
         timeStamp = simTime,
-        newAlivePlayersInfo = new util.ArrayList(newAlivePlayers ),
+        stateChanges = new util.ArrayList(stateChanges),
         seqId = -1
       )
       if(exploaded.size > 0) {

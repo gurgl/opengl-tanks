@@ -299,8 +299,11 @@ object Server {
       classOf[StartRoundRequest],
       classOf[StartGameRequest],
       classOf[GameOverRequest],
-      classOf[PlayerInfo],
+      classOf[SpawnPlayer],
+      classOf[KillPlayer],
+      classOf[ServerWorldStateChange],
       classOf[OrderedMessage]
+
 
     )
 

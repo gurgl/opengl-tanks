@@ -378,35 +378,43 @@ def bupp(l:SortedSet[Int], i:Int) : SortedSet[Int] = SortedSet.empty[Int] ++ {
       val worldStateChangeToHandle = Seq(gameWorldStateChangeQueue:_*)
       gameWorldStateChangeQueue = gameWorldStateChangeQueue.companion.empty
 
-      var stateChanges = Seq.empty[ServerStateChanges]
 
 
-      worldStateChangeToHandle.foreach { u =>
-        val toKill = u.deadPlayers.toList
-        if (toKill.size > 0) {
-          log.info("handle deaths")
-          stateChanges = stateChanges :+ KillPlayers(toKill)
+      var stateChanges = Seq.empty[ServerStateChanges] ++ worldStateChangeToHandle.flatMap{
+        u =>
+          var res = List[ServerStateChanges]()
+          val ut = u.stateChanges.toList
+          val kills = ut.collect {
+            case pi:KillPlayer =>
+              //if (toKill.size > 0) {
+                log.info("handle deaths")
+              pi.playerId
+            //}
+          }
+
+          //if (playState.visualWorldSimulation.playerDead) {
+          //val playerId = visualWorldSimulation.playerIdOpt.apply().get
+          val spawns = ut.collect {
+            case pi:SpawnPlayer =>
+            log.info("respawn mess")
+              val p = u.alivePlayers.find( p => p.playerId == pi.playerId).get
+              (pi,p)
+              /*pi =>
+                log.debug("Spawning player")
+                val p = lastGameWorldUpdate.alivePlayers.find(p => pi.playerId == p.playerId).getOrElse(throw new IllegalStateException("bad"))
+                playState.visualWorldSimulation.respawnLocalPlayer(p,pi)*/
+
+            //}
+          }
+
+          val l = List(if(kills.size > 0) Some(KillPlayers(kills)) else None,if(spawns.size > 0) Some(SpawnPlayers(spawns)) else None)
+          l.flatMap(p => p)
+
         }
-
-        //if (playState.visualWorldSimulation.playerDead) {
-        //val playerId = visualWorldSimulation.playerIdOpt.apply().get
-        val list = u.newAlivePlayersInfo.map { pi =>
-
-          log.info("respawn mess")
-            val p = u.alivePlayers.find( p => p.playerId == pi.playerId).get
-            (pi,p)
-            /*pi =>
-              log.debug("Spawning player")
-              val p = lastGameWorldUpdate.alivePlayers.find(p => pi.playerId == p.playerId).getOrElse(throw new IllegalStateException("bad"))
-              playState.visualWorldSimulation.respawnLocalPlayer(p,pi)*/
-
-        //}
-
-        }.toList
-        if (list.size > 0) {
+        /*if (list.size > 0) {
           stateChanges = stateChanges :+ SpawnPlayers(list)
-        }
-      }
+        }*/
+
       /*
       val toKill = lastGameWorldUpdate.deadPlayers.toList
       if (toKill.size > 0) {

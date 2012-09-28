@@ -45,7 +45,7 @@ import se.bupp.lek.client.VisualWorldSimulation.ServerStateChanges
 object VisualWorldSimulation {
 
   sealed abstract class ServerStateChanges()
-  case class SpawnPlayers(val pis:List[(PlayerInfo,PlayerGO)]) extends ServerStateChanges
+  case class SpawnPlayers(val pis:List[(SpawnPlayer,PlayerGO)]) extends ServerStateChanges
   case class KillPlayers(val pis:List[Int]) extends ServerStateChanges
 
   type VisualGameWorld = (Set[Model.AbstractOwnedGameObject with Savable] , Model.ServerGameWorld, Seq[ServerStateChanges])
@@ -166,7 +166,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
   }
 
 
-  def respawnLocalPlayer(pgo:PlayerGO, pi:PlayerInfo) {
+  def respawnLocalPlayer(pgo:PlayerGO, pi:SpawnPlayer) {
     log.info("You respawned (rep + " + pi.teamId + ")")
     if(!playerDead) {
       throw new IllegalStateException("cannot respawn alive player")

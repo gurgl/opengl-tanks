@@ -153,7 +153,13 @@ object Model {
     def this() = this(null)
   }
 
-  class PlayerInfo(val playerId: Int, val name:String, val teamId: Int) {
+  class ServerWorldStateChange {}
+
+  class KillPlayer(val playerId: Int) extends  ServerWorldStateChange {
+    def this() = this(-1)
+  }
+
+  class SpawnPlayer(val playerId: Int, val name:String, val teamId: Int) extends ServerWorldStateChange {
     override def toString() = name + " with playerid = " + playerId + " representing " + teamId
     def this() = this(-1,"",-1)
   }
@@ -181,14 +187,15 @@ object Model {
   class ServerGameWorld(
     var timeStamp: Long,
     seqId:Int,
-    var deadPlayers:java.util.ArrayList[Int],
+    //var deadPlayers:java.util.ArrayList[Int],
     var alivePlayers: java.util.ArrayList[PlayerGO],
     var projectiles: java.util.ArrayList[ProjectileGO],
     var explodedProjectiles: java.util.ArrayList[ProjectileGO],
-    var newAlivePlayersInfo: java.util.ArrayList[PlayerInfo]
+
+    var stateChanges: java.util.ArrayList[ServerWorldStateChange]
                          ) extends OrderedMessage(seqId) {
 
-    def this() = this(0,0, null,null,null,null,null)
+    def this() = this(0,0,null,null,null,null)
     def all = alivePlayers.toList ++ projectiles.toList
   }
 

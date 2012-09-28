@@ -14,11 +14,11 @@ import org.apache.log4j.Logger
 import com.jme3.bullet.collision.PhysicsCollisionObject
 
 /**
- * Created with IntelliJ IDEA.
- * User: karlw
- * Date: 2012-06-24
- * Time: 11:47
- * To change this template use File | Settings | File Templates.
+ * created with intellij idea.
+ * user: karlw
+ * date: 2012-06-24
+ * time: 11:47
+ * to change this template use file | settings | file templates.
  */
 
 class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:PhysicsSpace) extends SceneGraphWorld(true,assetManager,rootNode) with PhysicsSpaceSimAdapter {
