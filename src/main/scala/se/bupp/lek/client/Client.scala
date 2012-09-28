@@ -79,6 +79,9 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
   //var visualWorldSimulation:VisualWorldSimulation = _
 
   var audio_gun:AudioNode = _
+  var audio_spawn:AudioNode = _
+  var audio_score:AudioNode = _
+  var audio_explosion:AudioNode = _
 
   def getSpeed = speed
 
@@ -128,21 +131,35 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
   def initAudio() {
     /* gun shot sound is to be triggered by a mouse click. */
-    audio_gun = new AudioNode(assetManager, "39023__wildweasel__dual-neutron-disruptor.wav", false);
+    audio_gun = new AudioNode(assetManager, "gun.wav", false);
     audio_gun.setLooping(false);
     audio_gun.setVolume(2);
     rootNode.attachChild(audio_gun);
+    audio_explosion = new AudioNode(assetManager, "explosion.wav", false);
+    audio_explosion.setLooping(false);
+    audio_explosion.setVolume(0.3f);
+    rootNode.attachChild(audio_explosion);
 
-    /*
-    val audio_nature = new AudioNode(assetManager, "33703__yewbic__ambience02.wav", false);
-    audio_nature.setLooping(true);  // activate continuous playing
-    audio_nature.setPositional(true);
-    audio_nature.setLocalTranslation(Vector3f.ZERO.clone());
-    audio_nature.setVolume(3);
+    audio_spawn = new AudioNode(assetManager, "spawn.wav", false);
+    audio_spawn.setLooping(false);
+    audio_spawn.setVolume(2);
+    rootNode.attachChild(audio_spawn);
+    audio_score = new AudioNode(assetManager, "score.wav", false);
+    audio_score.setLooping(false);
+    audio_score.setVolume(10);
+    rootNode.attachChild(audio_score);
+
+
+    val audio_nature = new AudioNode(assetManager, "music2.ogg", true);
+
+    //audio_nature.setLooping(true);  // activate continuous playing
+    //audio_nature.setPositional(true);
+    //audio_nature.setLocalTranslation(Vector3f.ZERO.clone());
+    audio_nature.setVolume(1);
     rootNode.attachChild(audio_nature);
     audio_nature.play(); // play continuously!
 
-    */
+
   }
 
 

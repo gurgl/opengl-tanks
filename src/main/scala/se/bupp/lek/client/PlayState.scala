@@ -46,7 +46,7 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
 
 
 
-  val rotSpeed = 2.0f
+  val rotSpeed = 3.0f
 
   //var predictions:Map[Long,Map[OwnedGameObjectId,Vector3f]] = Map[Long,Map[OwnedGameObjectId,Vector3f]]()
 
@@ -185,12 +185,12 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
         case "Forward" =>
 
           val v = visualWorldSimulation.player.getLocalRotation.toRotationMatrix;
-          playerInput.translation = v.getColumn(0).mult(gameApp.getSpeed *tpf)
+          playerInput.translation = v.getColumn(0).mult(gameApp.getSpeed *tpf * 2.0f)
 
         case "Back" =>
 
           val v = visualWorldSimulation.player.getLocalRotation.toRotationMatrix;
-          playerInput.translation = v.getColumn(0).mult(-gameApp.getSpeed *tpf)
+          playerInput.translation = v.getColumn(0).mult(-gameApp.getSpeed *tpf * 2.0f)
         case _ =>
 
 
@@ -292,6 +292,9 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
   var logMessageQueue = Queue.empty[String]
   var logNeedsRepaint = false
   def handleScoreMessage(sm:PlayerScore) {
+    if (sm.of == gameApp.playerIdOpt.get) {
+      gameApp.audio_score.play()
+    }
     logMessageQueue = logMessageQueue.enqueue(sm.of + " killed " + sm.victim)
     if (logMessageQueue.size > 3) {
       logMessageQueue = logMessageQueue.drop(1)

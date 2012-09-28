@@ -176,6 +176,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
     if (player == null) {
       //materializePlayer(pgo.orientation, pi.teamId)
     }
+
     player.setMaterial(if(pi.teamId % 2 == 0) mat_default_blue else mat_default_red)
     getNode(SceneGraphNodeKeys.Player).getChildren.toList.ensuring(_.size == 0)
     getNode(SceneGraphNodeKeys.Player).attachChild(player)
@@ -233,7 +234,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
     }
   }
 
-  def syncNonPlayerGameWorld(allUpdates:Set[_ <: AbstractOwnedGameObject with Savable]) {
+  def syncNonPlayerGameWorld(playState:PlayState, allUpdates:Set[_ <: AbstractOwnedGameObject with Savable]) {
 
     val enemyMap = projectNodeChildrenByData[PlayerGO](SceneGraphNodeKeys.Enemies, SceneGraphUserDataKeys.Player).toMap //enemyNodes.map( e => (e.getUserData[PlayerGO](SceneGraphUserDataKeys.Player),e).ensuring(_._1 != null) ).toMap
     val projectileMap = projectNodeChildrenByData[ProjectileGO](SceneGraphNodeKeys.Projectiles, SceneGraphUserDataKeys.Projectile).toMap  //projectileNodes.map( e => (e.getUserData[ProjectileGO](SceneGraphUserDataKeys.Projectile),e).ensuring(_._1 != null) ).toMap
@@ -287,7 +288,9 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
     noUpdate.foreach {
       case (o, spatial) =>
         o match {
-          case p:ProjectileGO => rootNode.getChild(SceneGraphNodeKeys.Projectiles).asInstanceOf[Node].detachChild(spatial)
+          case p:ProjectileGO =>
+            playState.gameApp.audio_explosion.play()
+            rootNode.getChild(SceneGraphNodeKeys.Projectiles).asInstanceOf[Node].detachChild(spatial)
           case p:PlayerGO => //rootNode.getChild(SceneGraphNodeKeys.Enemies).asInstanceOf[Node].detachChild(spatial)
         }
     }
@@ -319,7 +322,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
   def updateGameWorld(playState:PlayState, visualGameWorld:VisualGameWorld, reorientation:Reorientation) {
 
     val (nonPlayerPredictons:Set[AbstractOwnedGameObject with Savable], lastGameWorldUpdate: ServerGameWorld, stateChanges:Seq[ServerStateChanges]) = visualGameWorld
-    syncNonPlayerGameWorld(nonPlayerPredictons)
+    syncNonPlayerGameWorld(playState, nonPlayerPredictons)
 
     /*
     val toKill = lastGameWorldUpdate.deadPlayers.toList
@@ -343,7 +346,10 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
       case KillPlayers(lst) => playState.visualWorldSimulation.handleKilledPlayers(lst)
       case SpawnPlayers(pis) =>
         pis.foreach {
-          case (pi,p) => if(pi.playerId == playerIdOpt().get) { playState.visualWorldSimulation.respawnLocalPlayer(p,pi) }  else {
+          case (pi,p) => if(pi.playerId == playerIdOpt().get) {
+            playState.visualWorldSimulation.respawnLocalPlayer(p,pi)
+            playState.gameApp.audio_spawn.play()
+          }  else {
             var enemy: Spatial = materializeEnemy(p)
             enemy.setMaterial(if(pi.teamId % 2 == 0) mat_default_blue else mat_default_red)
           }
