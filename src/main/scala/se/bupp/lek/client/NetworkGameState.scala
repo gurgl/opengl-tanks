@@ -182,7 +182,7 @@ def bupp(l:SortedSet[Int], i:Int) : SortedSet[Int] = SortedSet.empty[Int] ++ {
   }
 
   def handleOrderedMessage(om:OrderedMessage) {
-    serverUpdProbe.tick()
+    //serverUpdProbe.tick()
     orderedMessageBuffer.synchronized {
       polledUpUntilToOpt match {
         case Some(polledUpUntil) =>
@@ -208,7 +208,7 @@ def bupp(l:SortedSet[Int], i:Int) : SortedSet[Int] = SortedSet.empty[Int] ++ {
               }
 
 
-              toDeliver.foreach { m => {pollProbe.tick() ; handleOrderedMessageDetailed(m)}  }
+              toDeliver.foreach { m => { handleOrderedMessageDetailed(m)}  }
 
 
             } /*else {

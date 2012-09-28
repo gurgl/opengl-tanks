@@ -195,6 +195,7 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
   }
 
   def materializeTank(pd: Orientation): Spatial = {
+    log.debug("creating tank")
     val tank = assetManager.loadModel(new ModelKey("tank2.blend"))
     //enemy.setMaterial(mat_default)
 
@@ -237,6 +238,8 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
 
   def materializeEnemy(pd:PlayerGO) = {
     val tank = materializeTank(pd)
+
+    log.info("materialzie enemy" + pd.playerId)
 
     //enemy.setModelBound(new BoundingSphere())
     //enemy.updateModelBound()
@@ -328,15 +331,22 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
       SceneGraphNodeKeys.Effects,
       SceneGraphNodeKeys.Player
     )
-    cleanNodes(toRemove)
+    removeNodes(toRemove)
   }
 
   def cleanNodes(toRemove:List[SceneGraphNodeKeys.SceneGraphNodeKey]) {
+    import collection.JavaConversions.asScalaBuffer
+    toRemove.foreach( x => Option(getNode(x)) match {
+      case Some(y) => y.getChildren.toList.foreach ( s => y.detachChild(s))
+      case None => log.debug("Cannot remove " + x)
+    })
+  }
+
+  def removeNodes(toRemove:List[SceneGraphNodeKeys.SceneGraphNodeKey]) {
     toRemove.foreach( x => Option(getNode(x)) match {
       case Some(y) => log.debug("Detatching " + y.getName) ; rootNode.detachChild(y)
       case None => log.debug("Cannot remove " + x)
-    }
-  )
-}
+    })
+  }
 
 }

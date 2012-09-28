@@ -23,6 +23,8 @@ import com.jme3.bullet.control.CharacterControl
 import com.jme3.input.KeyInput
 import se.bupp.lek.client.SceneGraphWorld.SceneGraphNodeKeys
 import org.apache.log4j.Logger
+import se.bupp.lek.client.SceneGraphWorld.SceneGraphNodeKeys._
+import scala.Some
 
 
 /**
@@ -195,12 +197,14 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
   }
   def unspawnAllPlayers() {
     visualWorldSimulation.playerDead = true
+    visualWorldSimulation.cleanNodes(List(Player,Projectiles,Enemies,Effects))
+
   }
 
-  def unspawnAllGameObject() {
+  /*def unspawnAllGameObject() {
     import SceneGraphNodeKeys._
-    visualWorldSimulation.cleanNodes(List(Player,Projectiles,Enemies,Effects))
-  }
+    visualWorldSimulation.removeNodes(List(Player,Projectiles,Enemies,Effects))
+  }*/
 
   override def cleanup() {
     //printSceneGraph(visualWorldSimulation.rootNode)

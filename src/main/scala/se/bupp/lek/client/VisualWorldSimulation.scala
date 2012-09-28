@@ -176,6 +176,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
       //materializePlayer(pgo.orientation, pi.teamId)
     }
     player.setMaterial(if(pi.teamId % 2 == 0) mat_default_blue else mat_default_red)
+    getNode(SceneGraphNodeKeys.Player).getChildren.toList.ensuring(_.size == 0)
     getNode(SceneGraphNodeKeys.Player).attachChild(player)
 
   }
@@ -208,20 +209,26 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
 
     playersToKill.foreach {
       playerId =>
-        if (playerId == playerIdOpt().get) {
-          getNode(SceneGraphNodeKeys.Player).detachChild(player)
-          playerDead = true
-          log.info("You died")
-        } else {
-          val enemies = projectNodeChildrenByData[PlayerGO](SceneGraphNodeKeys.Enemies, SceneGraphUserDataKeys.Player).toMap
-          enemies.find {
-            case (p, s) => p.playerId == playerId } match {
-              case Some((p,s)) =>
-              log.info("Player " + playerId + " died")
-              getNode(SceneGraphNodeKeys.Enemies).detachChild(s)
-              case None => log.error("Could not find killed player " + playerId + "")
-            }
-          }
+        unspawnPlayer(playerId, if(playerId == playerIdOpt().get) "You died" else "Player " + playerId + " died")
+    }
+  }
+
+
+  def unspawnPlayer(playerId: Int, reason:String): AnyVal = {
+    if (playerId == playerIdOpt().get) {
+      getNode(SceneGraphNodeKeys.Player).detachChild(player)
+      playerDead = true
+      log.info(reason)
+    } else {
+      val enemies = projectNodeChildrenByData[PlayerGO](SceneGraphNodeKeys.Enemies, SceneGraphUserDataKeys.Player).toMap
+      enemies.find {
+        case (p, s) => p.playerId == playerId
+      } match {
+        case Some((p, s)) =>
+          log.info(reason)
+          getNode(SceneGraphNodeKeys.Enemies).detachChild(s)
+        case None => log.error("Could not find killed player " + playerId + "")
+      }
     }
   }
 
