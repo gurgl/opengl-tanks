@@ -3,7 +3,7 @@ package se.bupp.lek.server
 import se.bupp.lek.common.model.Competitor
 import se.bupp.lek.server.Server.GameMatchSettings
 import se.bupp.lek.server.Server.GameMatchSettings.{ScoreReached, NumOfRoundsPlayed, WhenNumOfConnectedPlayersCriteria}
-import se.bupp.lek.server.GameLogicFactory.{ScoreStrategy, GameLogicListener}
+import se.bupp.lek.server.GameLogicFactory.{AbstractScoreDescription, ScoreStrategy, GameLogicListener}
 import se.bupp.lek.server.GameLogic.Kill
 
 
@@ -58,11 +58,11 @@ class GameLogic(var gameSettings:GameMatchSettings, var listener:GameLogicListen
     }
   }
 
-  def competitorScored(scorerComepetitorId:Int) {
-    listener.onCompetetitorScored(null)
+  def competitorScored(asd: AbstractScoreDescription, compId:Int) {
+    listener.onCompetetitorScored(asd)
     gameSettings.roundEndCriteria match {
       case ScoreReached(n) =>
-        if (scoreStrategy.getCompetitorScore(scorerComepetitorId) >= n) {
+        if (scoreStrategy.getCompetitorScore(compId) >= n) {
           roundEnded()
         }
       case _ =>

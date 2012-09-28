@@ -10,7 +10,7 @@ import MathUtil._
 import com.jme3.app.SimpleApplication._
 import com.jme3.scene.{Spatial, SceneGraphVisitor, Node}
 import com.jme3.export.Savable
-import com.jme3.math.{Quaternion, Vector3f}
+import com.jme3.math.{ColorRGBA, Quaternion, Vector3f}
 import collection.{JavaConversions, immutable}
 import JavaConversions.asScalaBuffer
 import scala.Option
@@ -25,6 +25,8 @@ import se.bupp.lek.client.SceneGraphWorld.SceneGraphNodeKeys
 import org.apache.log4j.Logger
 import se.bupp.lek.client.SceneGraphWorld.SceneGraphNodeKeys._
 import scala.Some
+import se.bupp.lek.client.VisualWorldSimulation.PlayerScore
+import com.jme3.font.{Rectangle, BitmapFont, BitmapText}
 
 
 /**
@@ -59,6 +61,14 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
   }
 
   var lastUpdate:Option[(Long,Reorientation)] = None
+  var contentNode:Node = _
+  var needsReenableRefresh = false
+
+
+  override def setEnabled(enabled: Boolean) {
+    super.setEnabled(enabled)
+    if(enabled) needsReenableRefresh = true
+  }
 
   override def update(tpf: Float) {
 
@@ -69,6 +79,14 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
     if(gameApp.playerIdOpt.isEmpty) return
 
     if(!isEnabled) return
+    if (needsReenableRefresh) {
+      logMessageQueue = Queue.empty
+      contentNode.detachAllChildren()
+      needsReenableRefresh = false
+    }
+
+    if (logNeedsRepaint) paintLog(logMessageQueue.toList)
+
     val simTime = System.currentTimeMillis()
 
     var input = playerInput.pollInput()
@@ -76,6 +94,7 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
     worldUpdater.processInput(input,lastUpdate)
 
     val worldToPaintOpt = worldUpdater.generateGameWorld(simTime)
+
 
     //visualWorldSimulation.handleServerStateReplication()
     worldToPaintOpt.foreach( world => visualWorldSimulation.updateGameWorld(this, world , input) )
@@ -101,6 +120,9 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
     gameApp = app.asInstanceOf[Client]
 
     val state: NetworkGameState = gameApp.getStateManager.getState(classOf[NetworkGameState])
+
+    contentNode = new Node(NODE_NAME)
+    gameApp.getGuiNode.attachChild(contentNode)
 
 
     val playerStartPosition = new Orientation(Vector3f.ZERO.clone().setY(0.5f), Quaternion.IDENTITY.clone())
@@ -195,6 +217,10 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
       case (key, trigger) => gameApp.getInputManager.addMapping(key,trigger)
     }
   }
+  def cleanForReuse() {
+    unspawnAllPlayers()
+    //contentNode.detachAllChildren()
+  }
   def unspawnAllPlayers() {
     visualWorldSimulation.playerDead = true
     visualWorldSimulation.cleanNodes(List(Player,Projectiles,Enemies,Effects))
@@ -216,6 +242,9 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
     })*/
 
     super.cleanup()
+    contentNode.detachAllChildren()
+    gameApp.getGuiNode.detachChild(contentNode)
+
     visualWorldSimulation.destroy()
     gameApp.getInputManager.removeListener(actionListener)
     mappings.foreach {
@@ -258,6 +287,46 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
       case s:Spatial => {if(first) println("-" + s.getName) else println(" " * indent + "-" + s.getName)}
     }
     ()
+  }
+
+  var logMessageQueue = Queue.empty[String]
+  var logNeedsRepaint = false
+  def handleScoreMessage(sm:PlayerScore) {
+    logMessageQueue = logMessageQueue.enqueue(sm.of + " killed " + sm.victim)
+    if (logMessageQueue.size > 3) {
+      logMessageQueue = logMessageQueue.drop(1)
+      //logMessageQueue = newQueue
+    }
+
+    logNeedsRepaint = true
+  }
+
+  val LOG_BOX_WIDTH = 200
+
+  val LOG_BOX_HEIGHT = 150
+
+  val NODE_NAME = "GuiNode"
+  //var content:Node = _
+
+  def paintLog(str:List[String]) {
+    val s = str.reverse.mkString("\n")
+    log.debug("updating scores : " + s)
+
+    contentNode.detachAllChildren()
+
+    val hudText = new BitmapText(gameApp.getGuiFont, false);
+    hudText.setSize(gameApp.getGuiFont.getCharSet().getRenderedSize());      // font size
+    hudText.setColor(ColorRGBA.White);                             // font color
+    var logBox: Rectangle = new com.jme3.font.Rectangle(0, 0, LOG_BOX_WIDTH, LOG_BOX_HEIGHT)
+    hudText.setBox(logBox);
+    //hudText.setBox(new com.jme3.font.Rectangle(0,0,settings.getWidth , settings.getHeight))
+    hudText.setAlignment(BitmapFont.Align.Left);
+    hudText.setVerticalAlignment(BitmapFont.VAlign.Top);
+    hudText.setText(s);             // the text
+    //hudText.setLocalTranslation(settings.getWidth/2 , settings.getHeight/2 , 0); // position
+    hudText.setLocalTranslation(gameApp.getSettings.getWidth - LOG_BOX_WIDTH, LOG_BOX_HEIGHT, 0); // position
+    contentNode.attachChild(hudText)
+    logNeedsRepaint = false
   }
 
 }

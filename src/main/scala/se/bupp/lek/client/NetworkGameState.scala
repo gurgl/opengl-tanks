@@ -409,7 +409,7 @@ def bupp(l:SortedSet[Int], i:Int) : SortedSet[Int] = SortedSet.empty[Int] ++ {
     }
   }
 
-  def convertStateChanges(worldStateChangeToHandle: Seq[Model.ServerGameWorld]) = {
+  def convertStateChanges(worldStateChangeToHandle: Seq[Model.ServerGameWorld]) : Seq[ServerStateChanges] = {
     var stateChanges = Seq.empty[ServerStateChanges] ++ worldStateChangeToHandle.flatMap {
       u =>
         val ut = u.stateChanges.toList
@@ -428,16 +428,16 @@ def bupp(l:SortedSet[Int], i:Int) : SortedSet[Int] = SortedSet.empty[Int] ++ {
             log.info("respawn mess")
             val p = u.alivePlayers.find(p => p.playerId == pi.playerId).get
             (pi, p)
-          /*pi =>
-                log.debug("Spawning player")
-                val p = lastGameWorldUpdate.alivePlayers.find(p => pi.playerId == p.playerId).getOrElse(throw new IllegalStateException("bad"))
-                playState.visualWorldSimulation.respawnLocalPlayer(p,pi)*/
+        }
+        val scores = ut.collect {
+          case pi: ScoreMessage =>
+            log.debug("Score received")
+            PlayerScore(pi.offender, pi.victim)
 
-          //}
         }
 
         val l = List(if (kills.size > 0) Some(KillPlayers(kills)) else None, if (spawns.size > 0) Some(SpawnPlayers(spawns)) else None)
-        l.flatMap(p => p)
+        l.flatMap(p => p) ++ scores
 
     }
     stateChanges

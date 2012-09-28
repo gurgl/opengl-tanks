@@ -20,6 +20,11 @@ import com.jme3.bounding.BoundingSphere
 import se.bupp.lek.common.model.{NotPlaying, Playing, Dead}
 import java.util
 import org.apache.log4j.Logger
+import scala.Some
+import se.bupp.lek.common.model.Playing
+
+import se.bupp.lek.common.model.NotPlaying
+import se.bupp.lek.common.model.Dead
 
 
 /**
@@ -153,6 +158,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
 
   var exloadedSinceLastUpdate = Seq.empty[ProjectileGO]
   var deadSinceLastUpdate = Seq.empty[Int]
+  var scoreSinceLastUpdate = Seq.empty[ScoreMessage]
 
   var spatialsToRemoveInUpdatePhase = immutable.Seq.empty[ServerUpdateLoopMessage]
 
@@ -358,8 +364,15 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
 
       newAlivePlayers.foreach( n => log.info(n + " entered"))
 
-      val stateChanges = newAlivePlayers ::: deadPlayers
 
+      val stateChanges = newAlivePlayers ::: deadPlayers ::: scoreSinceLastUpdate.toList
+
+      scoreSinceLastUpdate = Seq.empty
+
+      /*stateChanges.collect { case sm: ScoreMessage => sm} match {
+        case x :: tai => log.debug("SENDING SCORE")
+        case _ =>
+      }*/
 
       val res: ServerGameWorld = new ServerGameWorld(
 

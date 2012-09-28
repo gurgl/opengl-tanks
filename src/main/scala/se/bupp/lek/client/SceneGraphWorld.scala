@@ -38,6 +38,7 @@ object SceneGraphWorld {
     val Effects = "Effects"
     val Statics = "Statics"
     val Player = "Player"
+    val Gui = "Gui"
   }
 
   def setMatch[A,B](left:Set[A],right:Set[B],comp:Function2[A,B,Boolean]) : Tuple3[Set[A],Set[B],Set[(A,B)]] = {

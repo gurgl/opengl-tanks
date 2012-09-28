@@ -4,7 +4,8 @@ import com.jme3.app.state.{AppStateManager, AbstractAppState, AppState}
 import se.bupp.lek.common.FuncUtil.RateProbe
 import org.apache.log4j.Logger
 import com.jme3.app.Application
-import se.bupp.lek.server.Model.PlayerActionRequest
+import se.bupp.lek.server.Model.{ScoreMessage, PlayerActionRequest}
+import collection.mutable
 
 /**
  * Created with IntelliJ IDEA.
@@ -21,6 +22,8 @@ case class PlayerKillPlayerMessage(player: Model.GameParticipant, killer:Int) ex
 class PlayState(val server:Server) extends AbstractAppState {
   val log = Logger.getLogger(classOf[PlayState])
   var updateProbe = new RateProbe("App Update", 3000L,log)
+
+  var playMessageQueue = mutable.Queue.empty[ScoreMessage]
 
   override def update(tpf: Float) : Unit = try {
 
@@ -45,6 +48,14 @@ class PlayState(val server:Server) extends AbstractAppState {
   override def initialize(stateManager: AppStateManager, app: Application) {
     super.initialize(stateManager, app)
     log.debug("Playstate init done")
+  }
+
+  def postMessage(ref:ScoreMessage) {
+    //playMessageQueue.enqueue(ref)
+
+    server.worldSimulator.scoreSinceLastUpdate = server.worldSimulator.scoreSinceLastUpdate :+ ref
+
+
   }
 
   def addPlayerAction(request: PlayerActionRequest) {

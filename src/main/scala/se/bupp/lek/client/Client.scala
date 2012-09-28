@@ -200,7 +200,7 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
         case x:RoundOverRequest =>
           val state: PlayState = getStateManager.getState(classOf[PlayState])
           if (state != null) {
-            state.unspawnAllPlayers()
+            state.cleanForReuse()
             log.info("Round over received")
             state.setEnabled(false)
           }
@@ -317,9 +317,9 @@ class MessageState(s:String) extends AbstractAppState {
 
     if (!refreshed ) {
       val contentNode:Node = Option(application.getGuiNode.getChild(NODE_NAME).asInstanceOf[Node]).getOrElse {
-          content = new Node(NODE_NAME)
-          application.getGuiNode.attachChild(content)
-          content
+        content = new Node(NODE_NAME)
+        application.getGuiNode.attachChild(content)
+        content
       }
       contentNode.getChildren.toList.foreach(_.removeFromParent())
 

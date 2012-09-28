@@ -155,7 +155,11 @@ object Model {
 
   class ServerWorldStateChange {}
 
-  class KillPlayer(val playerId: Int) extends  ServerWorldStateChange {
+  class ScoreMessage(val offender:Int, val victim:Int) extends ServerWorldStateChange {
+    def this() = this(-1,-1)
+  }
+
+  class KillPlayer(val playerId: Int) extends ServerWorldStateChange {
     def this() = this(-1)
   }
 

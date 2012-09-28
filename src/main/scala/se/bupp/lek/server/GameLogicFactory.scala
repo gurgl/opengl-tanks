@@ -5,6 +5,7 @@ import se.bupp.lek.server.Model.PlayerJoinRequest
 import se.bupp.lek.common.model.Competitor
 import se.bupp.lek.server.Server.GameMatchSettings.ScoreReached
 import se.bupp.lek.server.GameLogic.Kill
+import se.bupp.lek.server.GameLogicFactory.KillBasedStrategy.PlayerKill
 
 /**
  * Created with IntelliJ IDEA.
@@ -34,7 +35,13 @@ object GameLogicFactory {
     def getCompetitorScore(competitorId:Int) : Int
   }
 
+  object KillBasedStrategy {
+    class PlayerKill(val of:Int,val vi:Int) extends AbstractScoreDescription
+  }
+
   class KillBasedStrategy extends ScoreStrategy {
+
+
 
     class RoundScore() {
       var playerKills = collection.mutable.HashMap[Int,List[Kill]]()
@@ -71,7 +78,7 @@ object GameLogicFactory {
         currentRound.playerKills += (offender -> (currentRound.playerKills.get(offenderCompetitor.teamId).flatten.toList :+ new Kill(victim)) )
         currentRound.competitorKills += (offenderCompetitor.teamId-> (currentRound.competitorKills.get(offenderCompetitor.teamId).flatten.toList :+ new Kill(victim)) )
 
-        gameLogic.competitorScored(offenderCompetitor.teamId)
+        gameLogic.competitorScored(new PlayerKill(offenderCompetitor.playerId, victimCompetitor.playerId), offenderCompetitor.teamId)
       }
     }
 
@@ -106,7 +113,7 @@ object GameLogicFactory {
           case (competitorId, increase) =>
 
             competitorScore += ( competitorId -> (competitorScore(competitorId) + increase))
-            if (increase > 0) gameLogic.competitorScored(competitorId)
+            if (increase > 0) gameLogic.competitorScored(null, competitorId)
 
         }
     }

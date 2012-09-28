@@ -47,6 +47,7 @@ object VisualWorldSimulation {
   sealed abstract class ServerStateChanges()
   case class SpawnPlayers(val pis:List[(SpawnPlayer,PlayerGO)]) extends ServerStateChanges
   case class KillPlayers(val pis:List[Int]) extends ServerStateChanges
+  case class PlayerScore(val of:Int, val victim:Int) extends ServerStateChanges
 
   type VisualGameWorld = (Set[Model.AbstractOwnedGameObject with Savable] , Model.ServerGameWorld, Seq[ServerStateChanges])
 }
@@ -338,6 +339,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
     }                                                         */
 
     stateChanges.foreach {
+      case ps: PlayerScore => playState.handleScoreMessage(ps)
       case KillPlayers(lst) => playState.visualWorldSimulation.handleKilledPlayers(lst)
       case SpawnPlayers(pis) =>
         pis.foreach {

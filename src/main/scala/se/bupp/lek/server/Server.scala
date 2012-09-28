@@ -32,6 +32,7 @@ import se.bupp.lek.server.Server.GameMatchSettings.NumOfRoundsPlayed
 
 import org.apache.log4j.Logger
 import se.bupp.lek.common.FuncUtil.RateProbe
+import se.bupp.lek.server.GameLogicFactory.KillBasedStrategy.PlayerKill
 
 /**
  * Created by IntelliJ IDEA.
@@ -221,6 +222,10 @@ class Server(portSettings:PortSettings) extends SimpleApplication
       def onCompetetitorScored(scoreDescription: AbstractScoreDescription) {
 
         log.info("Someone scored")
+        val playState: PlayState = getStateManager.getState(classOf[PlayState])
+
+        var kill: PlayerKill = scoreDescription.asInstanceOf[PlayerKill]
+        playState.postMessage(new ScoreMessage(kill.of, kill.vi))
         // send displayable score modification
       }
 
@@ -302,6 +307,7 @@ object Server {
       classOf[GameOverRequest],
       classOf[SpawnPlayer],
       classOf[KillPlayer],
+      classOf[ScoreMessage],
       classOf[ServerWorldStateChange],
       classOf[OrderedMessage]
 
