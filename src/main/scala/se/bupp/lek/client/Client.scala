@@ -24,6 +24,7 @@ import com.jme3.font.{BitmapFont, BitmapText}
 import org.apache.log4j.{Logger, PropertyConfigurator}
 import se.bupp.lek.common.FuncUtil.RateProbe
 import java.util.{TimerTask, Timer}
+import com.jme3.font.plugins.BitmapFontLoader
 
 
 /**
@@ -163,6 +164,7 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
   }
 
+  var gameFont:BitmapFont = _
 
   override def simpleInitApp() {
     java.util.logging.Logger.getLogger("com.jme3").setLevel(java.util.logging.Level.WARNING);
@@ -171,6 +173,16 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
     setShowSettings(false)
     setDisplayStatView(false)
     setDisplayFps(false)
+
+
+    try {
+      gameFont = assetManager.loadFont("c64font.fnt");
+
+    } catch {
+      case ex =>
+      log.error("Unable to load font: " + ex);
+      System.exit(1);
+    }
 
     //setDisplayStatView(false)
     //setDisplayFps(false)
@@ -184,7 +196,7 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
     val bulletAppState = createBulletAppState
     stateManager.attach(bulletAppState);
 
-    stateManager.attach(new MessageState("Tja"))
+    stateManager.attach(new MessageState("COMMODORE 64 press play on tape"))
     //val playState: PlayState = new PlayState()
     //stateManager.attach(playState)
 
@@ -368,8 +380,8 @@ class MessageState(s:String) extends AbstractAppState {
       }
       contentNode.getChildren.toList.foreach(_.removeFromParent())
 
-      val hudText = new BitmapText(application.getGuiFont, false);
-      hudText.setSize(application.getGuiFont.getCharSet().getRenderedSize());      // font size
+      val hudText = new BitmapText(application.gameFont, false);
+      hudText.setSize(application.gameFont.getCharSet().getRenderedSize());      // font size
       hudText.setColor(ColorRGBA.White);                             // font color
       hudText.setBox(new  com.jme3.font.Rectangle(0, 0, settings.getWidth, settings.getHeight));
       //hudText.setBox(new com.jme3.font.Rectangle(0,0,settings.getWidth , settings.getHeight))

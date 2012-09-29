@@ -317,8 +317,8 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
 
     contentNode.detachAllChildren()
 
-    val hudText = new BitmapText(gameApp.getGuiFont, false);
-    hudText.setSize(gameApp.getGuiFont.getCharSet().getRenderedSize());      // font size
+    val hudText = new BitmapText(gameApp.gameFont, false);
+    hudText.setSize(gameApp.gameFont.getCharSet().getRenderedSize());      // font size
     hudText.setColor(ColorRGBA.White);                             // font color
     var logBox: Rectangle = new com.jme3.font.Rectangle(0, 0, LOG_BOX_WIDTH, LOG_BOX_HEIGHT)
     hudText.setBox(logBox);

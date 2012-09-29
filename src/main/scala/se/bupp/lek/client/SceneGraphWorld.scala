@@ -151,13 +151,13 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
     materializeLevel()
 
 
-    val flag = materializeFlag(new Orientation(new Vector3f(-2.0f,0.5f,-2.0f),MathUtil.noRotation.fromAngles(math.Pi.toFloat/2,0f,0f)))
-    levelItems.attachChild(flag)
+    //val flag = materializeFlag(new Orientation(new Vector3f(-2.0f,0.5f,-2.0f),MathUtil.noRotation.fromAngles(math.Pi.toFloat/2,0f,0f)))
+    //levelItems.attachChild(flag)
 
   }
 
   def materializeLevel() {
-    // Create a wall with a simple texture from test_data
+    // Create a wall with a simple texture from TEST_DATA
     val level = assetManager.loadModel("level.blend")//new Box(Vector3f.ZERO, 2.5f, 2.5f, 1.0f);
 
     //assetManager.registerLocator("town.zip", classOf[ZipLocator]);
