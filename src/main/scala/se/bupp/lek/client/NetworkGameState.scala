@@ -175,7 +175,7 @@ def bupp(l:SortedSet[Int], i:Int) : SortedSet[Int] = SortedSet.empty[Int] ++ {
       gameApp.postMessage(response)
     case response:GameOverRequest =>
       gameApp.postMessage(response)
-      gameWorldUpdatesQueue = Queue()
+      //gameWorldUpdatesQueue = Queue()
     case response:StartGameRequest =>
       gameApp.postMessage(response)
     case x => log.info(x.getClass)

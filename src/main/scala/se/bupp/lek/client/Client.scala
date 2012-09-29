@@ -23,6 +23,7 @@ import com.jme3.font.{BitmapFont, BitmapText}
 
 import org.apache.log4j.{Logger, PropertyConfigurator}
 import se.bupp.lek.common.FuncUtil.RateProbe
+import java.util.{TimerTask, Timer}
 
 
 /**
@@ -210,6 +211,8 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
     }
   }
   class DoRoundOver()
+  class PostGameOver()
+  class DoGameOver()
 
   override def simpleUpdate(tpf: Float) {
 
@@ -258,21 +261,36 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
             getStateManager.detach(mstate)
           }
 
-        case x:GameOverRequest =>
+        case x:PostGameOver =>
+
           val state: PlayState = getStateManager.getState(classOf[PlayState])
-          if (state != null) {
-            log.info("GAme over received")
-            state.setEnabled(false)
-            log.info("detaching")
-            getStateManager.detach(state)
+          log.info("detaching")
+          getStateManager.detach(state)
 
-            val bState = getStateManager.getState(classOf[BulletAppState])
-            getStateManager.detach(bState)
-          }
-          //if (mState == null) {
-          getStateManager.attach(new MessageState("Game Over"))
-
+          val bState = getStateManager.getState(classOf[BulletAppState])
+          getStateManager.detach(bState)
           log.info("GameOver done")
+
+
+        case x:DoGameOver =>
+            val state: PlayState = getStateManager.getState(classOf[PlayState])
+            if (state != null) {
+              log.info("GAme over received")
+              state.setEnabled(false)
+            }
+            //if (mState == null) {
+            getStateManager.attach(new MessageState("Game Over"))
+
+            new Timer().schedule(new TimerTask {
+              def run() {
+                new PostGameOver() +=: messages
+              }
+            },3000L)
+
+        case x:GameOverRequest =>
+          new DoGameOver() +=: messages
+
+          //log.info("GameOver done")
 
           //}
             //getStateManager.attach(new MessageState("Game Over"))

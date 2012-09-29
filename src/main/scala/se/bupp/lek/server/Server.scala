@@ -262,7 +262,8 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
       }
 
       def onGameEnd(totals: GameTotalResults) {
-        serverMessageQueue.enqueue(GameEnded())
+        log.debug("Scheduling Game End")
+        onUpdateSentMessageQueue.enqueue(GameEnded())
       }
     }
 
