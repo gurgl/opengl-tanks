@@ -177,7 +177,7 @@ object MyBuild extends Build {
     webstartJnlpConf    := Seq(JnlpConf(
       mainClass       = "se.bupp.lek.client.Client",
       fileName        = "Game.jnlp",
-      codeBase        = "http://localhost:8080/game",
+      codeBase        = "http://localhost:8080/game_deploy_dir_tmp/tanks",
       title           = "My Title",
       vendor          = "My Company",
       description     = "My Webstart Project",

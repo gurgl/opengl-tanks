@@ -18,6 +18,17 @@ class ProtocolTests extends Specification with Mockito {
 
   "protocol should" should {
 
+    "handle conversions2" in {
+      System.getProperty("bupp") match {
+        case s:String => failure("not set")
+        case _ => success
+      }
+      System.setProperty("bapp","tja")
+      System.getProperty("bapp") match {
+        case s:String => success
+        case _ => failure("it is set")
+      }
+    }
     "handle conversions" in {
       var ngs = new NetworkGameState(null)
       val s1 = new ServerGameWorld()

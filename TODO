@@ -41,3 +41,31 @@ S       S     S
  Spel slut.
  Respawn ljud.
  Discret bkgrundsljud "ridå" lixom - kan av va melodisk.
+
+
+-----------------------------------
+
+#1
+
+2012-sep-29 17:08:01 com.jme3.bullet.PhysicsSpace removeCharacter
+INFO: Removing character com.bulletphysics.collision.dispatch.PairCachingGhostObject@8dc1f04 from physics space.
+51946 [Headless Application Thread] INFO  se.bupp.lek.server.WorldSimulator  - 1 2
+2012-sep-29 17:08:01 com.jme3.scene.Node detachChildAt
+INFO: Enemies (Node): Child removed.
+51977 [Headless Application Thread] INFO  se.bupp.lek.server.WorldSimulator  - 1DDDDDDDDDDDDDDDDDDDDDDEAD
+51977 [Headless Application Thread] INFO  se.bupp.lek.server.WorldSimulator  - se.bupp.lek.server.Model$KillPlayer@1ae555bd
+51977 [Headless Application Thread] DEBUG se.bupp.lek.server.WorldSimulator  - Sending Score Notif
+51977 [Headless Application Thread] INFO  se.bupp.lek.server.WorldSimulator  - 1 exploaded
+53181 [Headless Application Thread] DEBUG se.bupp.lek.server.Server  - 177 App Update rate
+54947 [Headless Application Thread] INFO  se.bupp.lek.server.WorldSimulator  - Respawning dead player 0
+54947 [Headless Application Thread] INFO  se.bupp.lek.server.ServerWorld  - Spawn player
+54947 [Server] ERROR se.bupp.lek.server.WorldSimulator  - BUG: Player not found
+but connected and not dead
+2012-sep-29 17:08:04 com.jme3.scene.Node attachChild
+INFO: Child (tank2.blend) attached to this node (Tank)
+2012-sep-29 17:08:04 com.jme3.bullet.PhysicsSpace addCharacter
+INFO: Adding character com.bulletphysics.collision.dispatch.PairCachingGhostObject@206e41b5 to physics space.
+2012-sep-29 17:08:04 com.jme3.scene.Node attachChild
+INFO: Child (Tank) attached to this node (Enemies)
+54965 [Headless Application Thread] INFO  se.bupp.lek.server.WorldSimulator  - Player 0 with playerid = 0 representing 0 entered
+56189 [Headless Application Thread] DEBUG se.bupp.lek.server.Server  - 177 App Update rate

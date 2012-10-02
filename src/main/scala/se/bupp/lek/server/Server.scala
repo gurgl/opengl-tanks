@@ -33,6 +33,7 @@ import se.bupp.lek.server.Server.GameMatchSettings.NumOfRoundsPlayed
 import org.apache.log4j.Logger
 import se.bupp.lek.common.FuncUtil.RateProbe
 import se.bupp.lek.server.GameLogicFactory.KillBasedStrategy.PlayerKill
+import util.Random
 
 /**
  * Created by IntelliJ IDEA.
@@ -217,6 +218,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
     leRoot.updateLogicalState(tpf);
 
     leRoot.updateGeometricState();*/
+    updateProbe.tick()
   } catch { case e:Exception => e.printStackTrace() ; log.error(e) }
 
   def createGameLogic() = {
@@ -357,6 +359,10 @@ object Server {
 
   def main(args: Array[String]) {
 
+    try {
+
+      Thread.sleep(new Random().nextInt(2000))
+    } catch { case e:InterruptedException =>  }
 
     val portSettings = args.toList match {
       case tcpPort :: udpPort :: rest => new PortSettings(tcpPort.toInt, udpPort.toInt)

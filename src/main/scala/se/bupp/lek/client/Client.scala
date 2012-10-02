@@ -411,10 +411,17 @@ object Client {
   var buffer = new StringBuilder
   var spel:Client = _
 
+  def getHostSettings = {
+    (System.getProperty("gameHost"),System.getProperty("gamePortTCP"), System.getProperty("gamePortUDP")) match {
+      case (h,u,t) => (h,u.toInt,t.toInt)
+      case _ => ("localhost", 54555, 54777)
+    }
+  }
   def main(arguments: Array[String]): Unit = {
 
+    val (host, tcpPort, udpPort) = getHostSettings
 
-    spel = new Client(new ClientConnectSettings("localhost", 54555, 54777))
+    spel = new Client(new ClientConnectSettings(host, tcpPort, udpPort))
     val settings = new AppSettings(true);
     settings.setFrameRate(58)
     settings.setResolution(640,480)
