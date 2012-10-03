@@ -59,7 +59,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
 
   override def physicsTick(p1: PhysicsSpace, p2: Float) {}
     */
-  var updateMaxTimeStamp = System.currentTimeMillis()
+  var updateMaxTimeStamp = Server.clock()
 
   var worldSimulator: WorldSimulator = _
 
@@ -210,7 +210,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
 
     worldSimulator.handleStateLogic()
 
-    val simTime: Long = System.currentTimeMillis()
+    val simTime: Long = Server.clock()
 
     networkState.querySendUpdate(() => worldSimulator.generateGameWorldChanges(simTime))
 
@@ -304,6 +304,8 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
 }
 
 object Server {
+
+  def clock() = System.currentTimeMillis()
 
   val log = Logger.getLogger(classOf[Server])
 

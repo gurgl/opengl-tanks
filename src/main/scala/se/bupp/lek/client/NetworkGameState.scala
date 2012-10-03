@@ -60,7 +60,7 @@ object PlayerActionQueue {
 
 }
 
-class ClientConnectSettings(val host:String, val tcpPort: Int, val udpPort: Int)
+case class ClientConnectSettings(val host:String, val tcpPort: Int, val udpPort: Int)
 
 trait WorldUpdater {
   def postUpdate(simTime: Long)
@@ -356,9 +356,9 @@ def bupp(l:SortedSet[Int], i:Int) : SortedSet[Int] = SortedSet.empty[Int] ++ {
 
     def postUpdate(simTime: Long) {
 
-      if ((System.currentTimeMillis() - lastSentUpdate).toFloat > 1000f / 15f) {
+      if ((Client.clock() - lastSentUpdate).toFloat > 1000f / 15f) {
         sendClientUpdate(simTime,visualWorldSimulation)
-        lastSentUpdate = System.currentTimeMillis()
+        lastSentUpdate = Client.clock()
       }
     }
 

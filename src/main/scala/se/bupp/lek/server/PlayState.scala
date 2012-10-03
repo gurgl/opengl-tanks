@@ -49,7 +49,7 @@ class PlayState(val server:Server) extends AbstractAppState {
     // TODO: Make a better criteria for "no game running"
     if (server.worldSimulator == null || server.worldSimulator.destroyed) return
 
-    val simTime: Long = System.currentTimeMillis()
+    val simTime: Long = Server.clock()
 
     if(server.networkState.querySendUpdate(() => server.worldSimulator.generateGameWorldChanges(simTime))) {
        listeners.foreach(_.onUpdateSent())

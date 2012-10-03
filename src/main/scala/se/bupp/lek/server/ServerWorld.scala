@@ -25,7 +25,7 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
 
   val log = Logger.getLogger(classOf[ServerWorld])
 
-  var simCurrentTime:Long = System.currentTimeMillis()
+  var simCurrentTime:Long = Server.clock()
 
   def initEmpty() {
     super.init()

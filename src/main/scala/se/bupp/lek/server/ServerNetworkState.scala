@@ -69,13 +69,13 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
 
   var worldSeqId = 0
   def querySendUpdate(genGameWorld : () => ServerGameWorld) = {
-    if(System.currentTimeMillis() - lastSentUpdate > 1000/16) {
+    if(Server.clock() - lastSentUpdate > 1000/16) {
       worldSeqId = worldSeqId + 1
       val gameWorld = genGameWorld.apply()
       gameWorld.seqId = worldSeqId
       //println("" + getPlayers.size)
       server.sendToAllUDP(gameWorld)
-      lastSentUpdate = System.currentTimeMillis()
+      lastSentUpdate = Server.clock()
       //serverSentProbe.tick()
       true
     } else false
@@ -105,7 +105,7 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
     }
     /*
     orderedChannelBuffer.synchronized {
-      orderedChannelBuffer = orderedChannelBuffer :+ (System.currentTimeMillis(), me)
+      orderedChannelBuffer = orderedChannelBuffer :+ (Server.clock(), me)
     }
     */
     server.sendToAllUDP(me)
@@ -115,7 +115,7 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
     while(true) {
       try {
         Thread.currentThread().sleep(10)
-        var time: Long = System.currentTimeMillis()
+        var time: Long = Server.clock()
         orderedChannelBuffer.synchronized {
           orderedChannelBuffer.foreach {
             case (lastSent,me) if lastSent - time > 100 =>

@@ -116,7 +116,7 @@ class VisualSimulationPrediction(val gameWorldUpdates:Queue[Model.ServerGameWorl
 
         case  List(end:ProjectileGO) => new ProjectileGO(end)
         case _ => throw new RuntimeException("fan")
-      //Client.buffer.append("moving " + translation + " " + translation.length() + " " + lastServerSimToSimTime + " " + p.speed + " " + pp.position + System.currentTimeMillis() + "\n")
+      //Client.buffer.append("moving " + translation + " " + translation.length() + " " + lastServerSimToSimTime + " " + p.speed + " " + pp.position + Client.clock() + "\n")
     }
     p
   }

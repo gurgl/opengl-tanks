@@ -87,7 +87,7 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
 
     if (logNeedsRepaint) paintLog(logMessageQueue.toList)
 
-    val simTime = System.currentTimeMillis()
+    val simTime = Client.clock()
 
     var input = playerInput.pollInput()
 

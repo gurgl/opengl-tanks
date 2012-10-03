@@ -25,6 +25,7 @@ import org.apache.log4j.{Logger, PropertyConfigurator}
 import se.bupp.lek.common.FuncUtil.RateProbe
 import java.util.{TimerTask, Timer}
 import com.jme3.font.plugins.BitmapFontLoader
+import scala.Int
 
 
 /**
@@ -411,17 +412,24 @@ object Client {
   var buffer = new StringBuilder
   var spel:Client = _
 
+  def clock() = System.currentTimeMillis()
+
   def getHostSettings = {
+    object Int {
+      def unapply(s : String) : Option[Int] = try {
+        Some(s.toInt)
+      } catch {
+        case _ : java.lang.NumberFormatException => None
+      }
+    }
     (System.getProperty("gameHost"),System.getProperty("gamePortTCP"), System.getProperty("gamePortUDP")) match {
-      case (h,u,t) => (h,u.toInt,t.toInt)
+      case (h:String,Int(u),Int(t)) => (h,u,t)
       case _ => ("localhost", 54555, 54777)
     }
   }
   def main(arguments: Array[String]): Unit = {
 
-    val (host, tcpPort, udpPort) = getHostSettings
-
-    spel = new Client(new ClientConnectSettings(host, tcpPort, udpPort))
+    spel = new Client((ClientConnectSettings.apply _).tupled(getHostSettings))
     val settings = new AppSettings(true);
     settings.setFrameRate(58)
     settings.setResolution(640,480)

@@ -65,7 +65,7 @@ class LocalObjectFactory {
     val p = new ProjectileFireGO(
       new OrientationGO(pos.add(0f,0.33f,0.0f).add(dir.getRotationColumn(0).mult(0.7f)),dir.clone()),
       4.5f,
-      System.currentTimeMillis(),
+      Client.clock(),
       projectileSeqId
     )
 
@@ -91,7 +91,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
 
   val LocalInputLogSize = 20
 
-  var playerMovementLog = Queue.empty[(Long, Orientation, Reorientation)] //:+ ((System.currentTimeMillis(),startPosition, MathUtil.noMotion))
+  var playerMovementLog = Queue.empty[(Long, Orientation, Reorientation)] //:+ ((Client.clock(),startPosition, MathUtil.noMotion))
 
 
   var sun:DirectionalLight = _
@@ -252,7 +252,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
     }
     var (newInUpdate, noUpdate, matched) = setMatch(allUpdates, allExisting, doMatch)
 
-    if(false && (System.currentTimeMillis()) % 10 == 3) {
+    if(false && (Client.clock()) % 10 == 3) {
       /*println("enemies" + enemyNodes.size +
         "noUpdate" + noUpdate.size +
         "newInUpdate " + newInUpdateOrPlayer.size +
@@ -485,24 +485,24 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
 
   class DestroyControl extends AbstractControl
   {
-    val time = System.currentTimeMillis();
+    val time = Client.clock();
     var killed = false
 
     override def controlUpdate(tpf:Float)
     {
-      if(!killed && System.currentTimeMillis() - time < 500)
+      if(!killed && Client.clock() - time < 500)
       {
         val emitter: ParticleEmitter = this.getSpatial().asInstanceOf[ParticleEmitter]
         //println("emit all")
         emitter.emitAllParticles()
       }
-      else if(!killed && (System.currentTimeMillis() - time) > 1000)
+      else if(!killed && (Client.clock() - time) > 1000)
       {
         val emitter: ParticleEmitter = this.getSpatial().asInstanceOf[ParticleEmitter]
         emitter.killAllParticles()
         //println("kill")
         killed = true
-      } else if(killed && System.currentTimeMillis() - time > 3000)
+      } else if(killed && Client.clock() - time > 3000)
       {
         //println("detach")
         this.getSpatial().getParent.detachChild(this.getSpatial())

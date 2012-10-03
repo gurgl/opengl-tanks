@@ -142,7 +142,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
 
 
             deadSinceLastUpdate = deadSinceLastUpdate :+ pkpm.player.playerId
-            pkpm.player.state = Dead(System.currentTimeMillis())
+            pkpm.player.state = Dead(Server.clock())
             //world.unspawnPlayer(s,player)
             spatialsToRemoveInUpdatePhase = spatialsToRemoveInUpdatePhase :+ (s, pkpm.player)
             playerKilledPlayer(pkpm.killer,pkpm.player.playerId)
@@ -237,7 +237,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
 
     participatingPlayers.foreach {
       cp => cp.state match {
-        case Dead(since) => if(System.currentTimeMillis() - since > RespawnTime) {
+        case Dead(since) => if(Server.clock() - since > RespawnTime) {
           respawnDeadPlayer(cp)
         }
         case Playing() =>
