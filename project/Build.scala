@@ -95,7 +95,7 @@ object MyBuild extends Build {
     webStartSettings ++
     Seq(
       unmanagedResourceDirectories in Compile <+=  baseDirectory { dir =>
-        dir/"src/main/blender" // +++ dir/"src/main/resources/reports"
+        dir / "src/main/blender" // +++ dir/"src/main/resources/reports"
       },
       mainClass in (Compile, packageBin)  := Some("se.bupp.lek.client.Client"),
       mappings in (Compile,packageBin) ~= { (ms: Seq[(File, String)]) =>

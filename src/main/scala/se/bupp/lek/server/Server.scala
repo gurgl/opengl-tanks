@@ -59,8 +59,6 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
 
   override def physicsTick(p1: PhysicsSpace, p2: Float) {}
     */
-  var updateMaxTimeStamp = Server.clock()
-
   var worldSimulator: WorldSimulator = _
 
   var networkState: ServerNetworkState = _

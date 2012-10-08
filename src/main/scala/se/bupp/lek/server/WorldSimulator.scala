@@ -339,7 +339,6 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
 
 
       //if(simulatedProjectiles.size > 0) simulatedProjectiles.foreach { p => print(p.id) }
-      lastWorldSimTimeStamp = Some(world.simCurrentTime)
       // TODO: Fix this sometime failing assert
       val deadPlayers = purgeDeadPlayersSinceLastUpdate.ensuring(_.forall( dp => !playerState.exists(_.playerId == dp))).map(new KillPlayer(_))
 
