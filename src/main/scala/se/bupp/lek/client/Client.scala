@@ -414,7 +414,7 @@ object Client {
 
   def clock() = System.currentTimeMillis()
 
-  def getHostSettings = {
+  def getHostSettings(args: Array[String]) = {
     object Int {
       def unapply(s : String) : Option[Int] = try {
         Some(s.toInt)
@@ -424,12 +424,16 @@ object Client {
     }
     (System.getProperty("gameHost"),System.getProperty("gamePortTCP"), System.getProperty("gamePortUDP")) match {
       case (h:String,Int(u),Int(t)) => (h,u,t)
-      case _ => ("localhost", 54555, 54777)
+      case _ => args match {
+        case Array(h,Int(u),Int(t)) => (h,u,t)
+        case _ => ("localhost", 54555, 54777)
+      }
+
     }
   }
   def main(arguments: Array[String]): Unit = {
 
-    spel = new Client((ClientConnectSettings.apply _).tupled(getHostSettings))
+    spel = new Client((ClientConnectSettings.apply _).tupled(getHostSettings(arguments)))
     val settings = new AppSettings(true);
     settings.setFrameRate(58)
     settings.setResolution(640,480)
