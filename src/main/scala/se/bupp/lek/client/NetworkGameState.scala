@@ -17,6 +17,8 @@ import se.bupp.lek.client.MathUtil._
 import org.apache.log4j.Logger
 import se.bupp.lek.common.FuncUtil.RateProbe
 import com.jme3.export.Savable
+import com.esotericsoftware.kryonet.Listener.LagListener
+import se.bupp.lek.common.Tmp
 
 
 /**
@@ -230,7 +232,7 @@ def bupp(l:SortedSet[Int], i:Int) : SortedSet[Int] = SortedSet.empty[Int] ++ {
 
     Server.getNetworkMessages.foreach( kryo.register(_))
 
-    gameClient.addListener(new Listener() {
+    val listener = new Listener() {
       override def received (connection:Connection , obj:Object ) = try {
         obj match {
           case om:OrderedMessage =>
@@ -239,31 +241,31 @@ def bupp(l:SortedSet[Int], i:Int) : SortedSet[Int] = SortedSet.empty[Int] ++ {
               handleOrderedMessage(om)
             }
 
-            /*
-          case response:ServerGameWorld=>
-            //serverUpdProbe.tick()
+          /*
+      case response:ServerGameWorld=>
+        //serverUpdProbe.tick()
 
-            if(gameApp.playerIdOpt.isDefined) {
-              //                lock.synchronized {
-              /*if(response.seqId != lastReceiveSeqId + 1) {
-                log.error("bad sequence id. Last " + lastReceiveSeqId + ", new " + response.seqId )
-              }
-              lastReceiveSeqId = response.seqId*/
-              handleWorldUpdate(response)
-              //              }
-            } else {
-              log.warn("Getting world wo player received.")
-            }
-          case response:RoundOverRequest =>
-            gameApp.postMessage(response)
-          case response:StartRoundRequest =>
-            gameApp.postMessage(response)
-          case response:GameOverRequest =>
-            gameApp.postMessage(response)
-            gameWorldUpdatesQueue = Queue()
-          case response:StartGameRequest =>
-            gameApp.postMessage(response)
-              */
+        if(gameApp.playerIdOpt.isDefined) {
+          //                lock.synchronized {
+          /*if(response.seqId != lastReceiveSeqId + 1) {
+            log.error("bad sequence id. Last " + lastReceiveSeqId + ", new " + response.seqId )
+          }
+          lastReceiveSeqId = response.seqId*/
+          handleWorldUpdate(response)
+          //              }
+        } else {
+          log.warn("Getting world wo player received.")
+        }
+      case response:RoundOverRequest =>
+        gameApp.postMessage(response)
+      case response:StartRoundRequest =>
+        gameApp.postMessage(response)
+      case response:GameOverRequest =>
+        gameApp.postMessage(response)
+        gameWorldUpdatesQueue = Queue()
+      case response:StartGameRequest =>
+        gameApp.postMessage(response)
+          */
           case response:PlayerJoinResponse =>
             log.info("join resp received " + response.playerId)
             gameApp.playerIdOpt = Some(response.playerId)
@@ -271,7 +273,8 @@ def bupp(l:SortedSet[Int], i:Int) : SortedSet[Int] = SortedSet.empty[Int] ++ {
           case _ =>
         }
       } catch { case e:Exception => e.printStackTrace()}
-    });
+    }
+    gameClient.addListener(Tmp.decorateListener(listener));
 
     gameClient.start();
     log.info("tcpPort " + clientConnectSettings.tcpPort + ",  updPort " + clientConnectSettings.udpPort)

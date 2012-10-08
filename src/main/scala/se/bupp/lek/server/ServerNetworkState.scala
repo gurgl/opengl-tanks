@@ -6,6 +6,9 @@ import se.bupp.lek.server.Server.PortSettings
 import collection.immutable.HashMap
 import org.apache.log4j.Logger
 import se.bupp.lek.common.FuncUtil.RateProbe
+import java.util.{TimerTask, Timer}
+import com.esotericsoftware.kryonet.Listener.LagListener
+import se.bupp.lek.common.Tmp
 
 /**
  * Created with IntelliJ IDEA.
@@ -37,7 +40,36 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
 
   var orderedChannelBuffer:Seq[(TimeStamp,_ <: OrderedMessage)] = Nil
 
-  server.addListener(new Listener() {
+
+  /*
+
+  val disconnected = (con: Connection) => {
+    //super.disconnected(con)
+    val playerId = connectionIdToPlayerIds(con.getID)
+    playerLeave(playerId)
+  }
+
+  val received = (connection: Connection, obj: Object) => {
+    //println("rec " + obj.getClass.getName)
+    obj match {
+      case request: PlayerActionRequest =>
+
+        //actionReqProbe.tick()
+        addPlayerAction(request)
+
+
+
+      case req: PlayerJoinRequest =>
+        println("rec " + obj.getClass.getName)
+
+        val resp = playerJoined(req)
+        connectionIdToPlayerIds += (connection.getID -> resp.playerId)
+        connection.sendTCP(resp)
+      case _ =>
+    }
+  }*/
+
+  val listener = new Listener() {
 
     override def disconnected(con: Connection) {
       super.disconnected(con)
@@ -54,6 +86,7 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
           addPlayerAction(request)
 
 
+
         case req: PlayerJoinRequest =>
           println("rec " + obj.getClass.getName)
 
@@ -63,7 +96,8 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
         case _ =>
       }
     }
-  });
+  }
+  server.addListener(Tmp.decorateListener(listener))
 
   var lastSentUpdate = 0L
 
@@ -74,7 +108,9 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
       val gameWorld = genGameWorld.apply()
       gameWorld.seqId = worldSeqId
       //println("" + getPlayers.size)
-      server.sendToAllUDP(gameWorld)
+
+       server.sendToAllUDP(gameWorld)
+
       lastSentUpdate = Server.clock()
       //serverSentProbe.tick()
       true

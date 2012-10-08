@@ -26,6 +26,8 @@ import se.bupp.lek.common.FuncUtil.RateProbe
 import java.util.{TimerTask, Timer}
 import com.jme3.font.plugins.BitmapFontLoader
 import scala.Int
+import util.Random
+import se.bupp.lek.common.Tmp
 
 
 /**
@@ -412,7 +414,8 @@ object Client {
   var buffer = new StringBuilder
   var spel:Client = _
 
-  def clock() = System.currentTimeMillis()
+  val clockOffset = if(Tmp.doSimulateClockIndependence) 1000* 50 - Random.nextInt(1000*100) else 0
+  def clock() = System.currentTimeMillis() + clockOffset
 
   def getHostSettings(args: Array[String]) = {
     object Int {
