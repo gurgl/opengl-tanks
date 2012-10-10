@@ -67,7 +67,7 @@ case class ClientConnectSettings(val host:String, val tcpPort: Int, val udpPort:
 trait WorldUpdater {
   def postUpdate(simTime: Long)
   def processInput(input: PlayerInput.Reorientation,lastUpdate:Option[(Long,Reorientation)])
-  def generateGameWorld(simTime: Long) : Option[VisualGameWorld]
+  def generateGameWorldToRender(simTime: Long) : Option[VisualGameWorld]
 }
 class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends AbstractAppState {
 
@@ -81,7 +81,7 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
 
   val log = Logger.getLogger(classOf[NetworkGameState])
 
-  var gameWorldUpdatesQueue:Queue[Model.ServerGameWorld] = Queue()
+  var gameWorldUpdatesQueue:Queue[(Long,Model.ServerGameWorld)] = Queue()
   var gameWorldStateChangeQueue:Queue[Model.ServerGameWorld] = Queue()
 
   var polledUpUntilToOpt = Option.empty[Int]
@@ -320,7 +320,7 @@ def bupp(l:SortedSet[Int], i:Int) : SortedSet[Int] = SortedSet.empty[Int] ++ {
         } else {
           x
         }
-      ).head.enqueue(serverUpdate);
+      ).head.enqueue((Client.clock(),serverUpdate));
 
     gameWorldStateChangeQueue = gameWorldStateChangeQueue.enqueue(serverUpdate)
 
@@ -374,14 +374,17 @@ def bupp(l:SortedSet[Int], i:Int) : SortedSet[Int] = SortedSet.empty[Int] ++ {
       PlayerActionQueue.accumulateMotion(input)
     }
 
-    var currentGameWorldUpdates:Queue[ServerGameWorld] = null
-    def generateGameWorld(simTime: Long) : Option[VisualGameWorld] = {
-      currentGameWorldUpdates = Queue(gameWorldUpdatesQueue: _*)
+
+
+    def generateGameWorldToRender(simTime: Long) : Option[VisualGameWorld] = {
+      var currentGameWorldUpdates = Queue(gameWorldUpdatesQueue: _*)
 
       val worldStateChangeToHandle = Seq(gameWorldStateChangeQueue:_*)
       gameWorldStateChangeQueue = gameWorldStateChangeQueue.companion.empty
 
 
+      val (lastReceivedTS, lastGameWorld) = currentGameWorldUpdates.last
+      val serverRelativeSimeTime = lastGameWorld.timeStamp + (simTime - lastReceivedTS)
 
       val stateChanges = convertStateChanges(worldStateChangeToHandle)
         /*if (list.size > 0) {
@@ -406,7 +409,7 @@ def bupp(l:SortedSet[Int], i:Int) : SortedSet[Int] = SortedSet.empty[Int] ++ {
       }
        */
 
-      var buppOpt: Option[(Set[AbstractOwnedGameObject with Savable], ServerGameWorld)] = visualWorldSimulation.generateLocalGameWorld(simTime, currentGameWorldUpdates)
+      var buppOpt: Option[(Set[AbstractOwnedGameObject with Savable], ServerGameWorld)] = visualWorldSimulation.generateLocalGameWorld(serverRelativeSimeTime, currentGameWorldUpdates.map(_._2))
       buppOpt.map(bupp => (bupp._1,bupp._2, stateChanges))
 
     }

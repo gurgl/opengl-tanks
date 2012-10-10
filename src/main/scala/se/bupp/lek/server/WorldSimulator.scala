@@ -273,7 +273,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
       val playerState = players.map {
         case (ps, s)  =>
           val p = new PlayerGO(ps.gameState)
-          p.sentToServerByClient = ps.lastSimulation
+          //p.sentToServerByClient = ps.lastSimulationServerTime  // LAG:
           p
       }
       /*val playerState = getPlayers.map {
@@ -452,7 +452,10 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
             //x.processedUpdate = false
 
             x.gameState.sentToServerByClient = request.timeStamp
-            request.motion.sentToServer = request.timeStamp
+            if (x.serverClientClock == 0) x.serverClientClock = Server.clock() - 2 * request.elapsed
+            x.serverClientClock = x.serverClientClock + request.elapsed
+            log.debug(x.playerId + " " + x.serverClientClock + " " + Server.clock())
+            request.motion.sentToServer = x.serverClientClock
             x.updates = x.updates :+ request.motion
 
             x.seqId = request.seqId

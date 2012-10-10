@@ -93,7 +93,7 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
 
     worldUpdater.processInput(input,lastUpdate)
 
-    val worldToPaintOpt = worldUpdater.generateGameWorld(simTime)
+    val worldToPaintOpt = worldUpdater.generateGameWorldToRender(simTime)
 
 
     //visualWorldSimulation.handleServerStateReplication()

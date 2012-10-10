@@ -31,13 +31,14 @@ object Model {
   class GameParticipant extends Savable {
     var gameState: PlayerGO = _
 
+    var serverClientClock:Long = 0
     var state:PlayerConnectionState = Playing()
 
     var seqId : Int = _
 
     var updates:Seq[MotionGO] = Seq.empty
 
-    var lastSimulation:Long = _
+    var lastSimulationServerTime:Long = _
 
     var playerId: Int = _
 

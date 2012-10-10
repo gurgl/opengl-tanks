@@ -1,3 +1,18 @@
+* Servertid oberoende av klient. Dvs Server.clock() - Client.clock() = bad
+
+    - prediciton bör beräknas som LAST_SERVER_UPDATE.time_stamp + (CurrentTime - client_time_upon_receive_if(LAST_SERVER_UPDATE))
+
+* Problem med att olika klienters "clockor" diffar på servern
+
+
+
+
+
+
+
+http://gafferongames.com/2010/03/11/gdc-2010-networked-physics-slides-demo/
+
+
 http://gafferongames.com/networking-for-game-programmers/
 
 http://www.zeromq.org/

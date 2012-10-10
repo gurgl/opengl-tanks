@@ -107,7 +107,7 @@ trait PhysicsSpaceSimAdapter extends SceneGraphAccessors {
         simCurrentTime += nextSimDuration
 
         playerUpdatesAtTime.list.foreach {
-          case (ps, s, u) => ps.lastSimulation = time
+          case (ps, s, u) => ps.lastSimulationServerTime = time
         }
 
     }

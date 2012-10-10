@@ -94,17 +94,24 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
 
   def getSettings = settings
+
+  var lastLastRecordedActionTime:Long = 0
+
   def createPlayerActionRequest(lastRecordedActionTime:Long, reorientation:Reorientation,projectiles:List[ProjectileFireGO]): Model.PlayerActionRequest = {
       val request: PlayerActionRequest = new PlayerActionRequest
+
 
 
       import JavaConversions.seqAsJavaList
       request.projectilesFired = new java.util.ArrayList[ProjectileFireGO](projectiles)//gameWorld.flushProjectiles)
       request.timeStamp = lastRecordedActionTime
+      request.elapsed = if(lastLastRecordedActionTime != 0) lastRecordedActionTime - lastLastRecordedActionTime else 100
       request.playerId = playerIdOpt.get
       request.seqId = seqId
       seqId += 1
-      request.motion = new MotionGO(reorientation._1, reorientation._2, lastRecordedActionTime)
+      request.motion = new MotionGO(reorientation._1, reorientation._2, 0)
+
+      lastLastRecordedActionTime = lastRecordedActionTime
       request
     }
 

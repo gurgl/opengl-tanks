@@ -17,30 +17,37 @@ import java.lang
  * To change this template use File | Settings | File Templates.
  */
 
+object VisualSimulationPrediction {
+  type Blaj = (Long,AbstractOwnedGameObject with Savable)
+}
 
 class VisualSimulationPrediction(val gameWorldUpdates:Queue[Model.ServerGameWorld], val playerId:Int) {
-  def projectGameHistoryByGameObjectId() : immutable.Map[OwnedGameObjectId,List[ _ <: AbstractOwnedGameObject with Savable]] = {
+  import VisualSimulationPrediction._
+  def projectGameHistoryByGameObjectId() : immutable.Map[OwnedGameObjectId,List[(Long, _ <: AbstractOwnedGameObject with Savable)]] = {
     val slots = gameWorldUpdates.last.all.map(_.id).toSet
     slots.map { s =>
       val sUpdates = gameWorldUpdates.flatMap { upd =>
-         upd.all.find( _.id == s )
+         upd.all.find( _.id == s ).map((upd.timeStamp,_))
       }.toList
 
       (s,sUpdates)
     }.toMap //.ensuring(_.size == gameWorldUpdates.last.all.size)
   }
 
-  def simulatePlayer(p:PlayerGO, simTime:Long, snapshots:List[AbstractOwnedGameObject with Savable]) : PlayerGO = {
+  def simulatePlayer(p:PlayerGO, simTime:Long, snapshots:List[Blaj]) : PlayerGO = {
 
     var previous = snapshots.reverse.tail
-    var end = snapshots.last
+    var endP = snapshots.last
 
-    val startOpt = previous.find( prev => (end.sentToServerByClient - prev.sentToServerByClient) > 0)
+    val startOpt = previous.find( prev => (endP._1 - prev._1) > 0)
 
     startOpt match {
-      case Some(start) =>
-        var snapDeltaTime = (end.sentToServerByClient - start.sentToServerByClient)
-        val timeSinceLast = simTime - end.sentToServerByClient
+      case Some(startP) =>
+        var snapDeltaTime = (endP._1 - startP._1)
+        val timeSinceLast = simTime - endP._1
+        val (_,end) = endP
+        val (_,start) = startP
+
         //println("ugl " + end.position + " " + end.direction + " " + end.sentToServerByClient + " " + end.id + " " + snapDeltaTime + " " + timeSinceLast)
 
 
@@ -50,7 +57,7 @@ class VisualSimulationPrediction(val gameWorldUpdates:Queue[Model.ServerGameWorl
         val extrapolTranslation = velocity.mult(timeSinceLast)
 
         var startAngle = start.direction
-        var endAngle = snapshots.last.direction
+        var endAngle = snapshots.last._2.direction
 
 
 
@@ -135,15 +142,15 @@ class VisualSimulationPrediction(val gameWorldUpdates:Queue[Model.ServerGameWorl
     val res = projectGameHistoryByGameObjectId.toList.flatMap {
       case (id,snapshotsUT) =>
 
-        val orderedObjectSnapshots = snapshotsUT.asInstanceOf[List[AbstractOwnedGameObject with Savable]]
+        val orderedObjectSnapshots = snapshotsUT.asInstanceOf[List[Blaj]]
 
         val estimate:Option[AbstractOwnedGameObject with Savable] =
           if(orderedObjectSnapshots.size < 2) {
             //println("unable to interpolateNonPlayerObjects")
-            Some(orderedObjectSnapshots.last)
+            Some(orderedObjectSnapshots.last._2)
           } else {
               orderedObjectSnapshots.last match {
-              case p:PlayerGO =>
+              case (_,p:PlayerGO) =>
 
                 if(id._2 == playerId) {
 
@@ -153,9 +160,9 @@ class VisualSimulationPrediction(val gameWorldUpdates:Queue[Model.ServerGameWorl
                   Some(simulatePlayer(p,simTime, orderedObjectSnapshots))
                 }
 
-              case p:ProjectileGO =>
+              case (_,p:ProjectileGO) =>
 
-                Some(simulateProjectile(lastServerSimToClientSimDurations, orderedObjectSnapshots, serverSimsDelta))
+                Some(simulateProjectile(lastServerSimToClientSimDurations, orderedObjectSnapshots.map(_._2), serverSimsDelta))
             }
           }
       estimate
