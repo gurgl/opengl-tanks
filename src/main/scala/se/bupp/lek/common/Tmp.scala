@@ -11,7 +11,7 @@ import com.esotericsoftware.kryonet.Listener.LagListener
  * To change this template use File | Settings | File Templates.
  */
 object Tmp {
-  val doSimulateLag = true
+  val doSimulateLag = false
   val doSimulateClockIndependence = false
   def decorateListener(l:Listener) : Listener = {
     if(doSimulateLag) new LagListener(1000,2000,l) else l
