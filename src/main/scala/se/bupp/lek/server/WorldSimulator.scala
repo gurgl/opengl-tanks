@@ -454,7 +454,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
             x.gameState.sentToServerByClient = request.timeStamp
             if (x.serverClientClock == 0) x.serverClientClock = Server.clock() - 2 * request.elapsed
             x.serverClientClock = x.serverClientClock + request.elapsed
-            log.debug(x.playerId + " " + x.serverClientClock + " " + Server.clock())
+            //log.debug(x.playerId + " " + x.serverClientClock + " " + Server.clock())
             request.motion.sentToServer = x.serverClientClock
             x.updates = x.updates :+ request.motion
 

@@ -4,9 +4,30 @@
 
 * Problem med att olika klienters "clockor" diffar på servern
 
+*
+
+    t0 skickar still t0
+
+    t1 klient skickar vrid at t1
+
+    t2 server får t0 upd
+
+    t3 skickar still t3
+
+    t4 server skickar t0 upd
 
 
 
+cl_s = 100 
+sv_frame = 10
+
+
+v = s / t
+
+s / 
+
+
+Well ok.. how does this sound. I set server physics sim to continous realtime (as opposed to step it up only when i know each clients actions). Instead of of accuratly moving stuff i convert actions so that client_movment/client_frame =  
 
 
 

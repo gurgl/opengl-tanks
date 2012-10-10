@@ -89,7 +89,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
 
   val lock:AnyRef = new Object
 
-  val LocalInputLogSize = 20
+  val LocalInputLogSize = 300
 
   var playerMovementLog = Queue.empty[(Long, Orientation, Reorientation)] //:+ ((Client.clock(),startPosition, MathUtil.noMotion))
 

@@ -79,11 +79,8 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
     if(gameApp.playerIdOpt.isEmpty) return
 
     if(!isEnabled) return
-    if (needsReenableRefresh) {
-      logMessageQueue = Queue.empty
-      contentNode.detachAllChildren()
-      needsReenableRefresh = false
-    }
+
+    updateHud
 
     if (logNeedsRepaint) paintLog(logMessageQueue.toList)
 
@@ -115,6 +112,13 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
   }*/
 
 
+  def updateHud {
+    if (needsReenableRefresh) {
+      logMessageQueue = Queue.empty
+      contentNode.detachAllChildren()
+      needsReenableRefresh = false
+    }
+  }
 
   override def initialize(stateManager: AppStateManager, app: Application) {
     gameApp = app.asInstanceOf[Client]

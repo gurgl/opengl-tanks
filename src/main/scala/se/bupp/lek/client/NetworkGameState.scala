@@ -77,7 +77,7 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
 
   var buffer = new StringBuffer()
 
-  val GW_UPDATES_SIZE = 4
+  val GW_UPDATES_SIZE = 20
 
   val log = Logger.getLogger(classOf[NetworkGameState])
 

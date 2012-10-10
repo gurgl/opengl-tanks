@@ -49,6 +49,55 @@ trait PhysicsSpaceSimAdapter extends SceneGraphAccessors {
   }
 
 
+  def simulateAllUpdates(tpf:Float) {
+    val players = getPlayers
+    val simTime = Server.clock()
+    /*val control = s.getControl(classOf[CharacterControl])
+    control.setWalkDirection(Vector3f.ZERO.clone())
+
+
+    ctrl.setWalkDirection(u.translation.divide(simSteps.toFloat))
+    */
+
+    val timeSlots = (tpf ) / getPhysicsSpace.getAccuracy
+    val simSteps = if (timeSlots > 1.0f) math.floor(timeSlots).toInt else 1
+
+
+    players.foreach {
+      case (pi,s) =>
+        val anyUpdates = Seq(pi.updates:_*)
+        pi.updates = Nil
+
+        val control = s.getControl(classOf[CharacterControl])
+        val movement = anyUpdates match {
+          case Nil => Vector3f.ZERO.clone()
+          case updates =>
+            updates.foreach { u => s.setLocalRotation(u.rotation.mult(s.getLocalRotation)) }
+            updates.foldLeft(Vector3f.ZERO.clone()) { case (a,u) => (u.translation.add(a)) }
+
+        }
+
+        control.setWalkDirection(movement.divide(simSteps.toFloat))
+        pi.lastSimulationServerTime = simTime
+
+
+      case _ =>
+    }
+
+    //println("tpf " + tpf + " simSteps " + simSteps)
+
+    getPhysicsSpace.update(tpf,simSteps)
+    getPhysicsSpace.distributeEvents()
+
+    /*playerSpatials.foreach {
+      s =>
+        val control = s.getControl(classOf[CharacterControl])
+        control.setWalkDirection(Vector3f.ZERO.clone())
+    }*/
+
+
+  }
+
 
   def simulateToLastUpdated(): Long = {
 
