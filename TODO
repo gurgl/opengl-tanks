@@ -4,6 +4,8 @@
 
 * Problem med att olika klienters "clockor" diffar på servern
 
+* Se till så att protocol objecten inte används olika eller alls på server o klient. Ingen onödig info över nätet
+
 *
 
     t0 skickar still t0

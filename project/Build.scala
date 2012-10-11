@@ -14,7 +14,7 @@ object MyBuild extends Build {
 
   lazy val root = Project(id = "server",
                           base = file("."),
-                          settings = Project.defaultSettings ++ projSettings  ++ serverSettings
+                          settings = Project.defaultSettings ++ projSettings  ++ serverSettings ++ Seq(serverClassPathTask)
   )
 
   lazy val serverSettings = Seq(
@@ -25,11 +25,26 @@ object MyBuild extends Build {
     }
   )
 
-  unmanagedJars in Compile <++= baseDirectory map { base =>
+
+  val hello = TaskKey[Unit]("server-class-path", "Deletes files produced by the build, such as generated sources, compiled classes, and task caches.")
+
+  var serverClassPathTask = hello := {
+    println("tja" + ( fullClasspath in Compile))
+
+    ( fullClasspath in Compile ) map { r => println("Bupp") ;  r.files foreach println }
+  }
+
+  //serverClassPathTask <<= serverClassPathTask.dependsOn(Compile)
+
+  def getServerCLasspath() {
+
+  }
+
+  /*unmanagedJars in Compile <++= baseDirectory map { base =>
   	val baseDirectories = (base / "jme3-lib" )
   	val customJars = (baseDirectories ** "*.jar")
   	customJars.classpath
-  }
+  }*/
 
   val jmeMaven = Seq(
     "com.jme3" % "eventbus" % JME_VERSION,
@@ -178,9 +193,9 @@ object MyBuild extends Build {
       mainClass       = "se.bupp.lek.client.Client",
       fileName        = "Game.jnlp",
       codeBase        = "http://localhost:8080/game_deploy_dir_tmp/tanks",
-      title           = "My Title",
-      vendor          = "My Company",
-      description     = "My Webstart Project",
+      title           = "Tank Showdown!",
+      vendor          = "PäronGlans",
+      description     = "Multiplayer game",
       iconName = None,
       splashName = None,
       offlineAllowed  = true,

@@ -295,7 +295,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
 
               val p = new ProjectileGO()
               p.orientation  = pf.from
-              p.timeSpawned = pf.timeStamp
+              p.timeSpawned = simTime
               p.playerId = pid
               p.clientSeqId = pf.clientSeqId
               p.speed = pf.speed

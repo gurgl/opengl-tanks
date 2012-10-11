@@ -65,7 +65,6 @@ class LocalObjectFactory {
     val p = new ProjectileFireGO(
       new OrientationGO(pos.add(0f,0.33f,0.0f).add(dir.getRotationColumn(0).mult(0.7f)),dir.clone()),
       4.5f,
-      Client.clock(),
       projectileSeqId
     )
 
@@ -148,8 +147,6 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
     al = new AmbientLight();
     al.setColor(ColorRGBA.White.mult(1.3f));
     rootNode.addLight(al);
-
-
 
     /*val bsr = new BasicShadowRenderer(assetManager, 1024);
     bsr.setDirection(sunDirection.clone()); // light direction

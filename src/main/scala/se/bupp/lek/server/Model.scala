@@ -241,10 +241,10 @@ object Model {
   class ProjectileFireGO(
                           var from: OrientationGO,
                           var speed: Float,
-                          var timeStamp: Long,
+                          //var timeStamp: Long,
                           var clientSeqId: Int
                           ) {
-    def this() = this(null, 0f, 0, 0)
+    def this() = this(null, 0f, 0)
   }
 
   class PlayerActionRequest() {
