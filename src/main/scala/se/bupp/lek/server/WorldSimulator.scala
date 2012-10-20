@@ -350,15 +350,18 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
 
       //log.debug("playerState " + playerState.size + " alivePlayers " + deadPlayers.size)
 
-      val wastInLastUpdate = lastGeneratedUpdate match {
+      val wasntInLastUpdate = lastGeneratedUpdate match {
         case Some(l) => var lastAlivePlayers = l.alivePlayers.toList
           val (_ , newPlayers) = playerState.partition( p => lastAlivePlayers.exists( p2 => p.playerId == p2.playerId))
           newPlayers
         case None => playerState
       }
 
-      val newAlivePlayers:List[_ <: ServerWorldStateChange] = wastInLastUpdate.flatMap(p => participatingPlayers.find(p2 => p.playerId == p2.playerId))
-        .map(p => new SpawnPlayer(p.playerId, "Player " + p.playerId, p.teamIdentifier)).toList
+      val newAlivePlayers:List[_ <: ServerWorldStateChange] = wasntInLastUpdate.flatMap(p => participatingPlayers.find(p2 => p.playerId == p2.playerId))
+        .map(p =>
+        new SpawnPlayer(p.playerId,
+          Server.server.lobby.findByPlayerId(p.playerId).map(_.name).getOrElse("Player " + p.playerId),
+          p.teamIdentifier)).toList
 
 
       newAlivePlayers.foreach( n => log.info(n + " entered"))

@@ -1,7 +1,7 @@
 package se.bupp.lek.client
 
 import com.esotericsoftware.kryonet.{Connection, Listener, Client => KryoClient}
-import se.bupp.lek.server.{Model, Server}
+import se.bupp.lek.server.{Server}
 import se.bupp.lek.server.Model._
 import management.ManagementFactory
 import com.jme3.app.state.{AbstractAppState, AppStateManager}
@@ -62,7 +62,9 @@ object PlayerActionQueue {
 
 }
 
-case class ClientConnectSettings(val host:String, val tcpPort: Int, val udpPort: Int)
+case class ClientConnectSettings(val host:String, val tcpPort: Int, val udpPort: Int, val connectMessage:String) {
+  println(connectMessage)
+}
 
 trait WorldUpdater {
   def postUpdate(simTime: Long)
@@ -81,8 +83,8 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
 
   val log = Logger.getLogger(classOf[NetworkGameState])
 
-  var gameWorldUpdatesQueue:Queue[(Long,Model.ServerGameWorld)] = Queue()
-  var gameWorldStateChangeQueue:Queue[Model.ServerGameWorld] = Queue()
+  var gameWorldUpdatesQueue:Queue[(Long,ServerGameWorld)] = Queue()
+  var gameWorldStateEventQueue:Queue[ServerGameWorld] = Queue()
 
   var polledUpUntilToOpt = Option.empty[Int]
 
@@ -93,6 +95,7 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
   implicit object OrderedMessageOrdering extends Ordering[OrderedMessage] {
     def compare(x: OrderedMessage, y: OrderedMessage) = if(x.seqId < y.seqId) -1 else if(x.seqId > y.seqId) 1 else 0
   }
+
   var orderedMessageBuffer = SortedSet.empty[OrderedMessage]
 
 
@@ -280,7 +283,7 @@ def bupp(l:SortedSet[Int], i:Int) : SortedSet[Int] = SortedSet.empty[Int] ++ {
     log.info("tcpPort " + clientConnectSettings.tcpPort + ",  updPort " + clientConnectSettings.udpPort)
     gameClient.connect(5000, clientConnectSettings.host, clientConnectSettings.tcpPort, clientConnectSettings.udpPort);
 
-    val playerJoinRequest = new PlayerJoinRequest()
+    val playerJoinRequest = new PlayerJoinRequest(clientConnectSettings.connectMessage)
     playerJoinRequest.clientLabel = ManagementFactory.getRuntimeMXBean().getName()
     gameClient.sendTCP(playerJoinRequest);
   }
@@ -312,7 +315,7 @@ def bupp(l:SortedSet[Int], i:Int) : SortedSet[Int] = SortedSet.empty[Int] ++ {
     gameClient.close();
   }
 
-  def handleWorldUpdate(serverUpdate: Model.ServerGameWorld) {
+  def handleWorldUpdate(serverUpdate: ServerGameWorld) {
     gameWorldUpdatesQueue =
       Option(gameWorldUpdatesQueue).map(
         x => if (x.size >= GW_UPDATES_SIZE) {
@@ -322,7 +325,7 @@ def bupp(l:SortedSet[Int], i:Int) : SortedSet[Int] = SortedSet.empty[Int] ++ {
         }
       ).head.enqueue((Client.clock(),serverUpdate));
 
-    gameWorldStateChangeQueue = gameWorldStateChangeQueue.enqueue(serverUpdate)
+    gameWorldStateEventQueue = gameWorldStateEventQueue.enqueue(serverUpdate)
 
     /*
     getPlayState.foreach {
@@ -337,7 +340,7 @@ def bupp(l:SortedSet[Int], i:Int) : SortedSet[Int] = SortedSet.empty[Int] ++ {
   /**
    * TODO: Evaluate why this "copy" should be done separate of movement etc
    */
-  def applyWorldUpdate(playState: PlayState, serverUpdate: Model.ServerGameWorld) {
+  //def applyWorldUpdate(playState: PlayState, serverUpdate: Model.ServerGameWorld) {
     //println("ITS INITIALIZED")
     /*val toKill = serverUpdate.deadPlayers.toList
     if (toKill.size > 0) {
@@ -351,7 +354,7 @@ def bupp(l:SortedSet[Int], i:Int) : SortedSet[Int] = SortedSet.empty[Int] ++ {
           playState.visualWorldSimulation.respawnLocalPlayer()
       }
     }*/
-  }
+  //}
 
   class ServerWorldUpdater(visualWorldSimulation:VisualWorldSimulation) extends WorldUpdater {
 
@@ -379,43 +382,44 @@ def bupp(l:SortedSet[Int], i:Int) : SortedSet[Int] = SortedSet.empty[Int] ++ {
     def generateGameWorldToRender(simTime: Long) : Option[VisualGameWorld] = {
       var currentGameWorldUpdates = Queue(gameWorldUpdatesQueue: _*)
 
-      val worldStateChangeToHandle = Seq(gameWorldStateChangeQueue:_*)
-      gameWorldStateChangeQueue = gameWorldStateChangeQueue.companion.empty
+      if(currentGameWorldUpdates.size > 0) {
+        val worldStateEventsToHandle = Seq(gameWorldStateEventQueue:_*)
+        gameWorldStateEventQueue = gameWorldStateEventQueue.companion.empty
 
+        val stateEvents = convertStateChanges(worldStateEventsToHandle)
 
-      val (lastReceivedTS, lastGameWorld) = currentGameWorldUpdates.last
-      val serverRelativeSimeTime = lastGameWorld.timeStamp + (simTime - lastReceivedTS)
+        val (lastReceivedTS, lastGameWorld) = currentGameWorldUpdates.last
+        val serverRelativeSimTime = lastGameWorld.timeStamp + (simTime - lastReceivedTS)
 
-      val stateChanges = convertStateChanges(worldStateChangeToHandle)
-        /*if (list.size > 0) {
-          stateChanges = stateChanges :+ SpawnPlayers(list)
-        }*/
+          /*if (list.size > 0) {
+            stateChanges = stateChanges :+ SpawnPlayers(list)
+          }*/
 
-      /*
-      val toKill = lastGameWorldUpdate.deadPlayers.toList
-      if (toKill.size > 0) {
-        log.info("handle deaths")
-        playState.visualWorldSimulation.handleKilledPlayers(toKill)
-      }
-
-      if (playState.visualWorldSimulation.playerDead) {
-        lastGameWorldUpdate.newAlivePlayersInfo.find( pi => pi.playerId == playerIdOpt.apply().get).foreach {
-          //lastGameWorldUpdate.alivePlayers.find( p => p.playerId == playerIdOpt.apply().get).foreach {
-          pi =>
-            log.debug("Spawning player")
-            val p = lastGameWorldUpdate.alivePlayers.find(p => pi.playerId == p.playerId).getOrElse(throw new IllegalStateException("bad"))
-            playState.visualWorldSimulation.respawnLocalPlayer(p,pi)
+        /*
+        val toKill = lastGameWorldUpdate.deadPlayers.toList
+        if (toKill.size > 0) {
+          log.info("handle deaths")
+          playState.visualWorldSimulation.handleKilledPlayers(toKill)
         }
-      }
-       */
 
-      var buppOpt: Option[(Set[AbstractOwnedGameObject with Savable], ServerGameWorld)] = visualWorldSimulation.generateLocalGameWorld(serverRelativeSimeTime, currentGameWorldUpdates.map(_._2))
-      buppOpt.map(bupp => (bupp._1,bupp._2, stateChanges))
+        if (playState.visualWorldSimulation.playerDead) {
+          lastGameWorldUpdate.newAlivePlayersInfo.find( pi => pi.playerId == playerIdOpt.apply().get).foreach {
+            //lastGameWorldUpdate.alivePlayers.find( p => p.playerId == playerIdOpt.apply().get).foreach {
+            pi =>
+              log.debug("Spawning player")
+              val p = lastGameWorldUpdate.alivePlayers.find(p => pi.playerId == p.playerId).getOrElse(throw new IllegalStateException("bad"))
+              playState.visualWorldSimulation.respawnLocalPlayer(p,pi)
+          }
+        }
+         */
 
+        var buppOpt: Option[(Set[AbstractOwnedGameObject with Savable], ServerGameWorld)] = visualWorldSimulation.generateLocalGameWorld(serverRelativeSimTime, currentGameWorldUpdates.map(_._2))
+        buppOpt.map(bupp => (bupp._1,bupp._2, stateEvents))
+      } else None
     }
   }
 
-  def convertStateChanges(worldStateChangeToHandle: Seq[Model.ServerGameWorld]) : Seq[ServerStateChanges] = {
+  def convertStateChanges(worldStateChangeToHandle: Seq[ServerGameWorld]) : Seq[ServerStateChanges] = {
     var stateChanges = Seq.empty[ServerStateChanges] ++ worldStateChangeToHandle.flatMap {
       u =>
         val ut = u.stateChanges.toList

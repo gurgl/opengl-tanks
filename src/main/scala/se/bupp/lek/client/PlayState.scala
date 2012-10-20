@@ -15,7 +15,7 @@ import collection.{JavaConversions, immutable}
 import JavaConversions.asScalaBuffer
 import scala.Option
 import se.bupp.lek.server.Model._
-import se.bupp.lek.server.{Server, Model}
+import se.bupp.lek.server.{Server}
 import com.jme3.bullet.{BulletAppState, PhysicsSpace, PhysicsTickListener}
 import java.util
 import com.jme3.input.controls.{KeyTrigger, ActionListener, AnalogListener}
@@ -27,6 +27,9 @@ import se.bupp.lek.client.SceneGraphWorld.SceneGraphNodeKeys._
 import scala.Some
 import se.bupp.lek.client.VisualWorldSimulation.PlayerScore
 import com.jme3.font.{Rectangle, BitmapFont, BitmapText}
+import se.bupp.lek.client.Model._
+import se.bupp.lek.common.model.Model._
+
 
 
 /**
@@ -44,6 +47,7 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
 
   var visualWorldSimulation:VisualWorldSimulation = _
 
+  val playerInfos = collection.mutable.Map[PlayerId,ClientPlayerInfo]()
 
 
   val rotSpeed = 3.0f
@@ -106,7 +110,7 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
 
 
   /*def generateLocalGameWorld(simTime: Long,currentGameWorldUpdates:Queue[Model.ServerGameWorld]): (Set[Model.AbstractOwnedGameObject with Savable] , Model.ServerGameWorld) = {
-    val prediction: Set[AbstractOwnedGameObject with Savable] = gameApp.visualWorldSimulation.calculatePrediction(simTime, currentGameWorldUpdates, gameApp.playerIdOpt.get)
+    val prediction: Set[AbstractOwnedGameObject with Savable] = gameApp.visualWorldSimulation.calculateNonLocalObjectsPrediction(simTime, currentGameWorldUpdates, gameApp.playerIdOpt.get)
 
     (prediction, currentGameWorldUpdates.last)
   }*/

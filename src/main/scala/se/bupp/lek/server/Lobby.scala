@@ -2,7 +2,7 @@ package se.bupp.lek.server
 
 import se.bupp.lek.server.Model.{PlayerConnection, GameParticipant, PlayerGO, PlayerJoinRequest}
 import com.jme3.math.{Quaternion, Vector3f}
-
+import se.bupp.lek.common.model.Model._
 /**
  * Created with IntelliJ IDEA.
  * User: karlw
@@ -15,6 +15,8 @@ class Lobby() {
   var connectionSequence = 0
 
   var connectedPlayers = List[PlayerConnection]()
+
+  def findByPlayerId(pid:PlayerId) = connectedPlayers.find(_.playerId == pid)
 
   def removePlayer(playerId:Int) {
 
@@ -33,7 +35,7 @@ class Lobby() {
         var ps = new PlayerConnection
         ps.playerId = playerId
         ps.teamIdentifier = if(pjr.teamIdentifier == -1) playerId else pjr.teamIdentifier
-
+        ps.name = ps.name
         //ps.lastUpdate = None
         ps
       }

@@ -5,7 +5,6 @@ import com.jme3.input.KeyInput
 import com.jme3.input.controls.{AnalogListener, ActionListener, KeyTrigger}
 import com.jme3.scene.{Node, Mesh, Spatial, Geometry}
 import com.jme3.bounding.{BoundingSphere, BoundingBox}
-import se.bupp.lek.server.Model
 import MathUtil._
 import com.jme3.system.AppSettings
 import collection.immutable.{HashSet, Queue}
@@ -97,7 +96,7 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
   var lastLastRecordedActionTime:Long = 0
 
-  def createPlayerActionRequest(lastRecordedActionTime:Long, reorientation:Reorientation,projectiles:List[ProjectileFireGO]): Model.PlayerActionRequest = {
+  def createPlayerActionRequest(lastRecordedActionTime:Long, reorientation:Reorientation,projectiles:List[ProjectileFireGO]): PlayerActionRequest = {
       val request: PlayerActionRequest = new PlayerActionRequest
 
 
@@ -432,11 +431,11 @@ object Client {
         case _ : java.lang.NumberFormatException => None
       }
     }
-    (System.getProperty("gameHost"),System.getProperty("gamePortTCP"), System.getProperty("gamePortUDP")) match {
-      case (h:String,Int(u),Int(t)) => (h,u,t)
+    (System.getProperty("gameHost"),System.getProperty("gamePortTCP"), System.getProperty("gamePortUDP"), System.getProperty("playerInfo")) match {
+      case (h:String,Int(u),Int(t), p:String) => (h,u,t,p)
       case _ => args match {
-        case Array(h,Int(u),Int(t)) => (h,u,t)
-        case _ => ("localhost", 54555, 54777)
+        case Array(h,Int(u),Int(t),p) => (h,u,t,p)
+        case _ => ("localhost", 54555, 54777, "none set")
       }
 
     }

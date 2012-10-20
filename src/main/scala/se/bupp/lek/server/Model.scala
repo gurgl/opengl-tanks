@@ -23,6 +23,8 @@ object Model {
 
     var teamIdentifier: Int = -1
 
+    var name: String = _
+
     override def read(reader: JmeImporter) {}
 
     override def write(writer: JmeExporter) {}
@@ -43,6 +45,8 @@ object Model {
     var playerId: Int = _
 
     var teamIdentifier: Int = -1
+
+    var name: String = _
 
 
     override def read(reader: JmeImporter) {}
@@ -204,7 +208,9 @@ object Model {
     def all = alivePlayers.toList ++ projectiles.toList
   }
 
-  class PlayerJoinRequest {
+  class PlayerJoinRequest(val connectMessage:String) {
+    // TODO : What is this used for?
+    def this() = this("")
     var clientLabel: String = _
     var teamIdentifier : Int = -1
   }

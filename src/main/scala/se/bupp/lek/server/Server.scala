@@ -34,6 +34,13 @@ import org.apache.log4j.Logger
 import se.bupp.lek.common.FuncUtil.RateProbe
 import se.bupp.lek.server.GameLogicFactory.KillBasedStrategy.PlayerKill
 import util.Random
+import java.rmi.registry.{Registry, LocateRegistry}
+import se.bupp.cs3k.api.GameServerFacade
+import java.lang.Exception
+import java.rmi.{Naming, Remote, RMISecurityManager}
+import java.security.Permission
+import java.lang.reflect.Method
+
 
 /**
  * Created by IntelliJ IDEA.
@@ -121,7 +128,8 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
         log.info("Player disconnected")
         // TOOD: Make update loop message out of me
         lobby.removePlayer(playerId)
-        worldSimulator.removeParticipant(playerId)
+        // TODO: Ugly check
+        if(worldSimulator != null) worldSimulator.removeParticipant(playerId)
         gameLogic.removePlayer(playerId)
       }
     }
@@ -150,11 +158,15 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
   override def simpleUpdate(tpf: Float) : Unit = try {
 
 
-    val toHandle = serverMessageQueue.dequeueAll(p => true)
-    if (toHandle.size > 0 ) {
-      log.debug("Server messages to handle " + toHandle.size)
+    val toHandle = serverMessageQueue.synchronized {
+      val th = serverMessageQueue.dequeueAll(p => true)
+      if (th.size > 0 ) {
+        log.debug("Server messages to handle " + th.size)
+      }
+      serverMessageQueue = mutable.Queue.empty[AbstractServerMessage]
+      th
     }
-    serverMessageQueue = mutable.Queue.empty[AbstractServerMessage]
+
     toHandle.foreach {
       case RoundEnded() =>
 
@@ -234,6 +246,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
         // add timer to start round
         // leave lobby mode
         // enter game mode
+        log.info("onGameStart")
         serverMessageQueue.enqueue(GameStarted())
 
       }
@@ -299,9 +312,42 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
   var updateProbe = new RateProbe("App Update", 3000L,log)
 
 
+
+
 }
 
 object Server {
+
+  var gameServerFacade:GameServerFacade = _
+
+
+  def initMasterServerConnection(host:String, port:Int) = {
+    if (System.getSecurityManager() == null) {
+      System.setSecurityManager(new SecurityManager() {
+        override def checkPermission(perm: Permission) {
+
+        }
+      } );
+    }
+    try {
+      //val name = "Compute";
+      val registry = LocateRegistry.getRegistry(host, port);
+
+      var lookup: Remote = registry.lookup("game-server-facade")
+      //lookup.getClass.getInterfaces.toList.foreach(println)
+
+
+
+      gameServerFacade = lookup.asInstanceOf[GameServerFacade]
+    //Pi task = new Pi(Integer.parseInt(args[1]));
+    //BigDecimal pi = comp.executeTask(task);
+    //System.out.println(pi);
+    } catch {
+      case e:Exception =>
+        //System.err.println("ComputePi exception:");
+      e.printStackTrace()
+    }
+  }
 
   def clock() = System.currentTimeMillis()
 
@@ -357,6 +403,8 @@ object Server {
 
   }
 
+  var server:Server = _
+
   def main(args: Array[String]) {
 
     try {
@@ -364,13 +412,16 @@ object Server {
       Thread.sleep(new Random().nextInt(2000))
     } catch { case e:InterruptedException =>  }
 
-    val portSettings = args.toList match {
-      case tcpPort :: udpPort :: rest => new PortSettings(tcpPort.toInt, udpPort.toInt)
-      case _ => new PortSettings(54555, 54777)
+    val (portSettings, masterServerHost, masterServerPort) = args.toList match {
+      case tcpPort :: udpPort :: masterServerHost :: masterServerPort :: rest => (new PortSettings(tcpPort.toInt, udpPort.toInt), masterServerHost, masterServerPort.toInt)
+      case _ => (new PortSettings(54555, 54777), "localhost", 1199)
     }
+
+    initMasterServerConnection(masterServerHost,masterServerPort)
     log.info(portSettings.tcpPort + " " + portSettings.udpPort)
     //Logger.getLogger("com.jme3").setLevel(Level.SEVERE)
-    new Server(portSettings).start(JmeContext.Type.Headless)
+    server = new Server(portSettings)
+    server.start(JmeContext.Type.Headless)
   }
 }
 

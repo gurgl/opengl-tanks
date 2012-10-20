@@ -1,7 +1,6 @@
 package se.bupp.lek.client
 
 import collection.immutable.Queue
-import se.bupp.lek.server.Model
 import collection.immutable
 import com.jme3.export.Savable
 import se.bupp.lek.server.Model._
@@ -21,7 +20,7 @@ object VisualSimulationPrediction {
   type Blaj = (Long,AbstractOwnedGameObject with Savable)
 }
 
-class VisualSimulationPrediction(val gameWorldUpdates:Queue[Model.ServerGameWorld], val playerId:Int) {
+class VisualSimulationPrediction(val gameWorldUpdates:Queue[ServerGameWorld], val playerId:Int) {
   import VisualSimulationPrediction._
   def projectGameHistoryByGameObjectId() : immutable.Map[OwnedGameObjectId,List[(Long, _ <: AbstractOwnedGameObject with Savable)]] = {
     val slots = gameWorldUpdates.last.all.map(_.id).toSet

@@ -90,9 +90,21 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
         case req: PlayerJoinRequest =>
           println("rec " + obj.getClass.getName)
 
-          val resp = playerJoined(req)
-          connectionIdToPlayerIds += (connection.getID -> resp.playerId)
-          connection.sendTCP(resp)
+          new Thread(new Runnable() {
+            def run() {
+
+              if (Server.gameServerFacade != null) {
+                val absPlayerInfo = Server.gameServerFacade.evaluateGamePass(req.connectMessage)
+                log.info("" +absPlayerInfo.getName)
+              } else {
+                log.info("No master server available : " + req.connectMessage)
+              }
+              val resp = playerJoined(req)
+              connectionIdToPlayerIds += (connection.getID -> resp.playerId)
+              connection.sendTCP(resp)
+            }
+          }).start()
+
         case _ =>
       }
     }

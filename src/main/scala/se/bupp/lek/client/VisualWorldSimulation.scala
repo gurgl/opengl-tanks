@@ -27,7 +27,7 @@ import com.jme3.effect.{ParticleMesh, ParticleEmitter}
 import scala.Tuple3
 import scala.Some
 import com.jme3.scene.control.AbstractControl
-import se.bupp.lek.server.{Model, SceneGraphAccessors}
+import se.bupp.lek.server.{SceneGraphAccessors}
 import org.apache.log4j.Logger
 import com.jme3.texture.Texture
 import se.bupp.lek.client.VisualWorldSimulation.ServerStateChanges
@@ -49,7 +49,7 @@ object VisualWorldSimulation {
   case class KillPlayers(val pis:List[Int]) extends ServerStateChanges
   case class PlayerScore(val of:Int, val victim:Int) extends ServerStateChanges
 
-  type VisualGameWorld = (Set[Model.AbstractOwnedGameObject with Savable] , Model.ServerGameWorld, Seq[ServerStateChanges])
+  type VisualGameWorld = (Set[AbstractOwnedGameObject with Savable] , ServerGameWorld, Seq[ServerStateChanges])
 }
 
 
@@ -295,24 +295,24 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
 
   var dbgLastPlayerPos:Vector3f = _
 
-  def generateLocalGameWorld(simTime: Long,currentGameWorldUpdates:Queue[Model.ServerGameWorld]): Option[(Set[Model.AbstractOwnedGameObject with Savable] , Model.ServerGameWorld)] = {
+  def generateLocalGameWorld(simTime: Long,currentGameWorldUpdates:Queue[ServerGameWorld]): Option[(Set[AbstractOwnedGameObject with Savable] , ServerGameWorld)] = {
     if(currentGameWorldUpdates.size > 0) {
 
-      val prediction: Set[AbstractOwnedGameObject with Savable] = calculatePrediction(simTime, currentGameWorldUpdates, playerIdOpt().get)
+      val prediction: Set[AbstractOwnedGameObject with Savable] = calculateNonLocalObjectsPrediction(simTime, currentGameWorldUpdates, playerIdOpt().get)
 
       Some((prediction, currentGameWorldUpdates.last))
     } else None
   }
 
-  private def calculatePrediction(simTime: Long,currentGameWorldUpdates:Queue[ServerGameWorld], playerId:Int) = {
+  private def calculateNonLocalObjectsPrediction(simTime: Long,currentGameWorldUpdates:Queue[ServerGameWorld], playerId:Int) = {
 
     val predictor: VisualSimulationPrediction = new VisualSimulationPrediction(currentGameWorldUpdates, playerId)
-    val nonPlayerPredictons = predictor.interpolateNonPlayerObjects(simTime)
+    val nonLocalObjectsPredictons = predictor.interpolateNonPlayerObjects(simTime)
 
     //nonPlayerPredictons.find(_.pl)
 
 
-    nonPlayerPredictons.distinct.toSet
+    nonLocalObjectsPredictons.distinct.toSet
   }
 
 
