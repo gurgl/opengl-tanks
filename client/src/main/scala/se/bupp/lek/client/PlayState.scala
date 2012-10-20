@@ -6,7 +6,6 @@ import com.jme3.app.state.{AppStateManager, AbstractAppState}
 import com.jme3.app.Application
 import collection.immutable.Queue
 import collection.immutable.Queue._
-import MathUtil._
 import com.jme3.app.SimpleApplication._
 import com.jme3.scene.{Spatial, SceneGraphVisitor, Node}
 import com.jme3.export.Savable

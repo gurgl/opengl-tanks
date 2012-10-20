@@ -1,8 +1,9 @@
 package se.bupp.lek
 
 import com.esotericsoftware.kryonet.{Connection, Listener, Client => KryoClient}
+import common.model.Model
 import management.ManagementFactory
-import se.bupp.lek.common.Model.{PlayerActionRequest, PlayerJoinRequest, PlayerJoinResponse, ServerGameWorld}
+import se.bupp.lek.common.Model._
 import se.bupp.lek.server.{Server}
 import scala.Some
 
@@ -25,7 +26,7 @@ object TestClient {
     println("Tjo")
     val kryo = gameClient.getKryo();
 
-    Server.getNetworkMessages.foreach(kryo.register(_))
+    getNetworkMessages.foreach(kryo.register(_))
 
     gameClient.addListener(new Listener() {
       override def received(connection: Connection, obj: Object) {

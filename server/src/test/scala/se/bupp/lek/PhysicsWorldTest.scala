@@ -1,7 +1,7 @@
 package se.bupp.lek
 
-import client.SceneGraphWorld.SceneGraphUserDataKeys
-import client.{SceneGraphWorld, MathUtil}
+import common.SceneGraphWorld.SceneGraphUserDataKeys
+import common.{SceneGraphWorld, MathUtil}
 import server.PhysicsSpaceSimAdapter
 import common.Model.{Orientation, MotionGO, PlayerGO, GameParticipant}
 import com.jme3.math.{Quaternion, Vector3f}

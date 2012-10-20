@@ -1,7 +1,8 @@
 package se.bupp.lek
 
-import client.SceneGraphWorld.SceneGraphUserDataKeys
-import client.{SceneGraphWorld, MathUtil}
+import common.SceneGraphWorld.SceneGraphUserDataKeys
+import common.{MathUtil, SceneGraphWorld}
+
 import com.jme3.asset.{DesktopAssetManager, AssetManager, ModelKey}
 import com.jme3.bullet.PhysicsSpace
 import com.jme3.bullet.PhysicsSpace.BroadphaseType

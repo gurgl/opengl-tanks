@@ -12,12 +12,11 @@ import collection.{mutable, JavaConversions}
 import JavaConversions.asScalaBuffer
 import scala.{None, Some}
 import com.jme3.math.Vector3f
-import se.bupp.lek.client.MathUtil._
 import org.apache.log4j.Logger
 import se.bupp.lek.common.FuncUtil.RateProbe
 import com.jme3.export.Savable
 import com.esotericsoftware.kryonet.Listener.LagListener
-import se.bupp.lek.common.Tmp
+import se.bupp.lek.common.{MathUtil, Tmp}
 
 
 /**
@@ -31,7 +30,7 @@ import se.bupp.lek.common.Tmp
 object PlayerActionQueue {
 
   var accTranslation = Vector3f.ZERO.clone()
-  var accRotation = noRotation
+  var accRotation = MathUtil.noRotation
 
   var fired = mutable.Stack[ProjectileFireGO]()
 
@@ -43,7 +42,7 @@ object PlayerActionQueue {
   def flushMotion() : Reorientation = {
     val r = (accTranslation,accRotation)
     accTranslation = Vector3f.ZERO.clone()
-    accRotation = noRotation
+    accRotation = MathUtil.noRotation
     r
   }
 

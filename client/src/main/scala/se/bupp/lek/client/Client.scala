@@ -5,7 +5,6 @@ import com.jme3.input.KeyInput
 import com.jme3.input.controls.{AnalogListener, ActionListener, KeyTrigger}
 import com.jme3.scene.{Node, Mesh, Spatial, Geometry}
 import com.jme3.bounding.{BoundingSphere, BoundingBox}
-import MathUtil._
 import com.jme3.system.AppSettings
 import collection.immutable.{HashSet, Queue}
 import se.bupp.lek.client.VisualWorldSimulation._
@@ -26,28 +25,15 @@ import java.util.{TimerTask, Timer}
 import com.jme3.font.plugins.BitmapFontLoader
 import scala.Int
 import util.Random
-import se.bupp.lek.common.Tmp
+import se.bupp.lek.common.{MathUtil, Tmp}
 
 
-/**
- * Created by IntelliJ IDEA.
- * User: karlw
- * Date: 5/16/12
- * Time: 11:49 PM
- * To change this template use File | Settings | File Templates.
- */
 
 
-object MathUtil {
-  def noRotation = Quaternion.ZERO.clone().fromAngleNormalAxis(0f,Vector3f.UNIT_XYZ.clone())
-
-  def noMotion:Reorientation = (Vector3f.ZERO.clone(), noRotation)
-
-}
 
 
 object PlayerInput {
-  val noPlayerInput = noMotion
+  val noPlayerInput = MathUtil.noMotion
   type Reorientation = (Vector3f,Quaternion)
 }
 
