@@ -87,10 +87,12 @@ object MyBuild extends Build {
       "com.esotericsoftware" % "jsonbeans" % "0.2",
       "com.esotericsoftware" % "reflectasm" % "1.03",
       "org.ow2.asm" % "asm" % "4.0",*/
+      //"org.springframework" % "spring-context" % "3.1.2.RELEASE",
       "org.specs2" %% "specs2" % "1.11" % "test",
       "org.mockito" % "mockito-all" % "1.9.0" % "test",
       "org.scalaz" %% "scalaz-core" % "6.0.4",
       "org.objenesis" % "objenesis" % "1.2",
+      "se.paronglans" %% "cs3k-api" % "0.3-SNAPSHOT" changing(),
       "log4j" % "log4j" % "1.2.17"
       /*"com.jmonkey" % "engine" % "3.0beta" from "file:///home/karlw/src/3rdparty/jme3/engine/dist/lib/jME3-core.jar",
       "com.jmonkey" % "engine-terr" % "3.0beta" from "file:///home/karlw/src/3rdparty/jme3/engine/dist/lib/jME3-terrain.jar"*/
@@ -101,7 +103,7 @@ object MyBuild extends Build {
   lazy val ClientBuild = config("samples") extend(Compile)
 
   // defines the project to have the "samples" configuration
-  lazy val serverProject = Project("client", file("."), settings = clientSettings)
+  lazy val clientProject = Project("client", file("."), settings = clientSettings)
     .configs(ClientBuild)
 
   def clientSettings = Project.defaultSettings ++

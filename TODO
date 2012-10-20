@@ -33,6 +33,23 @@ Well ok.. how does this sound. I set server physics sim to continous realtime (a
 
 
 
+* okt 18, 2012 5:05:36 EM com.jme3.app.Application handleError
+SEVERE: Uncaught exception thrown in Thread[LWJGL Renderer Thread,5,javawsApplicationThreadGroup]
+java.util.NoSuchElementException: head on empty queue
+	at scala.collection.immutable.Queue.head(Queue.scala:80)
+	at scala.collection.TraversableLike$class.last(TraversableLike.scala:441)
+	at scala.collection.immutable.Queue.last(Queue.scala:42)
+	at se.bupp.lek.client.NetworkGameState$ServerWorldUpdater.generateGameWorldToRender(NetworkGameState.scala:386)
+	at se.bupp.lek.client.PlayState.update(PlayState.scala:93)
+	at com.jme3.app.state.AppStateManager.update(AppStateManager.java:255)
+	at com.jme3.app.SimpleApplication.update(SimpleApplication.java:241)
+	at com.jme3.system.lwjgl.LwjglAbstractDisplay.runLoop(LwjglAbstractDisplay.java:149)
+	at com.jme3.system.lwjgl.LwjglDisplay.runLoop(LwjglDisplay.java:182)
+	at com.jme3.system.lwjgl.LwjglAbstractDisplay.run(LwjglAbstractDisplay.java:223)
+	at java.lang.Thread.run(Unknown Source)
+
+
+
 http://gafferongames.com/2010/03/11/gdc-2010-networked-physics-slides-demo/
 
 
