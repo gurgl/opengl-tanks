@@ -6,3 +6,6 @@
 /*.classpath
 /.project
 /*.dll
+/server/target/
+/client/target/
+/common/target/
