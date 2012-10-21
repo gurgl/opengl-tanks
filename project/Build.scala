@@ -17,7 +17,8 @@ object MyBuild extends Build {
   val JME_VERSION = "3.0.0.20120512-SNAPSHOT"
 
   lazy val rootProject = Project(id = "root",
-    base = file(".")
+    base = file("."),
+    settings = Project.defaultSettings
   ) aggregate(serverProject, clientProject)
 
   lazy val commonProject = Project("common",
@@ -27,7 +28,7 @@ object MyBuild extends Build {
 
   lazy val serverProject = Project(id = "server",
     base = file("server"),
-    settings = Project.defaultSettings ++ serverSettings ++ Seq(serverClassPathTask)
+    settings = Project.defaultSettings ++ serverSettings  ++ net.virtualvoid.sbt.graph.Plugin.graphSettings // ++ Seq(serverClassPathTask)
   ) dependsOn(commonProject)
 
   lazy val clientProject = Project("client",
@@ -48,7 +49,10 @@ object MyBuild extends Build {
       "com.jme3" % "vecmath" % JME_VERSION,
       "com.jme3" % "jME3-core" % JME_VERSION*/
       //"com.esotericsoftware.kryo" % "kryo" % "2.18"
-    ) ++ allDependsOn ++ jmeClientAndServer
+    ) ++ allDependsOn ++ jmeClientAndServer ++ testDeps,
+    unmanagedResourceDirectories in Compile <+=  baseDirectory { dir =>
+      dir / "src/main/blender" // +++ dir/"src/main/resources/reports"
+    }
   )
 
 
@@ -57,17 +61,14 @@ object MyBuild extends Build {
     organization := "se.bupp",
     resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/public",
     //publishArtifact in (Compile, packageBin) := false,
-    libraryDependencies ++=  Seq()
+    libraryDependencies ++=  testDeps
   )
 
   lazy val clientSettings = Seq[Project.Setting[_]](
     name:= "client",
     version:= "1.0",
-    libraryDependencies ++=  jmeClient,
+    libraryDependencies ++=  jmeClient ++ testDeps,
     resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/public",
-    unmanagedResourceDirectories in Compile <+=  baseDirectory { dir =>
-      dir / "src/main/blender" // +++ dir/"src/main/resources/reports"
-    },
     mainClass in (Compile, packageBin)  := Some("se.bupp.lek.client.Client"),
     mappings in (Compile,packageBin) ~= { (ms: Seq[(File, String)]) =>
       ms filter { case (file, toPath) =>
@@ -108,7 +109,6 @@ object MyBuild extends Build {
   )
 
   val jmeClient = Seq(
-    "com.jme3" % "jME3-desktop" % JME_VERSION,
     "com.jme3" % "jME3-effects" % JME_VERSION,
     "com.jme3" % "j-ogg-oggd" % JME_VERSION,
     "com.jme3" % "j-ogg-vorbisd" % JME_VERSION,
@@ -120,6 +120,7 @@ object MyBuild extends Build {
   )
 
   val jmeClientAndServer = Seq(
+    "com.jme3" % "jME3-desktop" % JME_VERSION,
     "com.jme3" % "eventbus" % JME_VERSION,
     "com.jme3" % "jbullet" % JME_VERSION,
     "com.jme3" % "jME3-blender" % JME_VERSION,
@@ -147,14 +148,17 @@ object MyBuild extends Build {
 "com.esotericsoftware" % "reflectasm" % "1.03",
 "org.ow2.asm" % "asm" % "4.0",*/
     //"org.springframework" % "spring-context" % "3.1.2.RELEASE",
-    "org.specs2" %% "specs2" % "1.11" % "test",
-    "org.mockito" % "mockito-all" % "1.9.0" % "test",
     "org.objenesis" % "objenesis" % "1.2",
     "com.esotericsoftware.kryo" % "kryo" % "2.20",
     "se.paronglans" %% "cs3k-api" % "0.3-SNAPSHOT", // changing(),
     "log4j" % "log4j" % "1.2.17"
     /*"com.jmonkey" % "engine" % "3.0beta" from "file:///home/karlw/src/3rdparty/jme3/engine/dist/lib/jME3-core.jar",
 "com.jmonkey" % "engine-terr" % "3.0beta" from "file:///home/karlw/src/3rdparty/jme3/engine/dist/lib/jME3-terrain.jar"*/
+  )
+
+  val testDeps = Seq(
+    "org.specs2" %% "specs2" % "1.11" % "test",
+    "org.mockito" % "mockito-all" % "1.9.0" % "test"
   )
 
   val serverClassPath = TaskKey[Unit]("server-class-path", "Deletes files produced by the build, such as generated sources, compiled classes, and task caches.")
