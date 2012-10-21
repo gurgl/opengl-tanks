@@ -166,7 +166,8 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
       serverMessageQueue = mutable.Queue.empty[AbstractServerMessage]
       th
     }
-    log.info("To handle : " + toHandle.map(_.getClass.getSimpleName).mkString(","))
+    if(toHandle.size > 0 ) log.info("To handle : " + toHandle.map(_.getClass.getSimpleName).mkString(","))
+
     toHandle.foreach {
       case RoundEnded() =>
 
