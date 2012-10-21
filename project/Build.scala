@@ -16,6 +16,10 @@ object MyBuild extends Build {
 
   val JME_VERSION = "3.0.0.20120512-SNAPSHOT"
 
+  lazy val rootProject = Project(id = "root",
+    base = file(".")
+  ) aggregate(serverProject, clientProject)
+
   lazy val commonProject = Project("common",
     base = file("common"),
     settings = Project.defaultSettings ++ commonSettings
@@ -31,24 +35,20 @@ object MyBuild extends Build {
     settings = Project.defaultSettings ++ clientSettings ++ webStartSettings
   ) dependsOn(commonProject)
 
-  lazy val rootProject = Project(id = "root",
-    base = file(".")
-  ) aggregate(serverProject, clientProject)
-
   lazy val commonSettings = Seq(
     version := "0.1",
     organization := "se.bupp",
     resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/public",
     //publishArtifact in (Compile, packageBin) := false,
     libraryDependencies ++=  Seq(
-      "org.scalaz" %% "scalaz-core" % "6.0.4",
-      "log4j" % "log4j" % "1.2.17",
-      "com.jme3" % "jbullet" % JME_VERSION,
+      "org.scalaz" %% "scalaz-core" % "6.0.4"
+      //"log4j" % "log4j" % "1.2.17"
+      /*"com.jme3" % "jbullet" % JME_VERSION,
       "com.jme3" % "jME3-jbullet" % JME_VERSION,
       "com.jme3" % "vecmath" % JME_VERSION,
-      "com.jme3" % "jME3-core" % JME_VERSION
+      "com.jme3" % "jME3-core" % JME_VERSION*/
       //"com.esotericsoftware.kryo" % "kryo" % "2.18"
-    )
+    ) ++ allDependsOn ++ jmeClientAndServer
   )
 
 
@@ -57,13 +57,13 @@ object MyBuild extends Build {
     organization := "se.bupp",
     resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/public",
     //publishArtifact in (Compile, packageBin) := false,
-    libraryDependencies ++=  allDependsOn ++ jmeMaven
+    libraryDependencies ++=  Seq()
   )
 
   lazy val clientSettings = Seq[Project.Setting[_]](
     name:= "client",
     version:= "1.0",
-    libraryDependencies ++=  allDependsOn ++ jmeMaven,
+    libraryDependencies ++=  jmeClient,
     resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/public",
     unmanagedResourceDirectories in Compile <+=  baseDirectory { dir =>
       dir / "src/main/blender" // +++ dir/"src/main/resources/reports"
@@ -107,30 +107,34 @@ object MyBuild extends Build {
     ))
   )
 
-  val jmeMaven = Seq(
-    "com.jme3" % "eventbus" % JME_VERSION,
-    "com.jme3" % "jbullet" % JME_VERSION,
-    "com.jme3" % "jinput" % JME_VERSION,
-    "com.jme3" % "jME3-blender" % JME_VERSION,
-    "com.jme3" % "jME3-core" % JME_VERSION,
+  val jmeClient = Seq(
     "com.jme3" % "jME3-desktop" % JME_VERSION,
     "com.jme3" % "jME3-effects" % JME_VERSION,
-    "com.jme3" % "jME3-jbullet" % JME_VERSION,
-    "com.jme3" % "jME3-jogg" % JME_VERSION,
-    "com.jme3" % "jME3-lwjgl" % JME_VERSION,
-    "com.jme3" % "jME3-lwjgl-natives" % JME_VERSION,
-    "com.jme3" % "jME3-networking" % JME_VERSION,
-    "com.jme3" % "jME3-niftygui" % JME_VERSION,
-    "com.jme3" % "jME3-plugins" % JME_VERSION,
-    "com.jme3" % "jME3-terrain" % JME_VERSION,
-    "com.jme3" % "jME3-testdata" % JME_VERSION,
     "com.jme3" % "j-ogg-oggd" % JME_VERSION,
     "com.jme3" % "j-ogg-vorbisd" % JME_VERSION,
     "com.jme3" % "lwjgl" % JME_VERSION,
-    "com.jme3" % "nifty" % JME_VERSION,
-    "com.jme3" % "nifty-default-controls" % JME_VERSION,
-    "com.jme3" % "nifty-examples" % JME_VERSION,
-    "com.jme3" % "nifty-style-black" % JME_VERSION,
+    "com.jme3" % "jME3-jogg" % JME_VERSION,
+    "com.jme3" % "jinput" % JME_VERSION
+  )
+
+  val jmeClientAndServer = Seq(
+    "com.jme3" % "eventbus" % JME_VERSION,
+    "com.jme3" % "jbullet" % JME_VERSION,
+    "com.jme3" % "jME3-blender" % JME_VERSION,
+    "com.jme3" % "jME3-core" % JME_VERSION,
+    "com.jme3" % "jME3-jbullet" % JME_VERSION,
+
+    "com.jme3" % "jME3-lwjgl" % JME_VERSION,
+    "com.jme3" % "jME3-lwjgl-natives" % JME_VERSION,
+    //"com.jme3" % "jME3-networking" % JME_VERSION,
+    //"com.jme3" % "jME3-niftygui" % JME_VERSION,
+    "com.jme3" % "jME3-plugins" % JME_VERSION,
+    "com.jme3" % "jME3-terrain" % JME_VERSION,
+    "com.jme3" % "jME3-testdata" % JME_VERSION,
+    //"com.jme3" % "nifty" % JME_VERSION,
+    //"com.jme3" % "nifty-default-controls" % JME_VERSION,
+    //"com.jme3" % "nifty-examples" % JME_VERSION,
+    //"com.jme3" % "nifty-style-black" % JME_VERSION,
     "com.jme3" % "stack-alloc" % JME_VERSION,
     "com.jme3" % "vecmath" % JME_VERSION,
     "com.jme3" % "xmlpull-xpp3" % JME_VERSION)
@@ -147,7 +151,7 @@ object MyBuild extends Build {
     "org.mockito" % "mockito-all" % "1.9.0" % "test",
     "org.objenesis" % "objenesis" % "1.2",
     "com.esotericsoftware.kryo" % "kryo" % "2.20",
-    "se.paronglans" %% "cs3k-api" % "0.3-SNAPSHOT" changing(),
+    "se.paronglans" %% "cs3k-api" % "0.3-SNAPSHOT", // changing(),
     "log4j" % "log4j" % "1.2.17"
     /*"com.jmonkey" % "engine" % "3.0beta" from "file:///home/karlw/src/3rdparty/jme3/engine/dist/lib/jME3-core.jar",
 "com.jmonkey" % "engine-terr" % "3.0beta" from "file:///home/karlw/src/3rdparty/jme3/engine/dist/lib/jME3-terrain.jar"*/
