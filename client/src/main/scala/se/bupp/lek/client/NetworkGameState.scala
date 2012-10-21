@@ -97,8 +97,6 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
   var orderedMessageBuffer = SortedSet.empty[OrderedMessage]
 
 
-
-
   //implicit def orderingOnConstrainedType[G <: OrderedMessage]: Ordering[G]
 
   def bufferMessage(om:OrderedMessage) {

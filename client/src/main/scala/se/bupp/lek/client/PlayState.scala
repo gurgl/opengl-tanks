@@ -141,6 +141,7 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
     setupInput()
     initialized = true
     printSceneGraph(visualWorldSimulation.rootNode)
+    log.debug("PlayState initialized")
   }
 
   val lock : AnyRef = new Object()

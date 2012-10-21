@@ -37,7 +37,7 @@ import util.Random
 import java.rmi.registry.{Registry, LocateRegistry}
 import se.bupp.cs3k.api.GameServerFacade
 import java.lang.Exception
-import java.rmi.{Naming, Remote, RMISecurityManager}
+import java.rmi.{ConnectException, Naming, Remote, RMISecurityManager}
 import java.security.Permission
 import java.lang.reflect.Method
 
@@ -343,9 +343,11 @@ object Server {
     //BigDecimal pi = comp.executeTask(task);
     //System.out.println(pi);
     } catch {
-      case e:Exception =>
+      case e:ConnectException =>
+        log.info("Not able to connecto master server - continueing wo")
         //System.err.println("ComputePi exception:");
-      e.printStackTrace()
+
+      case e:Exception => e.printStackTrace()
     }
   }
 

@@ -161,7 +161,8 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
   var gameFont:BitmapFont = _
 
-  override def simpleInitApp() {
+  override def simpleInitApp() : Unit = try {
+    log.debug("Init appp start")
     java.util.logging.Logger.getLogger("com.jme3").setLevel(java.util.logging.Level.WARNING);
     settings.setTitle("Tank Showdown")
     setPauseOnLostFocus(false)
@@ -197,9 +198,11 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
     //bulletAppState.getPhysicsSpace.addTickListener(playState)
 
+
     initAudio()
     //playState.setupInput()
-  }
+    log.debug("App initialized")
+  } catch { case e:Exception => e.printStackTrace }
 
 
   def createBulletAppState: BulletAppState {def render(rm: RenderManager): Unit} = {
@@ -222,6 +225,7 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
   class DoGameOver()
 
   override def simpleUpdate(tpf: Float) {
+
 
     //if (gotGO ) println("Start please")
     val toHandle  = messages.dequeueFirst( p => true)
