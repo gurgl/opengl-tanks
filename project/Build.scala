@@ -113,6 +113,8 @@ object MyBuild extends Build {
     "com.jme3" % "j-ogg-oggd" % JME_VERSION,
     "com.jme3" % "j-ogg-vorbisd" % JME_VERSION,
     "com.jme3" % "lwjgl" % JME_VERSION,
+    "com.jme3" % "jME3-lwjgl" % JME_VERSION,
+    "com.jme3" % "jME3-lwjgl-natives" % JME_VERSION,
     "com.jme3" % "jME3-jogg" % JME_VERSION,
     "com.jme3" % "jinput" % JME_VERSION
   )
@@ -124,8 +126,6 @@ object MyBuild extends Build {
     "com.jme3" % "jME3-core" % JME_VERSION,
     "com.jme3" % "jME3-jbullet" % JME_VERSION,
 
-    "com.jme3" % "jME3-lwjgl" % JME_VERSION,
-    "com.jme3" % "jME3-lwjgl-natives" % JME_VERSION,
     //"com.jme3" % "jME3-networking" % JME_VERSION,
     //"com.jme3" % "jME3-niftygui" % JME_VERSION,
     "com.jme3" % "jME3-plugins" % JME_VERSION,
