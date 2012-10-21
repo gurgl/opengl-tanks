@@ -2,10 +2,14 @@
 /.idea_modules/
 /bin/
 /target/
-/OpenAL64.dll
 /*.classpath
 /.project
 /*.dll
 /server/target/
 /client/target/
 /common/target/
+/client/OpenAL64.dll
+/client/lwjgl64.dll
+/testKeys
+/.cache
+/.history
