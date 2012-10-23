@@ -125,7 +125,7 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
   override def initialize(stateManager: AppStateManager, app: Application) {
     gameApp = app.asInstanceOf[Client]
 
-    val state: NetworkGameState = gameApp.getStateManager.getState(classOf[NetworkGameState])
+    //val state: NetworkGameState = gameApp.getStateManager.getState(classOf[NetworkGameState])
 
     contentNode = new Node(NODE_NAME)
     gameApp.getGuiNode.attachChild(contentNode)
@@ -231,7 +231,6 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
   def unspawnAllPlayers() {
     visualWorldSimulation.playerDead = true
     visualWorldSimulation.cleanNodes(List(Player,Projectiles,Enemies,Effects))
-
   }
 
   /*def unspawnAllGameObject() {

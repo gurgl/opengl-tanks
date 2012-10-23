@@ -93,8 +93,8 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
           new Thread(new Runnable() {
             def run() {
 
-              if (Server.gameServerFacade != null) {
-                val absPlayerInfo = Server.gameServerFacade.evaluateGamePass(req.connectMessage)
+              val absPlayerInfo = Server.gameServerFacade.evaluateGamePass(req.connectMessage)
+              if (absPlayerInfo != null) {
                 log.info("" +absPlayerInfo.getName)
               } else {
                 log.info("No master server available : " + req.connectMessage)

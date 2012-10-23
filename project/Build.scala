@@ -150,7 +150,7 @@ object MyBuild extends Build {
     //"org.springframework" % "spring-context" % "3.1.2.RELEASE",
     "org.objenesis" % "objenesis" % "1.2",
     "com.esotericsoftware.kryo" % "kryo" % "2.20",
-    "se.paronglans" %% "cs3k-api" % "0.3-SNAPSHOT", // changing(),
+    "se.paronglans" %% "cs3k-api" % "0.3-SNAPSHOT" changing(),
     "log4j" % "log4j" % "1.2.17"
     /*"com.jmonkey" % "engine" % "3.0beta" from "file:///home/karlw/src/3rdparty/jme3/engine/dist/lib/jME3-core.jar",
 "com.jmonkey" % "engine-terr" % "3.0beta" from "file:///home/karlw/src/3rdparty/jme3/engine/dist/lib/jME3-terrain.jar"*/

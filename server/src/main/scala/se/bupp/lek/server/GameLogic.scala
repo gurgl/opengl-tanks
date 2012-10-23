@@ -90,7 +90,7 @@ class GameLogic(var gameSettings:GameMatchSettings, var listener:GameLogicListen
   }
 
   def gameEnded() {
-    listener.onGameEnd(null)
+    listener.onGameEnd(scoreStrategy.getEndGameResult)
   }
 
 

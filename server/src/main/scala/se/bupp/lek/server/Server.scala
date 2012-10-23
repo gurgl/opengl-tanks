@@ -31,7 +31,7 @@ import se.bupp.lek.server.Server.GameMatchSettings.WhenNumOfConnectedPlayersCrit
 import se.bupp.lek.server.Server.GameMatchSettings.NumOfRoundsPlayed
 
 import org.apache.log4j.Logger
-import se.bupp.lek.common.FuncUtil.RateProbe
+import se.bupp.lek.common.FuncUtil.{Int, RateProbe}
 import se.bupp.lek.server.GameLogicFactory.KillBasedStrategy.PlayerKill
 import util.Random
 import java.rmi.registry.{Registry, LocateRegistry}
@@ -40,6 +40,8 @@ import java.lang.Exception
 import java.rmi.{ConnectException, Naming, Remote, RMISecurityManager}
 import java.security.Permission
 import java.lang.reflect.Method
+import java.util
+
 
 
 /**
@@ -269,14 +271,15 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
         // send displayable score modification
       }
 
-      def onIntermediateRoundEnd(roundResults: RoundResults, standing: GameTotalResults) {
+      def onIntermediateRoundEnd(roundResults: RoundResults, standing: AbstractGameResult) {
         // send countdown message
         // add timer to start round
         onUpdateSentMessageQueue.enqueue(RoundEnded())
       }
 
-      def onGameEnd(totals: GameTotalResults) {
+      def onGameEnd(totals: AbstractGameResult) {
         log.debug("Scheduling Game End")
+        Server.occassionId.foreach( o => Server.gameServerFacade.endGame(o,String.valueOf(totals)))
         onUpdateSentMessageQueue.enqueue(GameEnded())
       }
     }
@@ -319,8 +322,9 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
 
 object Server {
 
-  var gameServerFacade:GameServerFacade = _
 
+  var occassionId = Option.empty[Int]
+  var gameServerFacade:GameServerFacade = _
 
   def initMasterServerConnection(host:String, port:Int) = {
     if (System.getSecurityManager() == null) {
@@ -337,9 +341,8 @@ object Server {
       var lookup: Remote = registry.lookup("game-server-facade")
       //lookup.getClass.getInterfaces.toList.foreach(println)
 
-
-
       gameServerFacade = lookup.asInstanceOf[GameServerFacade]
+      log.info("gameServerFacade" + gameServerFacade)
     //Pi task = new Pi(Integer.parseInt(args[1]));
     //BigDecimal pi = comp.executeTask(task);
     //System.out.println(pi);
@@ -349,6 +352,18 @@ object Server {
         //System.err.println("ComputePi exception:");
 
       case e:Exception => e.printStackTrace()
+    } finally {
+      if(gameServerFacade == null) {
+        gameServerFacade = new GameServerFacade {
+          def evaluateGamePass(p1: String) = null
+
+          def startGame(p1: java.lang.Integer, p2: util.Map[java.lang.Integer, java.lang.Integer]) {}
+
+          def startGame(p1: java.lang.Integer, p2: util.List[java.lang.Integer]) {}
+
+          def endGame(p1: java.lang.Integer, p2: String) {}
+        }
+      }
     }
   }
 
@@ -390,10 +405,17 @@ object Server {
       Thread.sleep(new Random().nextInt(2000))
     } catch { case e:InterruptedException =>  }
 
-    val (portSettings, masterServerHost, masterServerPort) = args.toList match {
-      case tcpPort :: udpPort :: masterServerHost :: masterServerPort :: rest => (new PortSettings(tcpPort.toInt, udpPort.toInt), masterServerHost, masterServerPort.toInt)
-      case _ => (new PortSettings(54555, 54777), "localhost", 1199)
+    val (portSettings, masterServerHost, masterServerPort, occIdOpt) = args.toList match {
+      case tcpPort :: udpPort :: masterServerHost :: masterServerPort :: rest =>
+        val pOccassionId = rest match {
+          case Nil => None
+          case Int(occId) :: whatever => Some(occId)
+          case _ => None
+        }
+        (new PortSettings(tcpPort.toInt, udpPort.toInt), masterServerHost, masterServerPort.toInt, pOccassionId)
+      case _ => (new PortSettings(54555, 54777), "localhost", 1199, None)
     }
+    occassionId = occIdOpt
 
     initMasterServerConnection(masterServerHost,masterServerPort)
     log.info(portSettings.tcpPort + " " + portSettings.udpPort)

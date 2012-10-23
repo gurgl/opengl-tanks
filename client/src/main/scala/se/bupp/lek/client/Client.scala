@@ -20,16 +20,12 @@ import com.jme3.app.state.{AppStateManager, AbstractAppState}
 import com.jme3.font.{BitmapFont, BitmapText}
 
 import org.apache.log4j.{Logger, PropertyConfigurator}
-import se.bupp.lek.common.FuncUtil.RateProbe
+import se.bupp.lek.common.FuncUtil.{Int, RateProbe}
 import java.util.{TimerTask, Timer}
 import com.jme3.font.plugins.BitmapFontLoader
-import scala.Int
+
 import util.Random
 import se.bupp.lek.common.{MathUtil, Tmp}
-
-
-
-
 
 
 object PlayerInput {
@@ -414,13 +410,7 @@ object Client {
   def clock() = System.currentTimeMillis() + clockOffset
 
   def getHostSettings(args: Array[String]) = {
-    object Int {
-      def unapply(s : String) : Option[Int] = try {
-        Some(s.toInt)
-      } catch {
-        case _ : java.lang.NumberFormatException => None
-      }
-    }
+
     (System.getProperty("gameHost"),System.getProperty("gamePortTCP"), System.getProperty("gamePortUDP"), System.getProperty("playerInfo")) match {
       case (h:String,Int(u),Int(t), p:String) => (h,u,t,p)
       case _ => args match {

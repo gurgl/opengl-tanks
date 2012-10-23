@@ -13,6 +13,14 @@ import org.apache.log4j.Logger
 
 object FuncUtil {
 
+  object Int {
+    def unapply(s : String) : Option[Int] = try {
+      Some(s.toInt)
+    } catch {
+      case _ : java.lang.NumberFormatException => None
+    }
+  }
+
   class SampleProbe(val name:String, val interval:Long, log:Logger) {
     var debugLastOutput = 0L
 

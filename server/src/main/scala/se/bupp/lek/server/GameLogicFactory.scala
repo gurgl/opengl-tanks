@@ -17,6 +17,9 @@ import se.bupp.lek.server.GameLogicFactory.KillBasedStrategy.PlayerKill
 
 object GameLogicFactory {
 
+
+
+
   class AbstractScoringControllables(val scorePerTic:Map[Int, Int]) {
 
   }
@@ -33,10 +36,13 @@ object GameLogicFactory {
     def keepsTic()
 
     def getCompetitorScore(competitorId:Int) : Int
+
+    def getEndGameResult() : AbstractGameResult = null
   }
 
   object KillBasedStrategy {
     class PlayerKill(val of:Int,val vi:Int) extends AbstractScoreDescription
+    class EndGameResult(val s:String) extends AbstractGameResult
   }
 
   class KillBasedStrategy extends ScoreStrategy {
@@ -86,6 +92,7 @@ object GameLogicFactory {
       currentRound.competitorKills(competitorId).size
     }
 
+    override def getEndGameResult() = new KillBasedStrategy.EndGameResult("tja")
   }
 
   class ControllablesScoringStrategy(var currentKeeps:AbstractScoringControllables) extends ScoreStrategy {
@@ -128,16 +135,16 @@ object GameLogicFactory {
 
     def onIntermediateRoundStart()
 
-    def onIntermediateRoundEnd(roundResults:RoundResults, standing:GameTotalResults)
+    def onIntermediateRoundEnd(roundResults:RoundResults, standing:AbstractGameResult)
 
-    def onGameEnd(totals:GameTotalResults)
+    def onGameEnd(totals:AbstractGameResult)
 
     def onCompetetitorScored(scoreDescription:AbstractScoreDescription)
   }
 
   class AbstractScoreDescription()
 
-  class GameTotalResults()
+  class AbstractGameResult()
 
   class RoundResults()
 
