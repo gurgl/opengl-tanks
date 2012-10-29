@@ -52,6 +52,8 @@ class ProtocolTests extends Specification with Mockito {
 
       //res.apply(1) should be equalTo SpawnPlayers(List((SpawnPlayer(2,"asdf",2),p2)))
       res.apply(2) should be equalTo KillPlayers(List(2,1))
+
+
     }
   }
 }

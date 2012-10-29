@@ -1,6 +1,7 @@
 /*import _root_.WebStartPlugin.GenConf
 import _root_.WebStartPlugin.JnlpConf
 import _root_.WebStartPlugin.KeyConf*/
+
 import sbt._
 import sbt.Keys._
 import sbt.Package.ManifestAttributes
@@ -8,6 +9,7 @@ import sbt.Defaults._
 import java.util.jar.Attributes.Name._
 import sbt.Package.ManifestAttributes
 import sbt.Package.ManifestAttributes
+import com.github.retronym.SbtOneJar.oneJar
 import scala.Some
 import scala.Some
 import WebStartPlugin._
@@ -18,7 +20,7 @@ object MyBuild extends Build {
 
   lazy val rootProject = Project(id = "root",
     base = file("."),
-    settings = Project.defaultSettings
+    settings = Project.defaultSettings ++ Seq(publishArtifact in Test := true)
   ) aggregate(serverProject, clientProject)
 
   lazy val commonProject = Project("common",
@@ -28,10 +30,10 @@ object MyBuild extends Build {
 
   lazy val serverProject = Project(id = "server",
     base = file("server"),
-    settings = Project.defaultSettings ++ serverSettings  ++ net.virtualvoid.sbt.graph.Plugin.graphSettings // ++ Seq(serverClassPathTask)
+    settings = Project.defaultSettings ++ serverSettings  ++ net.virtualvoid.sbt.graph.Plugin.graphSettings ++ com.github.retronym.SbtOneJar.oneJarSettings  // ++ Seq(serverClassPathTask)
   ) dependsOn(commonProject)
 
-  lazy val clientProject = Project("client",
+  lazy val clientProject:Project = Project("client",
     base = file("client"),
     settings = Project.defaultSettings ++ clientSettings ++ webStartSettings
   ) dependsOn(commonProject)
@@ -39,6 +41,7 @@ object MyBuild extends Build {
   lazy val commonSettings = Seq(
     version := "0.1",
     organization := "se.bupp",
+    exportJars := true,
     resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/public",
     //publishArtifact in (Compile, packageBin) := false,
     libraryDependencies ++=  Seq(
@@ -61,10 +64,24 @@ object MyBuild extends Build {
     organization := "se.bupp",
     resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/public",
     //publishArtifact in (Compile, packageBin) := false,
-    libraryDependencies ++=  testDeps
-  )
+    libraryDependencies ++=  testDeps,
+    mainClass in oneJar := Some("se.bupp.lek.server.Server"),
+    exportJars := true,
+    /*publishArtifact in Compile := true,
+    publishArtifact in Test := true
+    ,publishArtifact in (Test,oneJar) := true
+    ,publishArtifact in (Compile,oneJar) := true,*/
+    //publishArtifact in (Compile, packageBin) := false
 
-  lazy val clientSettings = Seq[Project.Setting[_]](
+      // create an Artifact for publishing the .war file
+/*,   artifact in (Compile, oneJar) ~= { (art: Artifact) =>
+      art.copy(`type` = "war", extension = "war")
+    }*/
+    Keys.`package` in Compile <<= (Keys.`package` in Compile) dependsOn(oneJar)
+    )//packageBin in Compile <<= (packageBin in Compile) dependsOn(oneJar)
+
+
+  lazy val clientSettings = Seq(
     name:= "client",
     version:= "1.0",
     libraryDependencies ++=  jmeClient ++ testDeps,
@@ -76,8 +93,21 @@ object MyBuild extends Build {
         //!toPath.contains("server")
         true
       }
-    }
+    },
+    Keys.`package` in Compile <<= (Keys.`package` in Compile) dependsOn(webstartBuild)
+
+
+
+    /*artifact in (Compile, packageBin) ~= { (art: Artifact) =>
+      oneJar
+    }*/
+    //,publishArtifact in (Test, oneJar) := true
+    //,  packageBin in Compile <<= (packageBin in Compile) dependsOn(packageBin in Compile, oneJar in Compile)
+    //addArtifact(artifact in (Compile, packageBin), oneJar)
+
+
   )
+
 
   lazy val webStartSettings = WebStartPlugin.allSettings ++ Seq(
     webstartGenConf := GenConf(
@@ -150,7 +180,7 @@ object MyBuild extends Build {
     //"org.springframework" % "spring-context" % "3.1.2.RELEASE",
     "org.objenesis" % "objenesis" % "1.2",
     "com.esotericsoftware.kryo" % "kryo" % "2.20",
-    "se.paronglans" %% "cs3k-api" % "0.3-SNAPSHOT" changing(),
+    "se.paronglans.cs3k" %% "api" % "0.3-SNAPSHOT" changing(),
     "log4j" % "log4j" % "1.2.17"
     /*"com.jmonkey" % "engine" % "3.0beta" from "file:///home/karlw/src/3rdparty/jme3/engine/dist/lib/jME3-core.jar",
 "com.jmonkey" % "engine-terr" % "3.0beta" from "file:///home/karlw/src/3rdparty/jme3/engine/dist/lib/jME3-terrain.jar"*/
@@ -166,7 +196,7 @@ object MyBuild extends Build {
   var serverClassPathTask = serverClassPath := {
     println("tja" + ( fullClasspath in Compile))
 
-    ( fullClasspath in Compile ) map { r => println("Bupp") ;  r.files foreach println }
+    ( fullClasspath in Compile ) map { r =>  r.files foreach println }
   }
 
   //serverClassPathTask <<= serverClassPathTask.dependsOn(Compile)
@@ -176,53 +206,4 @@ object MyBuild extends Build {
   	val customJars = (baseDirectories ** "*.jar")
   	customJars.classpath
   }*/
-/*
-  val oneJar = TaskKey[File]("one-jar", "Create a single executable JAR using One-JAR™")
-  val oneJarRedist = TaskKey[Set[File]]("one-jar-redist", "The redistributable One-JAR™ launcher, unzipped.")
-
-  val oneJarSettings: Seq[Project.Setting[_]] = inTask(oneJar)(Seq(
-    artifactPath <<= artifactPathSetting(artifact),
-    cacheDirectory <<= cacheDirectory / oneJar.key.label
-  )) ++ Seq(
-
-    publishArtifact in oneJar <<= publishMavenStyle,
-    artifact in oneJar <<= moduleName(Artifact(_, "one-jar")),
-    packageOptions in oneJar := Seq(ManifestAttributes((MAIN_CLASS, "com.simontuffs.onejar.Boot"))),
-    mainClass in oneJar <<= mainClass in run in Compile,
-    packageOptions in oneJar <++= (mainClass in oneJar).map {
-      case Some(mainClass) => Seq(ManifestAttributes(("One-Jar-Main-Class", mainClass)))
-      case _ => Seq()
-    },
-    baseDirectory in oneJarRedist <<= (target)(_ / "one-jar-redist"),
-    oneJarRedist <<= (baseDirectory in oneJarRedist).map { (base) =>
-      val oneJarResourceName = "one-jar-boot-0.97.jar"
-      System.err.println("one jar 1")
-      val s = getClass.getClassLoader.getResourceAsStream(oneJarResourceName)
-      if (s == null) sys.error("could not load: " + oneJarResourceName)
-      def include(path: String) = path match {
-        case "META-INF/MANIFEST.MF" => false
-        case x => !x.startsWith("src/")
-      }
-      IO.unzipStream(s, base, include _)
-    },
-    mappings in oneJar <<= (packageBin in Compile, dependencyClasspath in Runtime,
-      oneJarRedist, baseDirectory in oneJarRedist).map {
-      (artifact, classpath, oneJarRedist, oneJarRedistBase) =>
-        val thisArtifactMapping = (artifact, (file("main") / artifact.name).getPath)
-        val deps: Seq[(File, String)] = {
-          val allDeps = Build.data(classpath).map(f => (f, (file("lib") / f.name).getPath))
-          allDeps.filterNot(_._1 == artifact)
-        }
-
-        val redist = oneJarRedist.toSeq x relativeTo(oneJarRedistBase)
-        Seq(thisArtifactMapping) ++ deps ++ redist
-    },
-    oneJar <<= (mappings in oneJar, artifactPath in oneJar, packageOptions in oneJar, cacheDirectory in oneJar, streams) map {
-      (mappings, output, packOpts, cacheDir, s) =>
-        val packageConf = new Package.Configuration(mappings, output, packOpts)
-        Package(packageConf, cacheDir, s.log)
-        output
-    }
-  )
-*/
 }

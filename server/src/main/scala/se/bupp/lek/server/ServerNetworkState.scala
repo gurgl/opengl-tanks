@@ -73,7 +73,7 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
 
     override def disconnected(con: Connection) {
       super.disconnected(con)
-      val playerId = connectionIdToPlayerIds(con.getID)
+      val playerId = connectionIdToPlayerIds.apply(con.getID)
       playerLeave(playerId)
     }
 
@@ -93,14 +93,16 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
           new Thread(new Runnable() {
             def run() {
 
-              val absPlayerInfo = Server.gameServerFacade.evaluateGamePass(req.connectMessage)
+              log.info("req.connectMessage " + req.connectMessage)
+              var mess: String = new java.lang.String(req.connectMessage.getBytes())
+              val absPlayerInfo = Server.gameServerFacade.evaluateGamePass(mess)
               if (absPlayerInfo != null) {
                 log.info("" +absPlayerInfo.getName)
               } else {
                 log.info("No master server available : " + req.connectMessage)
               }
               val resp = playerJoined(req)
-              connectionIdToPlayerIds += (connection.getID -> resp.playerId)
+              connectionIdToPlayerIds = connectionIdToPlayerIds + (connection.getID -> resp.playerId)
               connection.sendTCP(resp)
             }
           }).start()

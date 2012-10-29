@@ -145,13 +145,17 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
 
   case class GameEnded() extends AbstractServerMessage
 
-  var serverMessageQueue = mutable.Queue.empty[AbstractServerMessage]
+  private var serverMessageQueue = mutable.Queue.empty[AbstractServerMessage]
   var onUpdateSentMessageQueue = mutable.Queue.empty[AbstractServerMessage]
 
-
+  def appendToQueue(elems:AbstractServerMessage*) {
+    serverMessageQueue.synchronized {
+      serverMessageQueue.enqueue(elems:_*)
+    }
+  }
   def onUpdateSent() {
     if(onUpdateSentMessageQueue.size > 0) {
-      serverMessageQueue.enqueue(onUpdateSentMessageQueue:_*)
+      appendToQueue(onUpdateSentMessageQueue:_*)
       onUpdateSentMessageQueue = mutable.Queue.empty
     }
 
@@ -250,7 +254,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
         // leave lobby mode
         // enter game mode
         log.info("onGameStart")
-        serverMessageQueue.enqueue(GameStarted())
+        appendToQueue(GameStarted())
 
       }
 
