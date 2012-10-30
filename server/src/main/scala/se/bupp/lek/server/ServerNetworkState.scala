@@ -95,11 +95,13 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
 
               log.info("req.connectMessage " + req.connectMessage)
               var mess: String = new java.lang.String(req.connectMessage.getBytes())
-              val absPlayerInfo = Server.gameServerFacade.evaluateGamePass(mess)
-              if (absPlayerInfo != null) {
-                log.info("" +absPlayerInfo.getName)
-              } else {
-                log.info("No master server available : " + req.connectMessage)
+              Server.occassionIdOpt.foreach { occ =>
+                val absPlayerInfo = Server.gameServerFacade.evaluateGamePass(mess,occ)
+                if (absPlayerInfo != null) {
+                  log.info("" +absPlayerInfo.getName)
+                } else {
+                  log.info("No master server available : " + req.connectMessage)
+                }
               }
               val resp = playerJoined(req)
               connectionIdToPlayerIds = connectionIdToPlayerIds + (connection.getID -> resp.playerId)

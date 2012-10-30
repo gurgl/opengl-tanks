@@ -283,7 +283,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
 
       def onGameEnd(totals: AbstractGameResult) {
         log.debug("Scheduling Game End")
-        Server.occassionId.foreach( o => Server.gameServerFacade.endGame(o,String.valueOf(totals)))
+        Server.occassionIdOpt.foreach( o => Server.gameServerFacade.endGame(o,String.valueOf(totals)))
         onUpdateSentMessageQueue.enqueue(GameEnded())
       }
     }
@@ -327,7 +327,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
 object Server {
 
 
-  var occassionId = Option.empty[Int]
+  var occassionIdOpt = Option.empty[Int]
   var gameServerFacade:GameServerFacade = _
 
   def initMasterServerConnection(host:String, port:Int) = {
@@ -359,7 +359,7 @@ object Server {
     } finally {
       if(gameServerFacade == null) {
         gameServerFacade = new GameServerFacade {
-          def evaluateGamePass(p1: String) = null
+          def evaluateGamePass(p1: String, l:java.lang.Long) = null
 
           def startGame(p1: java.lang.Integer, p2: util.Map[java.lang.Integer, java.lang.Integer]) {}
 
@@ -419,7 +419,7 @@ object Server {
         (new PortSettings(tcpPort.toInt, udpPort.toInt), masterServerHost, masterServerPort.toInt, pOccassionId)
       case _ => (new PortSettings(54555, 54777), "localhost", 1199, None)
     }
-    occassionId = occIdOpt
+    occassionIdOpt = occIdOpt
 
     initMasterServerConnection(masterServerHost,masterServerPort)
     log.info(portSettings.tcpPort + " " + portSettings.udpPort)

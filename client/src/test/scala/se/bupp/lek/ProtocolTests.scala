@@ -1,5 +1,5 @@
-package se.bupp.lek
 
+package se.bupp.lek
 import client.VisualWorldSimulation.{SpawnPlayers, KillPlayers}
 import client.{NetworkGameState, VisualWorldSimulation}
 import org.specs2.mutable.Specification
@@ -38,8 +38,8 @@ class ProtocolTests extends Specification with Mockito {
       // new SpawnPlayer(1,"asdf",1)
 
       import scala.collection.JavaConversions.seqAsJavaList
-      s1.stateChanges = new java.util.ArrayList(List(new KillPlayer(1),new SpawnPlayer(2,"asdf",2)))
-      s2.stateChanges = new java.util.ArrayList(List(new KillPlayer(2),new KillPlayer(1)))
+      s1.stateChanges = new java.util.ArrayList(List(new KillPlayer(1), new SpawnPlayer(2,"asdf",2)))
+      s2.stateChanges = new java.util.ArrayList(List(new KillPlayer(2), new KillPlayer(1)))
 
       var p2: PlayerGO = new PlayerGO()
       p2.playerId = 2
