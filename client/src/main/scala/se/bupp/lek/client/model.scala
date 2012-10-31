@@ -1,5 +1,7 @@
 package se.bupp.lek.client
 
+import se.bupp.lek.common.Model.SpawnPlayer
+
 /**
  * Created with IntelliJ IDEA.
  * User: karlw
@@ -8,5 +10,5 @@ package se.bupp.lek.client
  * To change this template use File | Settings | File Templates.
  */
 object Model {
-  type ClientPlayerInfo = String
+  type ClientPlayerInfo = SpawnPlayer
 }

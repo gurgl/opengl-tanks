@@ -27,6 +27,11 @@ trait SceneGraphAccessors {
 
 
 object Model {
+
+  type TimeStamp = Long
+
+  type PlayerInfoServerLobby = String
+
   val getNetworkMessages = List[Class[_ <: AnyRef]](
     classOf[PlayerJoinRequest],
     classOf[PlayerJoinResponse],

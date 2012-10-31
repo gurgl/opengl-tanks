@@ -15,6 +15,8 @@ import com.jme3.post.FilterPostProcessor
 import com.jme3.post.ssao.SSAOFilter
 import com.jme3.util.TangentBinormalGenerator
 import se.bupp.lek.common.Model._
+import se.bupp.lek.common.model.Model._
+
 import com.jme3.bullet.util.CollisionShapeFactory
 import com.jme3.bullet.{PhysicsSpace, BulletAppState}
 import com.jme3.bullet.collision.shapes.{SphereCollisionShape, CapsuleCollisionShape}
@@ -32,6 +34,8 @@ import org.apache.log4j.Logger
 import com.jme3.texture.Texture
 import se.bupp.lek.client.VisualWorldSimulation.ServerStateChanges
 import se.bupp.lek.common.{SceneGraphWorld, SceneGraphAccessors}
+import se.bupp.lek.client.Model._
+
 
 
 /**
@@ -54,8 +58,13 @@ object VisualWorldSimulation {
 }
 
 
-abstract class LogicalSimulation() {
+class LogicalSimulation() {
 
+  var playerInfos = Map[PlayerId,ClientPlayerInfo]()
+
+  def updatePlayerInfo(pi:ClientPlayerInfo) {
+    playerInfos = playerInfos + (pi.playerId -> pi)
+  }
 
 }
 
@@ -344,7 +353,14 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
       case KillPlayers(lst) => playState.visualWorldSimulation.handleKilledPlayers(lst)
       case SpawnPlayers(pis) =>
         pis.foreach {
-          case (pi,p) => if(pi.playerId == playerIdOpt().get) {
+
+          case (pi,p) =>
+            //TODO: Fix Me
+            playState.logicalSimulation.updatePlayerInfo(pi)
+
+            if(pi.playerId == playerIdOpt().get) {
+
+
             playState.visualWorldSimulation.respawnLocalPlayer(p,pi)
             playState.gameApp.audio_spawn.play()
           }  else {

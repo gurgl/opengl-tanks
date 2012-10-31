@@ -1,6 +1,6 @@
 package se.bupp.lek.server
 
-import se.bupp.lek.common.Model.{PlayerConnection, GameParticipant, PlayerGO, PlayerJoinRequest}
+import se.bupp.lek.common.Model._
 import com.jme3.math.{Quaternion, Vector3f}
 import se.bupp.lek.common.model.Model._
 /**
@@ -24,7 +24,7 @@ class Lobby() {
     connectedPlayers = newConnectedPlayers
   }
 
-  def addPlayer(pjr: PlayerJoinRequest) = {
+  def addPlayer(pjr: PlayerJoinRequest, i:PlayerInfoServerLobby) = {
 
     var playerId = -1
 
@@ -35,7 +35,7 @@ class Lobby() {
         var ps = new PlayerConnection
         ps.playerId = playerId
         ps.teamIdentifier = if(pjr.teamIdentifier == -1) playerId else pjr.teamIdentifier
-        ps.name = ps.name
+        ps.name = i
         //ps.lastUpdate = None
         ps
       }

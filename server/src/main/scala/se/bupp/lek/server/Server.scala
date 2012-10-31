@@ -114,10 +114,10 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
         }
       }
 
-      override def playerJoined(pjr: PlayerJoinRequest) = {
+      override def playerJoined(pjr: PlayerJoinRequest, pi:PlayerInfoServerLobby) = {
         val resp = new PlayerJoinResponse
 
-        val ps = lobby.addPlayer(pjr)
+        val ps = lobby.addPlayer(pjr, pi)
 
         resp.playerId = ps.playerId
 

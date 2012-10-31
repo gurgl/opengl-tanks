@@ -43,6 +43,7 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
 
   val log = Logger.getLogger(classOf[Client])
 
+  var logicalSimulation:LogicalSimulation = new LogicalSimulation
   var visualWorldSimulation:VisualWorldSimulation = _
 
   val playerInfos = collection.mutable.Map[PlayerId,ClientPlayerInfo]()
@@ -84,8 +85,6 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
 
     updateHud
 
-    if (logNeedsRepaint) paintLog(logMessageQueue.toList)
-
     val simTime = Client.clock()
 
     var input = playerInput.pollInput()
@@ -120,6 +119,15 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
       contentNode.detachAllChildren()
       needsReenableRefresh = false
     }
+
+    val leastLogItemTimeStamp = Client.clock() - 5*1000
+    val logMessageQueueOldSize = logMessageQueue.size
+    logMessageQueue = logMessageQueue.filter(_._2 > leastLogItemTimeStamp)
+
+    logNeedsRepaint = logNeedsRepaint || (logMessageQueue.size != logMessageQueueOldSize)
+
+    if (logNeedsRepaint) paintLog(logMessageQueue.toList)
+
   }
 
   override def initialize(stateManager: AppStateManager, app: Application) {
@@ -295,13 +303,16 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
     ()
   }
 
-  var logMessageQueue = Queue.empty[String]
+  var logMessageQueue = Queue.empty[(String, TimeStamp)]
   var logNeedsRepaint = false
   def handleScoreMessage(sm:PlayerScore) {
     if (sm.of == gameApp.playerIdOpt.get) {
       gameApp.audio_score.play()
     }
-    logMessageQueue = logMessageQueue.enqueue(sm.of + " killed " + sm.victim)
+    log.info("playerInfos.size " + logicalSimulation.playerInfos.size)
+    val of = logicalSimulation.playerInfos.get(sm.of).map(_.name).getOrElse("XYZ" + sm.of)
+    val victim = logicalSimulation.playerInfos.get(sm.victim).map(_.name).getOrElse("OPQ" + sm.victim)
+    logMessageQueue = logMessageQueue.enqueue((of + " killed " + victim, Client.clock()))
     if (logMessageQueue.size > 3) {
       logMessageQueue = logMessageQueue.drop(1)
       //logMessageQueue = newQueue
@@ -317,8 +328,8 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
   val NODE_NAME = "GuiNode"
   //var content:Node = _
 
-  def paintLog(str:List[String]) {
-    val s = str.reverse.mkString("\n")
+  def paintLog(str:List[(String,TimeStamp)]) {
+    val s = str.map(_._1).reverse.mkString("\n")
     log.debug("updating scores : " + s)
 
     contentNode.detachAllChildren()
