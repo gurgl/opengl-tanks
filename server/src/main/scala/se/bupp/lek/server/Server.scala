@@ -30,7 +30,7 @@ import se.bupp.lek.server.Server.GameMatchSettings.ScoreReached
 import se.bupp.lek.server.Server.GameMatchSettings.WhenNumOfConnectedPlayersCriteria
 import se.bupp.lek.server.Server.GameMatchSettings.NumOfRoundsPlayed
 
-import org.apache.log4j.Logger
+import org.apache.log4j.{Level, Logger}
 import se.bupp.lek.common.FuncUtil.{Int, RateProbe}
 import se.bupp.lek.server.GameLogicFactory.KillBasedStrategy.PlayerKill
 import util.Random
@@ -283,7 +283,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
 
       def onGameEnd(totals: AbstractGameResult) {
         log.debug("Scheduling Game End")
-        Server.occassionIdOpt.foreach( o => Server.gameServerFacade.endGame(o,String.valueOf(totals)))
+        Server.settings.masterServer.occassionIdOpt.foreach( o => Server.gameServerFacade.endGame(o.toInt,String.valueOf(totals)))
         onUpdateSentMessageQueue.enqueue(GameEnded())
       }
     }
@@ -330,7 +330,7 @@ object Server {
   var occassionIdOpt = Option.empty[Int]
   var gameServerFacade:GameServerFacade = _
 
-  def initMasterServerConnection(host:String, port:Int) = {
+  def initMasterServerConnection(mss:MasterServerSettings) = {
     if (System.getSecurityManager() == null) {
       System.setSecurityManager(new SecurityManager() {
         override def checkPermission(perm: Permission) {
@@ -340,7 +340,7 @@ object Server {
     }
     try {
       //val name = "Compute";
-      val registry = LocateRegistry.getRegistry(host, port);
+      val registry = LocateRegistry.getRegistry(mss.host, mss.port);
 
       var lookup: Remote = registry.lookup("game-server-facade")
       //lookup.getClass.getInterfaces.toList.foreach(println)
@@ -375,10 +375,6 @@ object Server {
 
   val log = Logger.getLogger(classOf[Server])
 
-  class PortSettings(val tcpPort:Int, val udpPort:Int)
-
-
-
   object GameMatchSettings {
 
     sealed abstract class AbstractStartCriteria()
@@ -402,14 +398,68 @@ object Server {
 
   var server:Server = _
 
+  case class PortSettings(var tcpPort:Int, var udpPort:Int)
+  case class MasterServerSettings(var host:String, var port:Int, var occassionIdOpt:Option[Long])
+  class Settings(var ports:PortSettings, var masterServer:MasterServerSettings)
+
+  def createDefaultSettings = new Settings(new PortSettings(54555, 54777), new MasterServerSettings("localhost", 1199, None))
+
+  val usage = """
+    Usage: mmlaln [options] filename
+      options :
+        --min-size num
+        --max-size num
+        --use-yeah
+              """
+
+  type OptionMap = Map[Symbol, Any]
+  def handleCommandLine(args: Array[String]) : Settings = {
+    if (args.length == 0) println(usage)
+    val arglist = args.toList
+
+    val defaultSettings = createDefaultSettings
+
+    def nextOption(map : Settings, list: List[String]) : Settings = {
+      def isSwitch(s : String) = (s(0) == '-')
+      list match {
+        case Nil => map
+        //case "--udp-port" :: tail => nextOption(map ++ Map('useyeah -> true), tail)
+        case "--udp-port" :: value :: tail =>
+          map.ports.udpPort = value.toInt
+          nextOption(map , tail)
+        case "--tcp-port" :: value :: tail =>
+          value.toInt
+          nextOption(map , tail)
+        case "--master-host" :: value :: tail =>
+          map.masterServer.host = value
+          nextOption(map , tail)
+        case "--master-port" :: value :: tail =>
+          map.masterServer.port = value.toInt
+          nextOption(map, tail)
+        case "--occassion-id" :: value :: tail =>
+          map.masterServer.occassionIdOpt = Some(value.toLong)
+          nextOption(map, tail)
+        /*case string :: opt2 :: tail if isSwitch(opt2) =>
+          nextOption(map ++ Map('infile -> string), list.tail)
+        case string :: Nil =>  nextOption(map ++ Map('infile -> string), list.tail)*/
+        case option :: tail => println("Unknown option "+option)
+        exit(1)
+      }
+    }
+    val options = nextOption(defaultSettings,arglist)
+    options
+  }
+
+  var settings:Settings = _
+
   def main(args: Array[String]) {
 
     try {
-
+      // TODO: Remvoe me - RAndom wait to fix some error?
       Thread.sleep(new Random().nextInt(2000))
     } catch { case e:InterruptedException =>  }
 
-    val (portSettings, masterServerHost, masterServerPort, occIdOpt) = args.toList match {
+    /*val (portSettings, masterServerHost, masterServerPort, occIdOpt) = args.toList match {
       case tcpPort :: udpPort :: masterServerHost :: masterServerPort :: rest =>
         val pOccassionId = rest match {
           case Nil => None
@@ -418,13 +468,13 @@ object Server {
         }
         (new PortSettings(tcpPort.toInt, udpPort.toInt), masterServerHost, masterServerPort.toInt, pOccassionId)
       case _ => (new PortSettings(54555, 54777), "localhost", 1199, None)
-    }
-    occassionIdOpt = occIdOpt
+    }*/
 
-    initMasterServerConnection(masterServerHost,masterServerPort)
-    log.info(portSettings.tcpPort + " " + portSettings.udpPort)
-    //Logger.getLogger("com.jme3").setLevel(Level.SEVERE)
-    server = new Server(portSettings)
+    settings = handleCommandLine(args)
+    initMasterServerConnection(settings.masterServer)
+    log.info(settings.ports.tcpPort + " " + settings.ports.udpPort)
+    Logger.getLogger("com.jme3").setLevel(Level.ERROR)
+    server = new Server(settings.ports)
     server.start(JmeContext.Type.Headless)
   }
 }

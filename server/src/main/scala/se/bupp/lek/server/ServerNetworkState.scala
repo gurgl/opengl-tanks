@@ -95,7 +95,7 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
 
               log.info("req.connectMessage " + req.connectMessage)
               var mess: String = new java.lang.String(req.connectMessage.getBytes())
-              val playerInfoOpt = Server.occassionIdOpt.map { occ =>
+              val playerInfoOpt = Server.settings.masterServer.occassionIdOpt.map { occ =>
                 val absPlayerInfo = Server.gameServerFacade.evaluateGamePass(mess,occ)
                 if (absPlayerInfo != null) {
                   log.info("" +absPlayerInfo.getName)
