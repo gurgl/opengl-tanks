@@ -52,7 +52,11 @@ object MyBuild extends Build {
       "com.jme3" % "vecmath" % JME_VERSION,
       "com.jme3" % "jME3-core" % JME_VERSION*/
       //"com.esotericsoftware.kryo" % "kryo" % "2.18"
-    ) ++ allDependsOn ++ jmeClientAndServer ++ testDeps,
+    )
+      ++ allDependsOn
+      ++ jmeClientAndServer
+      ++ testDeps
+    ,
     unmanagedResourceDirectories in Compile <+=  baseDirectory { dir =>
       dir / "src/main/blender" // +++ dir/"src/main/resources/reports"
     }
@@ -133,7 +137,7 @@ object MyBuild extends Build {
       splashName = None,
       offlineAllowed  = true,
       allPermissions  = true,
-      j2seVersion     = "1.6+",
+      j2seVersion     = "1.6",
       maxHeapSize     = 192
     ))
   )
