@@ -19,7 +19,7 @@ import com.jme3.bullet.collision.{PhysicsCollisionObject, PhysicsCollisionGroupL
 import com.jme3.bounding.BoundingSphere
 import se.bupp.lek.common.model.{NotPlaying, Playing, Dead}
 import java.util
-import org.apache.log4j.Logger
+import org.slf4j.LoggerFactory
 import scala.Some
 import se.bupp.lek.common.model.Playing
 
@@ -66,7 +66,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
 
   var destroyed = false
 
-  val log = Logger.getLogger(classOf[WorldSimulator])
+  val log = LoggerFactory.getLogger(classOf[WorldSimulator])
 
   //world.getPhysicsSpace.addCollisionGroupListener(this, PhysicsCollisionObject.COLLISION_GROUP_02 | PhysicsCollisionObject.COLLISION_GROUP_03)
   world.getPhysicsSpace.addCollisionListener(this)
@@ -345,7 +345,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
 
       if(deadPlayers.size > 0 ) {
         log.info(deadPlayers.size + "DDDDDDDDDDDDDDDDDDDDDDEAD")
-        deadPlayers.foreach( p => log.info(p))
+        deadPlayers.foreach( p => log.info(String.valueOf(p)))
       }
 
       //log.debug("playerState " + playerState.size + " alivePlayers " + deadPlayers.size)

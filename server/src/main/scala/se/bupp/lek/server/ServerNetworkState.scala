@@ -4,7 +4,7 @@ import com.esotericsoftware.kryonet.{Connection, Listener, Server => KryoServer}
 import se.bupp.lek.common.Model._
 import se.bupp.lek.server.Server.PortSettings
 import collection.immutable.HashMap
-import org.apache.log4j.Logger
+import org.slf4j.LoggerFactory
 import se.bupp.lek.common.FuncUtil.RateProbe
 import java.util.{TimerTask, Timer}
 import com.esotericsoftware.kryonet.Listener.LagListener
@@ -33,7 +33,7 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
 
   var connectionIdToPlayerIds = HashMap.empty[Int,Int]
 
-  val log = Logger.getLogger(classOf[ServerNetworkState])
+  val log = LoggerFactory.getLogger(classOf[ServerNetworkState])
 
   val actionReqProbe = new RateProbe("ActionReq",1000L, log)
   val serverSentProbe = new RateProbe("serverSentProbe",1000L, log)

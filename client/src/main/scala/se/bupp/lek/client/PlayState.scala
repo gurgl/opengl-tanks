@@ -20,14 +20,14 @@ import com.jme3.input.controls.{KeyTrigger, ActionListener, AnalogListener}
 import com.jme3.bullet.control.CharacterControl
 import com.jme3.input.KeyInput
 import se.bupp.lek.common.SceneGraphWorld.SceneGraphNodeKeys
-import org.apache.log4j.Logger
+
 import se.bupp.lek.common.SceneGraphWorld.SceneGraphNodeKeys._
 import scala.Some
 import se.bupp.lek.client.VisualWorldSimulation.PlayerScore
 import com.jme3.font.{Rectangle, BitmapFont, BitmapText}
 import se.bupp.lek.client.Model._
 import se.bupp.lek.common.model.Model._
-
+import org.slf4j.LoggerFactory
 
 
 /**
@@ -41,7 +41,7 @@ import se.bupp.lek.common.model.Model._
 class PlayState() extends AbstractAppState with PhysicsTickListener {
 
 
-  val log = Logger.getLogger(classOf[Client])
+  val log = LoggerFactory.getLogger(classOf[Client])
 
   var logicalSimulation:LogicalSimulation = new LogicalSimulation
   var visualWorldSimulation:VisualWorldSimulation = _

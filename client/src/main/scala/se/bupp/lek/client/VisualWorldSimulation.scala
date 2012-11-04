@@ -30,7 +30,7 @@ import scala.Tuple3
 import scala.Some
 import com.jme3.scene.control.AbstractControl
 
-import org.apache.log4j.Logger
+import org.slf4j.LoggerFactory
 import com.jme3.texture.Texture
 import se.bupp.lek.client.VisualWorldSimulation.ServerStateChanges
 import se.bupp.lek.common.{SceneGraphWorld, SceneGraphAccessors}
@@ -88,7 +88,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
   import VisualWorldSimulation._
   import SceneGraphWorld._
 
-  private val log = Logger.getLogger(classOf[VisualWorldSimulation])
+  private val log = LoggerFactory.getLogger(classOf[VisualWorldSimulation])
   override def getPhysicsSpace = bulletAppState.getPhysicsSpace
 
   val localObjectFactory = new LocalObjectFactory

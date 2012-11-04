@@ -2,7 +2,7 @@ package se.bupp.lek.server
 
 import com.jme3.app.state.{AppStateManager, AbstractAppState, AppState}
 import se.bupp.lek.common.FuncUtil.RateProbe
-import org.apache.log4j.Logger
+import org.slf4j.LoggerFactory
 import com.jme3.app.Application
 import se.bupp.lek.common.Model.{GameParticipant, ScoreMessage, PlayerActionRequest}
 import collection.mutable
@@ -26,7 +26,7 @@ trait PlayStateListener {
 class PlayState(val server:Server) extends AbstractAppState {
   var listeners = List.empty[PlayStateListener]
 
-  val log = Logger.getLogger(classOf[PlayState])
+  val log = LoggerFactory.getLogger(classOf[PlayState])
   var updateProbe = new RateProbe("App Update", 3000L,log)
 
   var playMessageQueue = mutable.Queue.empty[ScoreMessage]

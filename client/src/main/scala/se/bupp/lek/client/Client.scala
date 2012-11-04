@@ -19,13 +19,14 @@ import com.jme3.audio.AudioNode
 import com.jme3.app.state.{AppStateManager, AbstractAppState}
 import com.jme3.font.{BitmapFont, BitmapText}
 
-import org.apache.log4j.{Logger, PropertyConfigurator}
+
 import se.bupp.lek.common.FuncUtil.{Int, RateProbe}
 import java.util.{TimerTask, Timer}
 import com.jme3.font.plugins.BitmapFontLoader
 
 import util.Random
 import se.bupp.lek.common.{MathUtil, Tmp}
+import org.slf4j.LoggerFactory
 
 
 object PlayerInput {
@@ -60,7 +61,7 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
   var playerIdOpt:Option[Int] = None
 
-  val log = Logger.getLogger(classOf[Client])
+  val log = LoggerFactory.getLogger(classOf[Client])
 
   //var visualWorldSimulation:VisualWorldSimulation = _
 

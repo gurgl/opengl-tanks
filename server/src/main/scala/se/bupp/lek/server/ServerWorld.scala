@@ -10,7 +10,7 @@ import com.jme3.bullet.control.{GhostControl, CharacterControl, RigidBodyControl
 import com.jme3.bounding.BoundingSphere
 import com.jme3.math.Vector3f
 import se.bupp.lek.common.SceneGraphWorld.SceneGraphUserDataKeys
-import org.apache.log4j.Logger
+import org.slf4j.LoggerFactory
 import com.jme3.bullet.collision.PhysicsCollisionObject
 
 /**
@@ -23,7 +23,7 @@ import com.jme3.bullet.collision.PhysicsCollisionObject
 
 class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:PhysicsSpace) extends SceneGraphWorld(true,assetManager,rootNode) with PhysicsSpaceSimAdapter {
 
-  val log = Logger.getLogger(classOf[ServerWorld])
+  val log = LoggerFactory.getLogger(classOf[ServerWorld])
 
   var simCurrentTime:Long = Server.clock()
 

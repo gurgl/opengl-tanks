@@ -52,11 +52,7 @@ object MyBuild extends Build {
       "com.jme3" % "vecmath" % JME_VERSION,
       "com.jme3" % "jME3-core" % JME_VERSION*/
       //"com.esotericsoftware.kryo" % "kryo" % "2.18"
-    )
-      ++ allDependsOn
-      ++ jmeClientAndServer
-      ++ testDeps
-    ,
+    ) ++ allDependsOn ++ jmeClientAndServer ++ testDeps,
     unmanagedResourceDirectories in Compile <+=  baseDirectory { dir =>
       dir / "src/main/blender" // +++ dir/"src/main/resources/reports"
     }
@@ -68,7 +64,7 @@ object MyBuild extends Build {
     organization := "se.bupp",
     resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/public",
     //publishArtifact in (Compile, packageBin) := false,
-    libraryDependencies ++=  testDeps,
+    libraryDependencies ++=  testDeps, // ++ Seq("se.paronglans.cs3k" %% "api" % "0.3-SNAPSHOT" changing()),
     mainClass in oneJar := Some("se.bupp.lek.server.Server"),
     exportJars := true,
     /*publishArtifact in Compile := true,
@@ -185,7 +181,10 @@ object MyBuild extends Build {
     "org.objenesis" % "objenesis" % "1.2",
     "com.esotericsoftware.kryo" % "kryo" % "2.20",
     "se.paronglans.cs3k" %% "api" % "0.3-SNAPSHOT" changing(),
-    "log4j" % "log4j" % "1.2.17"
+    "org.slf4j" % "slf4j-api" % "1.7.2",
+    "org.slf4j" % "slf4j-log4j12" % "1.7.2",
+    "org.slf4j" % "jul-to-slf4j" % "1.7.2"
+    //"log4j" % "log4j" % "1.2.17"
     /*"com.jmonkey" % "engine" % "3.0beta" from "file:///home/karlw/src/3rdparty/jme3/engine/dist/lib/jME3-core.jar",
 "com.jmonkey" % "engine-terr" % "3.0beta" from "file:///home/karlw/src/3rdparty/jme3/engine/dist/lib/jME3-terrain.jar"*/
   )

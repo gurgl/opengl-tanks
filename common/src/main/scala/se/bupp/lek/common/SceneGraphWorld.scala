@@ -14,7 +14,7 @@ import com.jme3.bullet.collision.shapes.CapsuleCollisionShape
 import com.jme3.bounding.BoundingSphere
 import collection.immutable.HashSet
 import com.jme3.export.Savable
-import org.apache.log4j.Logger
+import org.slf4j.LoggerFactory
 import com.jme3.bullet.collision.PhysicsCollisionObject
 
 /**
@@ -66,7 +66,7 @@ object SceneGraphWorld {
 
 abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager, rootNode:Node) {
 
-  private val log = Logger.getLogger(classOf[SceneGraphWorld])
+  private val log = LoggerFactory.getLogger(classOf[SceneGraphWorld])
   def getPhysicsSpace : PhysicsSpace
 
   var playerControl:CharacterControl = _

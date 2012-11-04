@@ -12,7 +12,7 @@ import collection.{mutable, JavaConversions}
 import JavaConversions.asScalaBuffer
 import scala.{None, Some}
 import com.jme3.math.Vector3f
-import org.apache.log4j.Logger
+import org.slf4j.LoggerFactory
 import se.bupp.lek.common.FuncUtil.RateProbe
 import com.jme3.export.Savable
 import com.esotericsoftware.kryonet.Listener.LagListener
@@ -79,7 +79,7 @@ class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends Abst
 
   val GW_UPDATES_SIZE = 20
 
-  val log = Logger.getLogger(classOf[NetworkGameState])
+  val log = LoggerFactory.getLogger(classOf[NetworkGameState])
 
   var gameWorldUpdatesQueue:Queue[(Long,ServerGameWorld)] = Queue()
   var gameWorldStateEventQueue:Queue[ServerGameWorld] = Queue()
@@ -179,7 +179,7 @@ def bupp(l:SortedSet[Int], i:Int) : SortedSet[Int] = SortedSet.empty[Int] ++ {
       //gameWorldUpdatesQueue = Queue()
     case response:StartGameRequest =>
       gameApp.postMessage(response)
-    case x => log.info(x.getClass)
+    case x => log.info("handleOrderedMessageDetailed " + x.getClass.getSimpleName)
   }
 
   def handleOrderedMessage(om:OrderedMessage) {

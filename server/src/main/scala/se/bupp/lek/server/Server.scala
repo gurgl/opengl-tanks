@@ -30,20 +30,22 @@ import se.bupp.lek.server.Server.GameMatchSettings.ScoreReached
 import se.bupp.lek.server.Server.GameMatchSettings.WhenNumOfConnectedPlayersCriteria
 import se.bupp.lek.server.Server.GameMatchSettings.NumOfRoundsPlayed
 
-import org.apache.log4j.{Level, Logger}
+import java.util.logging.{Logger => JUJME3Logger, Level => JULevel, LogManager}
+import org.apache.log4j.{PatternLayout, FileAppender, Level, Logger}
 import se.bupp.lek.common.FuncUtil.{Int, RateProbe}
 import se.bupp.lek.server.GameLogicFactory.KillBasedStrategy.PlayerKill
 import util.Random
 import java.rmi.registry.{Registry, LocateRegistry}
-import se.bupp.cs3k.api.GameServerFacade
 import java.lang.Exception
 import java.rmi.{ConnectException, Naming, Remote, RMISecurityManager}
 import java.security.Permission
 import java.lang.reflect.Method
 import java.util
-
-
-
+import java.io.   File
+import se.bupp.cs3k.api.GameServerFacade
+import org.slf4j.LoggerFactory
+import util.logging.LogManager
+import org.slf4j.bridge.SLF4JBridgeHandler
 /**
  * Created by IntelliJ IDEA.
  * User: karlw
@@ -78,12 +80,12 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
 
   var lobby = new Lobby()
 
-  val log = Logger.getLogger(classOf[Server])
+  val log = LoggerFactory.getLogger(classOf[Server])
 
 
   override def simpleInitApp() {
 
-    //java.util.logging.Logger.getLogger("com.jme3").setLevel(java.util.logging.Level.OFF);
+    //java.util.logging.LoggerFactory.getLogger("com.jme3").setLevel(java.util.logging.Level.OFF);
     //val bulletAppState = new BulletAppState();
 
     //bulletAppState.startPhysics()
@@ -236,7 +238,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
 
     leRoot.updateGeometricState();*/
     updateProbe.tick()
-  } catch { case e:Exception => e.printStackTrace() ; log.error(e) }
+  } catch { case e:Exception => e.printStackTrace() ; log.debug(String.valueOf(e)) }
 
   def createGameLogic() = {
 
@@ -373,7 +375,7 @@ object Server {
 
   def clock() = System.currentTimeMillis()
 
-  val log = Logger.getLogger(classOf[Server])
+  val log = LoggerFactory.getLogger(classOf[Server])
 
   object GameMatchSettings {
 
@@ -400,9 +402,9 @@ object Server {
 
   case class PortSettings(var tcpPort:Int, var udpPort:Int)
   case class MasterServerSettings(var host:String, var port:Int, var occassionIdOpt:Option[Long])
-  class Settings(var ports:PortSettings, var masterServer:MasterServerSettings)
+  class Settings(var ports:PortSettings, var masterServer:MasterServerSettings, var log:Option[File])
 
-  def createDefaultSettings = new Settings(new PortSettings(54555, 54777), new MasterServerSettings("localhost", 1199, None))
+  def createDefaultSettings = new Settings(new PortSettings(54555, 54777), new MasterServerSettings("localhost", 1199, None), None)
 
   val usage = """
     Usage: mmlaln [options] filename
@@ -436,6 +438,10 @@ object Server {
         case "--master-port" :: value :: tail =>
           map.masterServer.port = value.toInt
           nextOption(map, tail)
+        case "--log" :: value :: tail =>
+          map.log = Some(new File(value))
+          nextOption(map, tail)
+
         case "--occassion-id" :: value :: tail =>
           map.masterServer.occassionIdOpt = Some(value.toLong)
           nextOption(map, tail)
@@ -454,26 +460,63 @@ object Server {
 
   def main(args: Array[String]) {
 
+    JUJME3Logger.getLogger("com.jme3").setLevel(JULevel.INFO)
+
+    // Optionally remove existing handlers attached to j.u.l root logger
+    SLF4JBridgeHandler.removeHandlersForRootLogger();  // (since SLF4J 1.6.5)
+
+    // add SLF4JBridgeHandler to j.u.l's root logger, should be done once during
+    // the initialization phase of your application
+    SLF4JBridgeHandler.install();
+
     try {
       // TODO: Remvoe me - RAndom wait to fix some error?
       Thread.sleep(new Random().nextInt(2000))
     } catch { case e:InterruptedException =>  }
 
-    /*val (portSettings, masterServerHost, masterServerPort, occIdOpt) = args.toList match {
-      case tcpPort :: udpPort :: masterServerHost :: masterServerPort :: rest =>
-        val pOccassionId = rest match {
-          case Nil => None
-          case Int(occId) :: whatever => Some(occId)
-          case _ => None
-        }
-        (new PortSettings(tcpPort.toInt, udpPort.toInt), masterServerHost, masterServerPort.toInt, pOccassionId)
-      case _ => (new PortSettings(54555, 54777), "localhost", 1199, None)
-    }*/
+
+
+
 
     settings = handleCommandLine(args)
+    settings.log.foreach(
+      l => {
+        if(l.exists()) throw new IllegalArgumentException("log file must not exist")
+        var rootLogger: Logger = Logger.getRootLogger
+
+        rootLogger.removeAllAppenders()
+        var fa = new FileAppender()
+
+        fa.setFile(l.getAbsolutePath)
+        fa.setLayout(new PatternLayout("%d %-5p [%c{1}] %m%n"));
+        fa.setThreshold(Level.DEBUG);
+        fa.setAppend(true);
+        fa.activateOptions();
+        rootLogger.addAppender(fa)
+      }
+    )
     initMasterServerConnection(settings.masterServer)
     log.info(settings.ports.tcpPort + " " + settings.ports.udpPort)
-    Logger.getLogger("com.jme3").setLevel(Level.ERROR)
+
+    /*
+    // root looger to set slf4j handler on
+
+    Logger rootLogger = LogManager.getLogManager().getLogger("");
+            // remove old handlers
+            for (Handler handler : rootLogger.getHandlers()) {
+                oldHandlers.add(handler);
+                rootLogger.removeHandler(handler);
+            }
+            // add our own
+            activeHandler = new JuliToLog4jHandler();
+            activeHandler.setLevel(handlerLevel);
+            rootLogger.addHandler(activeHandler);
+            rootLogger.setLevel(rootLevel);
+            // done, let's check it right away!!!
+
+     */
+
+
     server = new Server(settings.ports)
     server.start(JmeContext.Type.Headless)
   }
