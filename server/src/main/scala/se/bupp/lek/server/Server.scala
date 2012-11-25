@@ -41,11 +41,13 @@ import java.rmi.{ConnectException, Naming, Remote, RMISecurityManager}
 import java.security.Permission
 import java.lang.reflect.Method
 import java.util
-import java.io.   File
+import java.io.File
 import se.bupp.cs3k.api.GameServerFacade
 import org.slf4j.LoggerFactory
 import util.logging.LogManager
 import org.slf4j.bridge.SLF4JBridgeHandler
+import com.fasterxml.jackson.databind.ObjectMapper
+
 /**
  * Created by IntelliJ IDEA.
  * User: karlw
@@ -60,9 +62,6 @@ import org.slf4j.bridge.SLF4JBridgeHandler
 class Server(portSettings:PortSettings) extends SimpleApplication with PlayStateListener
 //with PhysicsTickListener
 {
-
-
-
 
   import Server._
 
@@ -81,6 +80,8 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
   var lobby = new Lobby()
 
   val log = LoggerFactory.getLogger(classOf[Server])
+
+  var objectMapper = new ObjectMapper
 
 
   override def simpleInitApp() {
@@ -285,7 +286,10 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
 
       def onGameEnd(totals: AbstractGameResult) {
         log.debug("Scheduling Game End")
-        Server.settings.masterServer.occassionIdOpt.foreach( o => Server.gameServerFacade.endGame(o.toInt,String.valueOf(totals)))
+        val serializer = new ScoreSerializer {
+          def serialize(s: AnyRef) = objectMapper.writeValueAsString(s)
+        }
+        Server.settings.masterServer.occassionIdOpt.foreach( o => Server.gameServerFacade.endGame(o.toInt,totals.getSerializedResult(serializer)))
         onUpdateSentMessageQueue.enqueue(GameEnded())
       }
     }
@@ -407,11 +411,14 @@ object Server {
   def createDefaultSettings = new Settings(new PortSettings(54555, 54777), new MasterServerSettings("localhost", 1199, None), None)
 
   val usage = """
-    Usage: mmlaln [options] filename
+    Usage: Server [options]
       options :
-        --min-size num
-        --max-size num
-        --use-yeah
+         --udp-port <port>
+         --tcp-port <port>
+         --master-host <host>
+         --master-port <port>
+         --log <path>
+         --occassion-id <id>
               """
 
   type OptionMap = Map[Symbol, Any]
@@ -496,7 +503,7 @@ object Server {
       }
     )
     initMasterServerConnection(settings.masterServer)
-    log.info(settings.ports.tcpPort + " " + settings.ports.udpPort)
+    log.info(settings.ports.tcpPort + " " + settings.ports.udpPort + ", gameOccassionId " + occassionIdOpt)
 
     /*
     // root looger to set slf4j handler on

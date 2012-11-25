@@ -6,6 +6,8 @@ import se.bupp.lek.common.model.Competitor
 import se.bupp.lek.server.Server.GameMatchSettings.ScoreReached
 import se.bupp.lek.server.GameLogic.Kill
 import se.bupp.lek.server.GameLogicFactory.KillBasedStrategy.PlayerKill
+import se.bupp.cs3k.example.ExampleScoreScheme.{JavaTuple2, ExContestScore}
+import collection.mutable.ArrayBuffer
 
 /**
  * Created with IntelliJ IDEA.
@@ -17,6 +19,10 @@ import se.bupp.lek.server.GameLogicFactory.KillBasedStrategy.PlayerKill
 
 object GameLogicFactory {
 
+
+  trait ScoreSerializer {
+    def serialize(s:AnyRef) : String
+  }
 
 
 
@@ -42,16 +48,21 @@ object GameLogicFactory {
 
   object KillBasedStrategy {
     class PlayerKill(val of:Int,val vi:Int) extends AbstractScoreDescription
-    class EndGameResult(val s:String) extends AbstractGameResult
+    class EndGameResult(val s:ExContestScore) extends AbstractGameResult {
+      def getSerializedResult(serializer: ScoreSerializer) = serializer.serialize(s)
+    }
   }
 
   class KillBasedStrategy extends ScoreStrategy {
 
 
 
-    class RoundScore() {
+    class RoundScore(competitors:ArrayBuffer[Competitor]) {
       var playerKills = collection.mutable.HashMap[Int,List[Kill]]()
-      var competitorKills = collection.mutable.HashMap[Int,List[Kill]]()
+      var competitorKills = competitors.map( c => c.teamId -> List[Kill]()).toMap//collection.mutable.HashMap[Int,List[Kill]]()
+
+
+
     }
 
 
@@ -60,12 +71,16 @@ object GameLogicFactory {
 
     def init() {
       roundResults = List[RoundScore]()
-      currentRound = new RoundScore
+      createRound
     }
 
     def newRound = {
       roundResults = roundResults :+ currentRound
-      currentRound = new RoundScore
+      createRound
+    }
+
+    def createRound() {
+      currentRound = new RoundScore(gameLogic.competitors)
     }
 
     def keepsTic() {}
@@ -92,7 +107,21 @@ object GameLogicFactory {
       currentRound.competitorKills(competitorId).size
     }
 
-    override def getEndGameResult() = new KillBasedStrategy.EndGameResult("tja")
+    override def getEndGameResult() = {
+
+      val res = gameLogic.competitors.map( c => c.teamId -> roundResults.foldLeft(new JavaTuple2(0,0)){
+        case (t,a)=>
+          t.a = t.a + a.competitorKills(c.teamId).size
+          t
+      }
+      )
+
+
+      import scala.collection.JavaConversions.mapAsJavaMap
+      val m:Map[Int,JavaTuple2] = res.toMap
+      new KillBasedStrategy.EndGameResult(new ExContestScore(m.map(e => (e._1.toLong,e._2))))
+
+    }
   }
 
   class ControllablesScoringStrategy(var currentKeeps:AbstractScoringControllables) extends ScoreStrategy {
@@ -144,7 +173,9 @@ object GameLogicFactory {
 
   class AbstractScoreDescription()
 
-  class AbstractGameResult()
+  trait AbstractGameResult {
+    def getSerializedResult(serializer:ScoreSerializer) : String
+  }
 
   class RoundResults()
 
