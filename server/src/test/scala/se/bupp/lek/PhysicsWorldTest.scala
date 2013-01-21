@@ -30,10 +30,7 @@ object Clock {
 
 class PhysicsWorldTest extends Specification {
 
-
-
   class Clock(var time:Long) {
-
 
     def add(millis:Long) = {
       time += millis

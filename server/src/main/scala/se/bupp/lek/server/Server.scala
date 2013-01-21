@@ -426,6 +426,8 @@ object Server {
     if (args.length == 0) println(usage)
     val arglist = args.toList
 
+
+
     val defaultSettings = createDefaultSettings
 
     def nextOption(map : Settings, list: List[String]) : Settings = {
@@ -437,7 +439,7 @@ object Server {
           map.ports.udpPort = value.toInt
           nextOption(map , tail)
         case "--tcp-port" :: value :: tail =>
-          value.toInt
+          map.ports.tcpPort = value.toInt
           nextOption(map , tail)
         case "--master-host" :: value :: tail =>
           map.masterServer.host = value
@@ -502,6 +504,8 @@ object Server {
         rootLogger.addAppender(fa)
       }
     )
+
+    log.info("CommandLine " + args.toList.mkString(" "))
     initMasterServerConnection(settings.masterServer)
     log.info(settings.ports.tcpPort + " " + settings.ports.udpPort + ", gameOccassionId " + occassionIdOpt)
 
