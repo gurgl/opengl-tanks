@@ -11,7 +11,7 @@ import com.jme3.bullet.PhysicsSpace
 import scala.collection.JavaConversions.asScalaBuffer
 import se.bupp.lek.common.SceneGraphWorld.SceneGraphNodeKeys
 import se.bupp.lek.common.{SceneGraphWorld, SceneGraphAccessors}
-
+import se.bupp.lek.common.model.Model._
 
 trait PhysicsSpaceSimAdapter extends SceneGraphAccessors {
 
@@ -26,13 +26,13 @@ trait PhysicsSpaceSimAdapter extends SceneGraphAccessors {
   def getPlayers() = projectNodeChildrenByData[GameParticipant](SceneGraphWorld.SceneGraphNodeKeys.Enemies, SceneGraphWorld.SceneGraphUserDataKeys.Player)
 
 
-  def findPlayer(playerId: Int) = {
+  def findPlayer(playerId: PlayerId) = {
     getPlayers().find {
       case (p, s) => p.gameState.playerId == playerId
     }.map(_._1)
   }
 
-  def findPlayerInfo(playerId: Int) = {
+  def findPlayerInfo(playerId: PlayerId) = {
     getPlayers().find {
       case (p, s) => p.gameState.playerId == playerId
     }

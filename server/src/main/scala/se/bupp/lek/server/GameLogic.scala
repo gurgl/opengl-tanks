@@ -58,7 +58,7 @@ class GameLogic(var gameSettings:GameMatchSettings, var listener:GameLogicListen
     }
   }
 
-  def competitorScored(asd: AbstractScoreDescription, compId:Int) {
+  def competitorScored(asd: AbstractScoreDescription, compId:Long) {
     listener.onCompetetitorScored(asd)
     gameSettings.roundEndCriteria match {
       case ScoreReached(n) =>

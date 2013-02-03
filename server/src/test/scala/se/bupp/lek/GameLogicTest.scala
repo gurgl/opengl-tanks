@@ -129,7 +129,7 @@ class GameLogicTest extends Specification with Mockito {
       )
 
       val listener = mock[GameLogicListener]
-      val gameLogic = GameLogicFactory.create(settings, listener, new ControllablesScoringStrategy(new AbstractScoringControllables(Map(1->0,2->0))))
+      val gameLogic = GameLogicFactory.create(settings, listener, new ControllablesScoringStrategy(new AbstractScoringControllables(Map(1L->0,2L->0))))
 
 
       gameLogic.addCompetitor(new Competitor(1,1))
@@ -139,8 +139,8 @@ class GameLogicTest extends Specification with Mockito {
       gameLogic.addCompetitor(new Competitor(2,2))
       there was one(listener).onGameStart()
 
-      val score: mutable.HashMap[Int, Int] = gameLogic.scoreStrategy.asInstanceOf[ControllablesScoringStrategy].competitorScore
-      score should be equalTo((mutable.HashMap.empty ++= Map(1->0, 2->0)))
+      val score: mutable.HashMap[Long, Int] = gameLogic.scoreStrategy.asInstanceOf[ControllablesScoringStrategy].competitorScore
+      score should be equalTo((mutable.HashMap.empty ++= Map(1L->0, 2L->0)))
 
 
       gameLogic.scoreStrategy.playerKilledByPlayer(1,2)
@@ -150,10 +150,10 @@ class GameLogicTest extends Specification with Mockito {
       gameLogic.scoreStrategy.playerKilledByPlayer(2,1)
       gameLogic.scoreStrategy.keepsTic()
 
-      gameLogic.scoreStrategy.controllablesChanged(new AbstractScoringControllables(Map(1->1,2->0)))
+      gameLogic.scoreStrategy.controllablesChanged(new AbstractScoringControllables(Map(1L->1,2L->0)))
       gameLogic.scoreStrategy.keepsTic()
       there was one(listener).onCompetetitorScored(any)
-      gameLogic.scoreStrategy.controllablesChanged(new AbstractScoringControllables(Map(1->0,2->1)))
+      gameLogic.scoreStrategy.controllablesChanged(new AbstractScoringControllables(Map(1L->0,2L->1)))
       gameLogic.scoreStrategy.keepsTic()
       there was two(listener).onCompetetitorScored(any)
       gameLogic.scoreStrategy.keepsTic()

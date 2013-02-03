@@ -20,6 +20,7 @@ import com.jme3.app.state.{AppStateManager, AbstractAppState}
 import com.jme3.font.{BitmapFont, BitmapText}
 
 
+
 import se.bupp.lek.common.FuncUtil.{Int, RateProbe}
 import java.util.{TimerTask, Timer}
 import com.jme3.font.plugins.BitmapFontLoader
@@ -27,6 +28,9 @@ import com.jme3.font.plugins.BitmapFontLoader
 import util.Random
 import se.bupp.lek.common.{MathUtil, Tmp}
 import org.slf4j.LoggerFactory
+import se.bupp.lek.common.Model._
+import se.bupp.lek.common.model.Model._
+
 
 
 object PlayerInput {
@@ -59,7 +63,7 @@ class PlayerInput(startPosition:Orientation) {
 class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplication {
   import Client._
 
-  var playerIdOpt:Option[Int] = None
+  var playerIdOpt:Option[PlayerId] = None
 
   val log = LoggerFactory.getLogger(classOf[Client])
 

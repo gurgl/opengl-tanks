@@ -9,6 +9,7 @@ import se.bupp.lek.common.FuncUtil.RateProbe
 import java.util.{TimerTask, Timer}
 import com.esotericsoftware.kryonet.Listener.LagListener
 import se.bupp.lek.common.{Model, Tmp}
+import se.bupp.lek.common.model.Model._
 
 /**
  * Created with IntelliJ IDEA.
@@ -31,7 +32,7 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
   val kryo = server.getKryo();
   Model.getNetworkMessages.foreach(kryo.register(_))
 
-  var connectionIdToPlayerIds = HashMap.empty[Int,Int]
+  var connectionIdToPlayerIds = HashMap.empty[Int,PlayerId]
 
   val log = LoggerFactory.getLogger(classOf[ServerNetworkState])
 
@@ -94,18 +95,28 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
             def run() {
 
               log.info("req.connectMessage " + req.connectMessage)
+              var masterPlayerId = Option.empty[Long]
+              var masterTeamId = Option.empty[Long]
               var mess: String = new java.lang.String(req.connectMessage.getBytes())
-              val playerInfoOpt = Server.settings.masterServer.occassionIdOpt.map { occ =>
+              val playerInfoOpt = Server.settings.masterServer.gameSessionIdOpt.map { occ =>
                 val absPlayerInfo = Server.gameServerFacade.evaluateGamePass(mess,occ)
                 if (absPlayerInfo != null) {
                   log.info("" +absPlayerInfo.getName)
-                  absPlayerInfo.getName
+
+                  //absPlayerInfo.getName
+                  Some(absPlayerInfo)
                 } else {
                   log.info("No master server available : " + req.connectMessage)
-                  "n/a"
+                  //"n/a"
+                  None
                 }
+
+                absPlayerInfo
               }
-              val resp = playerJoined(req, playerInfoOpt.getOrElse("FIXME"))
+
+
+
+              val resp = playerJoined(req, playerInfoOpt)
               connectionIdToPlayerIds = connectionIdToPlayerIds + (connection.getID -> resp.playerId)
               connection.sendTCP(resp)
             }
@@ -140,7 +151,7 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
 
   def playerLeave(playerId:Int)
 
-  def playerJoined(pjr:PlayerJoinRequest, name:PlayerInfoServerLobby) : PlayerJoinResponse
+  def playerJoined(pjr:PlayerJoinRequest, masterPlayerInfoOpt:Option[PlayerInfoServerLobby]) : PlayerJoinResponse
 
 
   def sendRoundOver() {

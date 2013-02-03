@@ -3,6 +3,8 @@ package se.bupp.lek.server
 import se.bupp.lek.common.Model._
 import com.jme3.math.{Quaternion, Vector3f}
 import se.bupp.lek.common.model.Model._
+import se.bupp.cs3k.api.SimplePlayerInfo
+
 /**
  * Created with IntelliJ IDEA.
  * User: karlw
@@ -24,27 +26,27 @@ class Lobby() {
     connectedPlayers = newConnectedPlayers
   }
 
-  def addPlayer(pjr: PlayerJoinRequest, i:PlayerInfoServerLobby) = {
+  def addPlayer(pjr: PlayerJoinRequest, masterProvidedPlayerInfoOpt:Option[PlayerInfoServerLobby]) = {
 
-    var playerId = -1
-
-
-      playerId = connectionSequence
-      val player = {
-
+    val player = masterProvidedPlayerInfoOpt match {
+      case Some(masterProvidedPlayerInfo) =>
         var ps = new PlayerConnection
-        ps.playerId = playerId
-        ps.teamIdentifier = if(pjr.teamIdentifier == -1) playerId else pjr.teamIdentifier
-        ps.name = i
-        //ps.lastUpdate = None
+        ps.playerId = masterProvidedPlayerInfo.getReportableId.toLong.asInstanceOf[PlayerId]
+        ps.teamIdentifier = Option(masterProvidedPlayerInfo.getTeam).map(_.getReportableId.toLong).getOrElse(masterProvidedPlayerInfo.getReportableId.toLong)
+        ps.name = masterProvidedPlayerInfo.getName
         ps
-      }
+      //ps.lastUpdate = None
+      case None =>
+        var ps = new PlayerConnection
+        ps.playerId = connectionSequence
+        ps.teamIdentifier = if(pjr.teamIdentifier == -1) ps.playerId else pjr.teamIdentifier
+        connectionSequence += 1
+        ps.name = "Fixme - should be given by client if server doesnt provide"
+        ps
+        //ps.lastUpdate = None
+    }
 
-      connectedPlayers = connectedPlayers :+ player
-      //world.spawnPlayer(player)
-
-      connectionSequence += 1
-
+    connectedPlayers = connectedPlayers :+ player
     player
   }
 

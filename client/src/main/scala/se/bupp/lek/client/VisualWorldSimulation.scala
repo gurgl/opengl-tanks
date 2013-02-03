@@ -51,8 +51,8 @@ object VisualWorldSimulation {
 
   sealed abstract class ServerStateChanges()
   case class SpawnPlayers(val pis:List[(SpawnPlayer,PlayerGO)]) extends ServerStateChanges
-  case class KillPlayers(val pis:List[Int]) extends ServerStateChanges
-  case class PlayerScore(val of:Int, val victim:Int) extends ServerStateChanges
+  case class KillPlayers(val pis:List[PlayerId]) extends ServerStateChanges
+  case class PlayerScore(val of:PlayerId, val victim:PlayerId) extends ServerStateChanges
 
   type VisualGameWorld = (Set[AbstractOwnedGameObject with Savable] , ServerGameWorld, Seq[ServerStateChanges])
 }
@@ -84,7 +84,7 @@ class LocalObjectFactory {
   }
 }
 
-class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val playerIdOpt:() => Option[Int],val playerInput:PlayerInput, viewPort:ViewPort, val bulletAppState:BulletAppState) extends SceneGraphWorld(false,assetManager,rootNode) with SceneGraphAccessors {
+class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val playerIdOpt:() => Option[PlayerId],val playerInput:PlayerInput, viewPort:ViewPort, val bulletAppState:BulletAppState) extends SceneGraphWorld(false,assetManager,rootNode) with SceneGraphAccessors {
   import VisualWorldSimulation._
   import SceneGraphWorld._
 

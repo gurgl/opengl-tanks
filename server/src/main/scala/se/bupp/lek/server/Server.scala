@@ -40,7 +40,7 @@ import java.lang.Exception
 import java.rmi.{ConnectException, Naming, Remote, RMISecurityManager}
 import java.security.Permission
 import java.lang.reflect.Method
-import java.util
+import java.{util, lang}
 import java.io.File
 import se.bupp.cs3k.api.GameServerFacade
 import org.slf4j.LoggerFactory
@@ -117,10 +117,10 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
         }
       }
 
-      override def playerJoined(pjr: PlayerJoinRequest, pi:PlayerInfoServerLobby) = {
+      def playerJoined(pjr:PlayerJoinRequest, masterPlayerInfoOpt:Option[PlayerInfoServerLobby]) = {
         val resp = new PlayerJoinResponse
 
-        val ps = lobby.addPlayer(pjr, pi)
+        val ps = lobby.addPlayer(pjr, masterPlayerInfoOpt)
 
         resp.playerId = ps.playerId
 
@@ -289,7 +289,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
         val serializer = new ScoreSerializer {
           def serialize(s: AnyRef) = objectMapper.writeValueAsString(s)
         }
-        Server.settings.masterServer.occassionIdOpt.foreach( o => Server.gameServerFacade.endGame(o.toInt,totals.getSerializedResult(serializer)))
+        Server.settings.masterServer.gameSessionIdOpt.foreach( o => Server.gameServerFacade.endGame(o.toInt,totals.getSerializedResult(serializer)))
         onUpdateSentMessageQueue.enqueue(GameEnded())
       }
     }
@@ -365,13 +365,14 @@ object Server {
     } finally {
       if(gameServerFacade == null) {
         gameServerFacade = new GameServerFacade {
+
+          def startGame(p1: lang.Long, p2: util.Map[Integer, Integer]) {}
+
+          def startGame(p1: lang.Long, p2: util.List[Integer]) {}
+
+          def endGame(p1: lang.Long, p2: String) {}
+
           def evaluateGamePass(p1: String, l:java.lang.Long) = null
-
-          def startGame(p1: java.lang.Integer, p2: util.Map[java.lang.Integer, java.lang.Integer]) {}
-
-          def startGame(p1: java.lang.Integer, p2: util.List[java.lang.Integer]) {}
-
-          def endGame(p1: java.lang.Integer, p2: String) {}
         }
       }
     }
@@ -405,7 +406,7 @@ object Server {
   var server:Server = _
 
   case class PortSettings(var tcpPort:Int, var udpPort:Int)
-  case class MasterServerSettings(var host:String, var port:Int, var occassionIdOpt:Option[Long])
+  case class MasterServerSettings(var host:String, var port:Int, var gameSessionIdOpt:Option[Long])
   class Settings(var ports:PortSettings, var masterServer:MasterServerSettings, var log:Option[File])
 
   def createDefaultSettings = new Settings(new PortSettings(54555, 54777), new MasterServerSettings("localhost", 1199, None), None)
@@ -452,7 +453,7 @@ object Server {
           nextOption(map, tail)
 
         case "--occassion-id" :: value :: tail =>
-          map.masterServer.occassionIdOpt = Some(value.toLong)
+          map.masterServer.gameSessionIdOpt = Some(value.toLong)
           nextOption(map, tail)
         /*case string :: opt2 :: tail if isSwitch(opt2) =>
           nextOption(map ++ Map('infile -> string), list.tail)

@@ -9,15 +9,16 @@ package se.bupp.lek.common.model
  */
 
 
+
 object Model {
   type PlayerId = Int
 }
 
 
-import se.bupp.lek.common.Model.PlayerGO
+import se.bupp.lek.common.Model._
+import Model._
 
-
-class Competitor(val playerId:Int, val teamId:Int)
+class Competitor(val playerId:PlayerId, val teamId:TeamId)
 
 sealed abstract class PlayerConnectionState {
 

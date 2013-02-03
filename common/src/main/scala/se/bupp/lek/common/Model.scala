@@ -4,7 +4,9 @@ import com.jme3.export.{JmeExporter, JmeImporter, Savable}
 import com.jme3.math.{Quaternion, Vector3f}
 import scala.collection.JavaConversions.asScalaBuffer
 import se.bupp.lek.common.model.{ServerPlayerGO, Playing, PlayerConnectionState}
+import se.bupp.lek.common.model.Model._
 import com.jme3.scene.Node
+import se.bupp.cs3k.api.SimplePlayerInfo
 
 /**
  * Created with IntelliJ IDEA.
@@ -28,9 +30,11 @@ trait SceneGraphAccessors {
 
 object Model {
 
+  type TeamId = Long
+
   type TimeStamp = Long
 
-  type PlayerInfoServerLobby = String
+  type PlayerInfoServerLobby = SimplePlayerInfo
 
   val getNetworkMessages = List[Class[_ <: AnyRef]](
     classOf[PlayerJoinRequest],
@@ -60,9 +64,9 @@ object Model {
   )
 
   class PlayerConnection extends Savable {
-    var playerId: Int = _
+    var playerId: PlayerId = _
 
-    var teamIdentifier: Int = -1
+    var teamIdentifier: Long = -1
 
     var name: String = _
 
@@ -83,9 +87,9 @@ object Model {
 
     var lastSimulationServerTime:Long = _
 
-    var playerId: Int = _
+    var playerId: PlayerId = _
 
-    var teamIdentifier: Int = -1
+    var teamIdentifier: Long = -1
 
     var name: String = _
 
@@ -163,7 +167,7 @@ object Model {
   class AbstractOwnedGameObject(aogo:AbstractOwnedGameObject) extends AbstractGameObject(aogo) {
     /* Only applic to player really */
     var sentToServerByClient: Long = -1
-    var playerId: Int = -1
+    var playerId: PlayerId = -1
 
     if(aogo != null) {
       sentToServerByClient = aogo.sentToServerByClient
@@ -201,15 +205,15 @@ object Model {
 
   class ServerWorldStateChange {}
 
-  class ScoreMessage(val offender:Int, val victim:Int) extends ServerWorldStateChange {
+  class ScoreMessage(val offender:PlayerId, val victim:PlayerId) extends ServerWorldStateChange {
     def this() = this(-1,-1)
   }
 
-  class KillPlayer(val playerId: Int) extends ServerWorldStateChange {
+  class KillPlayer(val playerId: PlayerId) extends ServerWorldStateChange {
     def this() = this(-1)
   }
 
-  class SpawnPlayer(val playerId: Int, val name:String, val teamId: Int) extends ServerWorldStateChange {
+  class SpawnPlayer(val playerId: PlayerId , val name:String, val teamId: TeamId) extends ServerWorldStateChange {
     override def toString() = name + " with playerid = " + playerId + " representing " + teamId
     def this() = this(-1,"",-1)
   }
@@ -257,7 +261,7 @@ object Model {
   }
 
   class PlayerJoinResponse {
-    var playerId: Int = _
+    var playerId: PlayerId = _
   }
 
   class GameOverRequest(seqId:Int) extends OrderedMessage(seqId) {
@@ -296,7 +300,7 @@ object Model {
 
   class PlayerActionRequest() {
     var text: String = _
-    var playerId: Int = _
+    var playerId: PlayerId = _
     var motion: MotionGO = _
     var timeStamp: Long = _
     var elapsed: Long = _
