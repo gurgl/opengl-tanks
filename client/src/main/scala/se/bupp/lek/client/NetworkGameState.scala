@@ -60,8 +60,8 @@ object PlayerActionQueue {
 
 }
 
-case class ClientConnectSettings(val host:String, val tcpPort: Int, val udpPort: Int, val connectMessage:String) {
-  println(connectMessage)
+case class ClientConnectSettings(var host:String, var tcpPort: Int, var udpPort: Int) {
+  //println(connectMessage)
 }
 
 trait WorldUpdater {
@@ -69,7 +69,7 @@ trait WorldUpdater {
   def processInput(input: PlayerInput.Reorientation,lastUpdate:Option[(Long,Reorientation)])
   def generateGameWorldToRender(simTime: Long) : Option[VisualGameWorld]
 }
-class NetworkGameState(clientConnectSettings:ClientConnectSettings) extends AbstractAppState {
+class NetworkGameState(val clientSettings:Client.Settings) extends AbstractAppState {
 
   var gameClient:KryoClient = _
 
@@ -276,10 +276,11 @@ def bupp(l:SortedSet[Int], i:Int) : SortedSet[Int] = SortedSet.empty[Int] ++ {
     gameClient.addListener(Tmp.decorateListener(listener));
 
     gameClient.start();
-    log.info("tcpPort " + clientConnectSettings.tcpPort + ",  updPort " + clientConnectSettings.udpPort)
-    gameClient.connect(5000, clientConnectSettings.host, clientConnectSettings.tcpPort, clientConnectSettings.udpPort);
+    log.info("tcpPort " + clientSettings.connect.tcpPort + ",  updPort " + clientSettings.connect.udpPort)
+    gameClient.connect(5000, clientSettings.connect.host, clientSettings.connect.tcpPort, clientSettings.connect.udpPort);
 
-    val playerJoinRequest = new PlayerJoinRequest(clientConnectSettings.connectMessage)
+    val playerJoinRequest = new PlayerJoinRequest(clientSettings.playerInfo)
+    clientSettings.teamIdOpt.foreach( tid => playerJoinRequest.teamIdentifier = tid)
     playerJoinRequest.clientLabel = ManagementFactory.getRuntimeMXBean().getName()
     gameClient.sendTCP(playerJoinRequest);
   }

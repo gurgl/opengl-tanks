@@ -30,7 +30,7 @@ import se.bupp.lek.common.{MathUtil, Tmp}
 import org.slf4j.LoggerFactory
 import se.bupp.lek.common.Model._
 import se.bupp.lek.common.model.Model._
-
+import java.io.File
 
 
 object PlayerInput {
@@ -60,7 +60,7 @@ class PlayerInput(startPosition:Orientation) {
   }
 }
 
-class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplication {
+class Client(var clientSettings:Client.Settings) extends SimpleApplication {
   import Client._
 
   var playerIdOpt:Option[PlayerId] = None
@@ -186,7 +186,7 @@ class Client(clientConnectSettings:ClientConnectSettings) extends SimpleApplicat
 
     stateManager.detach( stateManager.getState(classOf[FlyCamAppState]))
 
-    val networkState: NetworkGameState = new NetworkGameState(clientConnectSettings)
+    val networkState: NetworkGameState = new NetworkGameState(clientSettings)
     stateManager.attach(networkState)
 
 
@@ -407,6 +407,11 @@ class MessageState(s:String) extends AbstractAppState {
 
 object Client {
 
+  class Settings(var connect:ClientConnectSettings = new ClientConnectSettings(host = "localhost" , tcpPort = 54555, udpPort = 54777),private[Client] var playerInfoOpt:Option[String] = None) {
+
+    var teamIdOpt:Option[Int] = None
+    def playerInfo = playerInfoOpt.getOrElse("none set")
+  }
 
   var buffer = new StringBuilder
   var spel:Client = _
@@ -417,17 +422,62 @@ object Client {
   def getHostSettings(args: Array[String]) = {
 
     (System.getProperty("gameHost"),System.getProperty("gamePortTCP"), System.getProperty("gamePortUDP"), System.getProperty("playerInfo")) match {
-      case (h:String,Int(u),Int(t), p:String) => (h,u,t,p)
-      case _ => args match {
+      case (h:String,Int(t),Int(u), p:String) => new Settings(ClientConnectSettings(h,t,u),Some(p))
+      case _ => /*args match {
         case Array(h,Int(u),Int(t),p) => (h,u,t,p)
-        case _ => ("localhost", 54555, 54777, "none set")
-      }
-
+      }*/
+        handleCommandLine(args)
     }
   }
+
+  def handleCommandLine(args: Array[String]) : Settings = {
+    if (args.length == 0) println("see code")
+    val arglist = args.toList
+
+    val defaultSettings = new Settings
+
+    def nextOption(map : Settings, list: List[String]) : Settings = {
+      def isSwitch(s : String) = (s(0) == '-')
+      list match {
+        case Nil => map
+        //case "--udp-port" :: tail => nextOption(map ++ Map('useyeah -> true), tail)
+        case "--udp-port" :: value :: tail =>
+          map.connect.udpPort = value.toInt
+          nextOption(map , tail)
+        case "--tcp-port" :: value :: tail =>
+          map.connect.tcpPort = value.toInt
+          nextOption(map , tail)
+        case "--master-host" :: value :: tail =>
+          map.connect.host = value
+          nextOption(map , tail)
+        case "--team-id" :: value :: tail =>
+          map.teamIdOpt = Some(value.toInt)
+          nextOption(map , tail)
+        /*
+
+        case "--log" :: value :: tail =>
+          map.log = Some(new File(value))
+          nextOption(map, tail)*/
+
+        case "--player-info" :: value :: tail =>
+          map.playerInfoOpt = Some(value)
+          nextOption(map, tail)
+        /*case string :: opt2 :: tail if isSwitch(opt2) =>
+          nextOption(map ++ Map('infile -> string), list.tail)
+        case string :: Nil =>  nextOption(map ++ Map('infile -> string), list.tail)*/
+        case option :: tail => println("Unknown option "+option)
+          exit(1)
+      }
+    }
+    val options = nextOption(defaultSettings,arglist)
+    options
+  }
+
+
   def main(arguments: Array[String]): Unit = {
 
-    spel = new Client((ClientConnectSettings.apply _).tupled(getHostSettings(arguments)))
+    var clientSettings = getHostSettings(arguments)
+    spel = new Client(clientSettings)
     val settings = new AppSettings(true);
     settings.setFrameRate(58)
     settings.setResolution(640,480)

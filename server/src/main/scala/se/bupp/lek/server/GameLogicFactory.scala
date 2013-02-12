@@ -92,8 +92,8 @@ object GameLogicFactory {
       if (victimCompetitor.teamId == offenderCompetitor.teamId) {
 
       } else {
-        currentRound.playerKills += (offender -> (currentRound.playerKills.get(offenderCompetitor.playerId).flatten.toList :+ new Kill(victim)) )
-        currentRound.competitorKills += (offenderCompetitor.teamId-> (currentRound.competitorKills.get(offenderCompetitor.teamId).flatten.toList :+ new Kill(victim)) )
+        currentRound.playerKills += (offender -> (currentRound.playerKills.get(offenderCompetitor.playerId).toList.flatten :+ new Kill(victim)) )
+        currentRound.competitorKills += (offenderCompetitor.teamId-> (currentRound.competitorKills.get(offenderCompetitor.teamId).toList.flatten :+ new Kill(victim)) )
 
         gameLogic.competitorScored(new PlayerKill(offenderCompetitor.playerId, victimCompetitor.playerId), offenderCompetitor.teamId)
       }

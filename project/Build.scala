@@ -10,6 +10,7 @@ import java.util.jar.Attributes.Name._
 import sbt.Package.ManifestAttributes
 import sbt.Package.ManifestAttributes
 import com.github.retronym.SbtOneJar.oneJar
+import scala._
 import scala.Some
 import scala.Some
 import WebStartPlugin._
@@ -18,24 +19,29 @@ object MyBuild extends Build {
 
   val JME_VERSION = "3.0.0.20120512-SNAPSHOT"
 
+  /**
+   * println(evalTask(fullClasspath in Runtime, currentState).map(_.data).mkString(";"))
+   */
+  lazy val moduleDefaultSettings = Defaults.defaultSettings ++ Seq(serverClassPathTask, scalaVersion := "2.10.0")
+
   lazy val rootProject = Project(id = "root",
     base = file("."),
-    settings = Project.defaultSettings ++ Seq(publishArtifact in Compile := false)
+    settings = moduleDefaultSettings ++ Seq(publishArtifact in Compile := false)
   ) aggregate(serverProject, clientProject)
 
   lazy val commonProject = Project("common",
     base = file("common"),
-    settings = Project.defaultSettings ++ commonSettings
+    settings = moduleDefaultSettings  ++ commonSettings
   )
 
   lazy val serverProject = Project(id = "server",
     base = file("server"),
-    settings = Project.defaultSettings ++ serverSettings  ++ net.virtualvoid.sbt.graph.Plugin.graphSettings ++ com.github.retronym.SbtOneJar.oneJarSettings
+    settings = moduleDefaultSettings  ++ serverSettings  ++ net.virtualvoid.sbt.graph.Plugin.graphSettings ++ com.github.retronym.SbtOneJar.oneJarSettings
   ) dependsOn(commonProject)
 
   lazy val clientProject:Project = Project("client",
     base = file("client"),
-    settings = Project.defaultSettings ++ clientSettings ++ webStartSettings
+    settings = moduleDefaultSettings  ++ clientSettings ++ webStartSettings
   ) dependsOn(commonProject)
 
   lazy val commonSettings = Seq(
@@ -160,13 +166,23 @@ object MyBuild extends Build {
     "org.mockito" % "mockito-all" % "1.9.0" % "test"
   )
 
-  val serverClassPath = TaskKey[Unit]("server-class-path", "Deletes files produced by the build, such as generated sources, compiled classes, and task caches.")
+  val serverClassPath = TaskKey[Unit]("server-class-path", "Classpath.")
 
   var serverClassPathTask = serverClassPath := {
-    println("tja" + ( fullClasspath in Compile))
+    println("Tja")
+    (fullClasspath in Runtime) map { (cp) =>
+      //println("Target path is: "+target)
+      println("Full classpath is: "+cp.map(_.data).mkString(":"))
+    }
+
+    //this.runClasspath.getPaths.foreach(println)
+  }
+
+    /*println("tja" + ( fullClasspath in Compile))
 
     ( fullClasspath in Compile ) map { case (r) =>  r.files foreach println }
   }
+  */
 
   //serverClassPathTask <<= serverClassPathTask.dependsOn(Compile)
 

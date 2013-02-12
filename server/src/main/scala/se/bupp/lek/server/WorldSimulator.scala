@@ -153,7 +153,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
 
   }
 
-  type ServerUpdateLoopMessage = (Spatial,_ <: ScalaObject)
+  type ServerUpdateLoopMessage = (Spatial,_ <: AnyRef)
 
 
   var exloadedSinceLastUpdate = Seq.empty[ProjectileGO]
@@ -364,7 +364,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
           p.teamIdentifier)).toList
 
 
-      newAlivePlayers.foreach( n => log.info(n + " entered"))
+      newAlivePlayers.foreach( (n:ServerWorldStateChange) => log.info("" + n.toString + " entered"))
 
       if(scoreSinceLastUpdate.size > 0) {
         log.debug("Sending Score Notif")

@@ -105,7 +105,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
 
     //val (ws, gl) = createWorldSimulator()
     //worldSimulator = ws
-    gameLogic = createGameLogic()
+    gameLogic = createGameLogic(Server.settings.gameSetup)
 
     networkState = new ServerNetworkState(portSettings) {
       def addPlayerAction(pa: PlayerActionRequest) {
@@ -241,10 +241,15 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
     updateProbe.tick()
   } catch { case e:Exception => e.printStackTrace() ; log.debug(String.valueOf(e)) }
 
-  def createGameLogic() = {
+  def createGameLogic(gameType:AbstractGameDescription) = {
+
+    val startCriteria = gameType match {
+      case FreeForAll(i) => WhenNumOfConnectedPlayersCriteria(i)
+      case TeamDeathmatch(t,np) => WhenNumOfConnectedPlayersCriteria(t*np)
+    }
 
     val settings: GameMatchSettings = new GameMatchSettings(
-      startCriteria = WhenNumOfConnectedPlayersCriteria(2),
+      startCriteria = startCriteria,
       roundEndCriteria = ScoreReached(2),
       gameEndCriteria = NumOfRoundsPlayed(2)
     )
@@ -407,9 +412,12 @@ object Server {
 
   case class PortSettings(var tcpPort:Int, var udpPort:Int)
   case class MasterServerSettings(var host:String, var port:Int, var gameSessionIdOpt:Option[Long])
-  class Settings(var ports:PortSettings, var masterServer:MasterServerSettings, var log:Option[File])
+  class Settings(var ports:PortSettings, var masterServer:MasterServerSettings, var log:Option[File], var gameSetup:AbstractGameDescription)
+  sealed abstract class AbstractGameDescription()
+  case class FreeForAll(val numOfPlayers:Int) extends AbstractGameDescription()
+  case class TeamDeathmatch(val numOfTeams:Int, val numOfPlayersPerTeam:Int) extends AbstractGameDescription()
 
-  def createDefaultSettings = new Settings(new PortSettings(54555, 54777), new MasterServerSettings("localhost", 1199, None), None)
+  def createDefaultSettings = new Settings(new PortSettings(54555, 54777), new MasterServerSettings("localhost", 1199, None), None, FreeForAll(2))
 
   val usage = """
     Usage: Server [options]
@@ -420,6 +428,7 @@ object Server {
          --master-port <port>
          --log <path>
          --occassion-id <id>
+         --game-setup <name>
               """
 
   type OptionMap = Map[Symbol, Any]
@@ -455,6 +464,20 @@ object Server {
         case "--occassion-id" :: value :: tail =>
           map.masterServer.gameSessionIdOpt = Some(value.toLong)
           nextOption(map, tail)
+        case "--game-setup" :: value :: tail =>
+          val setup = value match {
+            case "ffa2" => FreeForAll(2)
+            case "2vs2" => TeamDeathmatch(2,2)
+
+            case _ => println("Unknown game setup "+value)
+              sys.exit(1)
+              throw new RuntimeException("bad option")
+
+          }
+
+          map.gameSetup = setup
+          nextOption(map, tail)
+
         /*case string :: opt2 :: tail if isSwitch(opt2) =>
           nextOption(map ++ Map('infile -> string), list.tail)
         case string :: Nil =>  nextOption(map ++ Map('infile -> string), list.tail)*/

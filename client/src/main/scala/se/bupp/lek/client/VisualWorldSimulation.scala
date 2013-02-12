@@ -124,7 +124,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
       }
 
       //val orientation = saved.last._2.reorientate(input)
-      playerMovementLog =  playerMovementLog + (timeStamp, orientation, reorientation)
+      playerMovementLog =  playerMovementLog :+ (timeStamp, orientation, reorientation)
     }
   }
 
