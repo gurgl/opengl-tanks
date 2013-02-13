@@ -447,7 +447,7 @@ object Client {
         case "--tcp-port" :: value :: tail =>
           map.connect.tcpPort = value.toInt
           nextOption(map , tail)
-        case "--master-host" :: value :: tail =>
+        case "--host" :: value :: tail =>
           map.connect.host = value
           nextOption(map , tail)
         case "--team-id" :: value :: tail =>

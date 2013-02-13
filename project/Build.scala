@@ -22,7 +22,10 @@ object MyBuild extends Build {
   /**
    * println(evalTask(fullClasspath in Runtime, currentState).map(_.data).mkString(";"))
    */
-  lazy val moduleDefaultSettings = Defaults.defaultSettings ++ Seq(serverClassPathTask, scalaVersion := "2.10.0")
+
+  override def settings = super.settings ++ Seq(scalaVersion := "2.10.0")
+
+  lazy val moduleDefaultSettings = Defaults.defaultSettings ++ Seq(scalaVersion := "2.10.0")
 
   lazy val rootProject = Project(id = "root",
     base = file("."),
@@ -162,7 +165,7 @@ object MyBuild extends Build {
   )
 
   val testDeps = Seq(
-    "org.specs2" %% "specs2" % "1.11" % "test",
+    "org.specs2" %% "specs2" % "1.12.3" % "test",
     "org.mockito" % "mockito-all" % "1.9.0" % "test"
   )
 
