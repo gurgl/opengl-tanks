@@ -2,8 +2,8 @@ package se.bupp.lek
 
 import common.model.Competitor
 import org.specs2.mutable.Specification
-import server.GameLogicFactory
-import server.GameLogicFactory.{AbstractScoringControllables, ControllablesScoringStrategy, KillBasedStrategy, GameLogicListener}
+import server.GamePhaseOrchestratorFactory
+import server.GamePhaseOrchestratorFactory.{AbstractScoringControllables, ControllablesScoringStrategy, KillBasedStrategy, GameLogicListener}
 import server.Server.GameMatchSettings
 import server.Server.GameMatchSettings.{ScoreReached, NumOfRoundsPlayed, WhenNumOfConnectedPlayersCriteria}
 
@@ -36,7 +36,7 @@ class GameLogicTest extends Specification with Mockito {
       )
 
       val listener = mock[GameLogicListener]
-      val gameLogic = GameLogicFactory.create(settings, listener, new KillBasedStrategy())
+      val gameLogic = GamePhaseOrchestratorFactory.create(settings, listener, new KillBasedStrategy())
 
       gameLogic.addCompetitor(new Competitor(1,1))
 
@@ -65,7 +65,7 @@ class GameLogicTest extends Specification with Mockito {
       )
 
       val listener = mock[GameLogicListener]
-      val gameLogic = GameLogicFactory.create(settings, listener, new KillBasedStrategy())
+      val gameLogic = GamePhaseOrchestratorFactory.create(settings, listener, new KillBasedStrategy())
 
       gameLogic.addCompetitor(new Competitor(1,1))
 
@@ -96,7 +96,7 @@ class GameLogicTest extends Specification with Mockito {
       )
 
       val listener = mock[GameLogicListener]
-      val gameLogic = GameLogicFactory.create(settings, listener, new KillBasedStrategy())
+      val gameLogic = GamePhaseOrchestratorFactory.create(settings, listener, new KillBasedStrategy())
 
       gameLogic.addCompetitor(new Competitor(1,1))
       there was no(listener).onGameStart()
@@ -129,7 +129,7 @@ class GameLogicTest extends Specification with Mockito {
       )
 
       val listener = mock[GameLogicListener]
-      val gameLogic = GameLogicFactory.create(settings, listener, new ControllablesScoringStrategy(new AbstractScoringControllables(Map(1L->0,2L->0))))
+      val gameLogic = GamePhaseOrchestratorFactory.create(settings, listener, new ControllablesScoringStrategy(new AbstractScoringControllables(Map(1L->0,2L->0))))
 
 
       gameLogic.addCompetitor(new Competitor(1,1))

@@ -3,8 +3,8 @@ package se.bupp.lek.server
 import se.bupp.lek.common.model.Competitor
 import se.bupp.lek.server.Server.GameMatchSettings
 import se.bupp.lek.server.Server.GameMatchSettings.{ScoreReached, NumOfRoundsPlayed, WhenNumOfConnectedPlayersCriteria}
-import se.bupp.lek.server.GameLogicFactory.{AbstractScoreDescription, ScoreStrategy, GameLogicListener}
-import se.bupp.lek.server.GameLogic.Kill
+import se.bupp.lek.server.GamePhaseOrchestratorFactory.{AbstractScoreDescription, ScoreStrategy, GameLogicListener}
+import se.bupp.lek.server.GamePhaseOrchestrator.Kill
 
 
 /**
@@ -15,11 +15,11 @@ import se.bupp.lek.server.GameLogic.Kill
  * To change this template use File | Settings | File Templates.
  */
 
-object GameLogic {
+object GamePhaseOrchestrator {
   class Kill(victim:Int)
 }
 
-class GameLogic(var gameSettings:GameMatchSettings, var listener:GameLogicListener, val scoreStrategy:ScoreStrategy) {
+class GamePhaseOrchestrator(var gameSettings:GameMatchSettings, var listener:GameLogicListener, val scoreStrategy:ScoreStrategy) {
 
   var roundCount = 0
 

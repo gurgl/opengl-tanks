@@ -21,7 +21,7 @@ import com.jme3.system.JmeContext.Type
 import se.bupp.lek.server.Server.GameMatchSettings._
 import se.bupp.lek.server.Server.GameMatchSettings.WhenNumOfConnectedPlayersCriteria
 import se.bupp.lek.common.model.Competitor
-import se.bupp.lek.server.GameLogicFactory._
+import se.bupp.lek.server.GamePhaseOrchestratorFactory._
 import se.bupp.lek.server.Server.GameMatchSettings.ScoreReached
 import se.bupp.lek.server.Server.GameMatchSettings.WhenNumOfConnectedPlayersCriteria
 import se.bupp.lek.server.Server.GameMatchSettings.NumOfRoundsPlayed
@@ -33,7 +33,7 @@ import se.bupp.lek.server.Server.GameMatchSettings.NumOfRoundsPlayed
 import java.util.logging.{Logger => JUJME3Logger, Level => JULevel, LogManager}
 import org.apache.log4j.{PatternLayout, FileAppender, Level, Logger}
 import se.bupp.lek.common.FuncUtil.{Int, RateProbe}
-import se.bupp.lek.server.GameLogicFactory.KillBasedStrategy.PlayerKill
+import se.bupp.lek.server.GamePhaseOrchestratorFactory.KillBasedStrategy.PlayerKill
 import scala.util.{Failure, Success, Random}
 import java.rmi.registry.{Registry, LocateRegistry}
 import java.lang.Exception
@@ -70,7 +70,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
 
   var networkState: ServerNetworkState = _
 
-  var gameLogic:GameLogic = _
+  var gameLogic:GamePhaseOrchestrator = _
 
   var serverMode:ServerMode = _
 
@@ -104,7 +104,7 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
 
     //val (ws, gl) = createWorldSimulator()
     //worldSimulator = ws
-    gameLogic = GameLogicFactory.createGameLogic(Server.settings.gameSetup,this)
+    gameLogic = GamePhaseOrchestratorFactory.createGameLogic(Server.settings.gameSetup,this)
     Server.settings.serverMode
 
     networkState = new ServerNetworkState(portSettings) {

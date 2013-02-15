@@ -5,8 +5,8 @@ import se.bupp.lek.common.Model.{ScoreMessage, StartRoundRequest, PlayerJoinRequ
 import se.bupp.lek.common.model.Competitor
 import se.bupp.lek.common.model.Model._
 import se.bupp.lek.server.Server.GameMatchSettings.{NumOfRoundsPlayed, WhenNumOfConnectedPlayersCriteria, ScoreReached}
-import se.bupp.lek.server.GameLogic.Kill
-import se.bupp.lek.server.GameLogicFactory.KillBasedStrategy.PlayerKill
+import se.bupp.lek.server.GamePhaseOrchestrator.Kill
+import se.bupp.lek.server.GamePhaseOrchestratorFactory.KillBasedStrategy.PlayerKill
 import se.bupp.cs3k.example.ExampleScoreScheme.{JavaTuple2, ExContestScore}
 import collection.mutable.ArrayBuffer
 import org.slf4j.LoggerFactory
@@ -25,7 +25,7 @@ import se.bupp.lek.server.Server.GameMatchSettings.NumOfRoundsPlayed
  * To change this template use File | Settings | File Templates.
  */
 
-object GameLogicFactory {
+object GamePhaseOrchestratorFactory {
 
 
   trait ScoreSerializer {
@@ -40,7 +40,7 @@ object GameLogicFactory {
 
   trait ScoreStrategy {
 
-    var gameLogic:GameLogic = _
+    var gameLogic:GamePhaseOrchestrator = _
 
     def init()
     def playerKilledByPlayer(offender:PlayerId,victim:PlayerId)
@@ -199,8 +199,8 @@ object GameLogicFactory {
   class RoundResults()
 
 
-  def create(settings:GameMatchSettings, gameLogicListener:GameLogicListener, scoreStrategy:ScoreStrategy) : GameLogic = {
-    val gl = new GameLogic(settings, gameLogicListener, scoreStrategy)
+  def create(settings:GameMatchSettings, gameLogicListener:GameLogicListener, scoreStrategy:ScoreStrategy) : GamePhaseOrchestrator = {
+    val gl = new GamePhaseOrchestrator(settings, gameLogicListener, scoreStrategy)
     scoreStrategy.gameLogic = gl
     //scoreStrategy.init()
     gl
@@ -221,7 +221,7 @@ object GameLogicFactory {
     )
 
     var gameLogicListener = createListener(gameType, server, gameSettings)
-    GameLogicFactory.create(gameSettings, gameLogicListener, new KillBasedStrategy())
+    GamePhaseOrchestratorFactory.create(gameSettings, gameLogicListener, new KillBasedStrategy())
   }
 
 
