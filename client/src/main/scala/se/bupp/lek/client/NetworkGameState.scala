@@ -176,6 +176,10 @@ def bupp(l:SortedSet[Int], i:Int) : SortedSet[Int] = SortedSet.empty[Int] ++ {
       gameApp.postMessage(response)
     case response:GameOverRequest =>
       gameApp.postMessage(response)
+      if (response.serverShutDown) {
+        log.info("Received server shutdown - disconnecting")
+        gameClient.close()
+      }
       //gameWorldUpdatesQueue = Queue()
     case response:StartGameRequest =>
       gameApp.postMessage(response)

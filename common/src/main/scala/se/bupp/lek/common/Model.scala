@@ -264,8 +264,8 @@ object Model {
     var playerId: PlayerId = _
   }
 
-  class GameOverRequest(seqId:Int) extends OrderedMessage(seqId) {
-    def this() = this(-1)
+  class GameOverRequest(seqId:Int, var serverShutDown:Boolean) extends OrderedMessage(seqId) {
+    def this() = this(-1,false)
   }
 
   class StartGameRequest(seqId:Int) extends OrderedMessage(seqId) {

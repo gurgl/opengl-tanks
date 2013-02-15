@@ -34,7 +34,7 @@ import java.util.logging.{Logger => JUJME3Logger, Level => JULevel, LogManager}
 import org.apache.log4j.{PatternLayout, FileAppender, Level, Logger}
 import se.bupp.lek.common.FuncUtil.{Int, RateProbe}
 import se.bupp.lek.server.GameLogicFactory.KillBasedStrategy.PlayerKill
-import util.Random
+import scala.util.{Failure, Success, Random}
 import java.rmi.registry.{Registry, LocateRegistry}
 import java.lang.Exception
 import java.rmi.{ConnectException, Naming, Remote, RMISecurityManager}
@@ -56,9 +56,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
  * To change this template use File | Settings | File Templates.
  */
 
-
-
-
 class Server(portSettings:PortSettings) extends SimpleApplication with PlayStateListener
 //with PhysicsTickListener
 {
@@ -74,6 +71,8 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
   var networkState: ServerNetworkState = _
 
   var gameLogic:GameLogic = _
+
+  var serverMode:ServerMode = _
 
   var leRoot:Node = null
 
@@ -105,7 +104,8 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
 
     //val (ws, gl) = createWorldSimulator()
     //worldSimulator = ws
-    gameLogic = createGameLogic(Server.settings.gameSetup)
+    gameLogic = GameLogicFactory.createGameLogic(Server.settings.gameSetup,this)
+    Server.settings.serverMode
 
     networkState = new ServerNetworkState(portSettings) {
       def addPlayerAction(pa: PlayerActionRequest) {
@@ -140,13 +140,8 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
     }
     log.info("Game Launch Complete")
   }
-  //sealed abstract class PlayStateUpdateMessage
-  case class RoundEnded() extends AbstractServerMessage
 
-  sealed abstract class AbstractServerMessage
-  case class GameStarted() extends AbstractServerMessage
 
-  case class GameEnded() extends AbstractServerMessage
 
   private var serverMessageQueue = mutable.Queue.empty[AbstractServerMessage]
   var onUpdateSentMessageQueue = mutable.Queue.empty[AbstractServerMessage]
@@ -161,7 +156,6 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
       appendToQueue(onUpdateSentMessageQueue:_*)
       onUpdateSentMessageQueue = mutable.Queue.empty
     }
-
   }
 
   override def simpleUpdate(tpf: Float) : Unit = try {
@@ -176,6 +170,8 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
       th
     }
     if(toHandle.size > 0 ) log.info("To handle : " + toHandle.map(_.getClass.getSimpleName).mkString(","))
+
+
 
     toHandle.foreach {
       case RoundEnded() =>
@@ -200,8 +196,24 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
         }
         //gameLogic = gl
 
-        networkState.createSimple(new StartGameRequest)
-      case GameEnded() =>
+        networkState.sendToAllClients(new StartGameRequest)
+      case GameEnded(totals) =>
+
+        import scala.concurrent.ExecutionContext.Implicits.global
+
+        Server.settings.masterServer.gameSessionIdOpt.foreach { o =>
+          val f = scala.concurrent.future {
+            val serializer = new ScoreSerializer {
+              def serialize(s: AnyRef) = server.objectMapper.writeValueAsString(s)
+            }
+            Server.gameServerFacade.endGame(o.toInt,totals.getSerializedResult(serializer))
+          }
+          f onComplete {
+            case Success(_) =>
+            case Failure(e) => log.error("ERROR contacting master " + e)
+          }
+        }
+
         worldSimulator.unspawnAllGameObjects()
 
         var playState: PlayState = getStateManager.getState(classOf[PlayState])
@@ -210,97 +222,40 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
         worldSimulator.destroy()
         worldSimulator = null
         //gameLogic = null
-        networkState.createSimple(new GameOverRequest())
+
         log.info("Game ended")
-        new Timer().schedule(new TimerTask {
-          def run() {
-            gameLogic.queryStartGame()
 
-            /*lobby.connectedPlayers.foreach {
-              p =>
-                gameLogic.addCompetitor(new Competitor(p.playerId,p.teamIdentifier))
-            }*/
-            //gameLogic.queryStartGame()
-          }
-        },5000L)
-      // lobby mode
+        val sendShutdown = Server.settings.serverMode match {
+          case ServerMode(true,false) =>
+            new Timer().schedule(new TimerTask {
+              def run() {
+                gameLogic.queryStartGame()
+
+                /*lobby.connectedPlayers.foreach {
+                  p =>
+                    gameLogic.addCompetitor(new Competitor(p.playerId,p.teamIdentifier))
+                }*/
+                //gameLogic.queryStartGame()
+              }
+            },5000L)
+            false
+          //case ServerMode(false,true) =>
+          case _ =>
+            true
+        }
+
+        networkState.sendGameOver(sendShutdown)
+
+
+        //appendToQueue(LeaveGameMode())
+
+      //case LeaveGameMode()
     }
-    /*updateProbe.tick()
-    worldSimulator.world.simulateToLastUpdated()
 
-    worldSimulator.handleStateLogic()
-
-    val simTime: Long = Server.clock()
-
-    networkState.querySendUpdate(() => worldSimulator.generateGameWorldChanges(simTime))
-
-
-    leRoot.updateLogicalState(tpf);
-
-    leRoot.updateGeometricState();*/
     updateProbe.tick()
+
   } catch { case e:Exception => e.printStackTrace() ; log.debug(String.valueOf(e)) }
 
-  def createGameLogic(gameType:AbstractGameDescription) = {
-
-    val startCriteria = gameType match {
-      case FreeForAll(i) => WhenNumOfConnectedPlayersCriteria(i)
-      case TeamDeathmatch(t,np) => WhenNumOfConnectedPlayersCriteria(t*np)
-    }
-
-    val settings: GameMatchSettings = new GameMatchSettings(
-      startCriteria = startCriteria,
-      roundEndCriteria = ScoreReached(2),
-      gameEndCriteria = NumOfRoundsPlayed(2)
-    )
-
-    var gameLogicListener = new GameLogicListener() {
-      def onGameStart() {
-
-        // send countdown message
-        // add timer to start round
-        // leave lobby mode
-        // enter game mode
-        log.info("onGameStart")
-        appendToQueue(GameStarted())
-
-      }
-
-      def onIntermediateRoundStart() {
-        // send round started message
-        log.info("Round Started")
-        networkState.createSimple(new StartRoundRequest)
-        worldSimulator.spawnAllParticipants()
-      }
-
-      def onCompetetitorScored(scoreDescription: AbstractScoreDescription) {
-
-        log.info("Someone scored")
-        val playState: PlayState = getStateManager.getState(classOf[PlayState])
-
-        var kill: PlayerKill = scoreDescription.asInstanceOf[PlayerKill]
-        playState.postMessage(new ScoreMessage(kill.of, kill.vi))
-        // send displayable score modification
-      }
-
-      def onIntermediateRoundEnd(roundResults: RoundResults, standing: AbstractGameResult) {
-        // send countdown message
-        // add timer to start round
-        onUpdateSentMessageQueue.enqueue(RoundEnded())
-      }
-
-      def onGameEnd(totals: AbstractGameResult) {
-        log.debug("Scheduling Game End")
-        val serializer = new ScoreSerializer {
-          def serialize(s: AnyRef) = objectMapper.writeValueAsString(s)
-        }
-        Server.settings.masterServer.gameSessionIdOpt.foreach( o => Server.gameServerFacade.endGame(o.toInt,totals.getSerializedResult(serializer)))
-        onUpdateSentMessageQueue.enqueue(GameEnded())
-      }
-    }
-
-    GameLogicFactory.create(settings, gameLogicListener, new KillBasedStrategy())
-  }
 
   def createWorldSimulator() : WorldSimulator = {
     val physicsSpace = new PhysicsSpace()
@@ -315,7 +270,6 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
     worldSimulator
   }
 
-
   def createDebug() {
     //val rot = Quaternion.IDENTITY.clone()
     //rot.lookAt(dir, new Vector3f(0, 1, 0))
@@ -329,17 +283,64 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
   }
 
   var updateProbe = new RateProbe("App Update", 3000L,log)
-
-
-
-
 }
 
 object Server {
 
+  sealed abstract class AbstractServerMessage
+
+  case class RoundEnded() extends AbstractServerMessage
+  case class GameStarted() extends AbstractServerMessage
+  case class GameEnded(gameResult:AbstractGameResult) extends AbstractServerMessage
+  //case class LeaveGameMode() extends AbstractServerMessage
+  //case class EnterGameMode() extends AbstractServerMessage
+
+
+  case class PortSettings(var tcpPort:Int, var udpPort:Int)
+  case class MasterServerSettings(var host:String, var port:Int, var gameSessionIdOpt:Option[Long])
+  class Settings(var ports:PortSettings, var masterServer:MasterServerSettings, var log:Option[File], var gameSetup:AbstractGameDescription)  {
+    def serverMode = gameSetup match {
+      case FreeForAll(_) => ServerMode(true,false)
+      case _ => ServerMode(false, true)
+    }
+  }
+  sealed abstract class AbstractGameDescription()
+  case class FreeForAll(val numOfPlayers:Int) extends AbstractGameDescription()
+  case class TeamDeathmatch(val numOfTeams:Int, val numOfPlayersPerTeam:Int) extends AbstractGameDescription()
+
+  case class ServerMode(val restartOnIdle:Boolean, val quitOnGameOver:Boolean)
+
+  object GameMatchSettings {
+
+    sealed abstract class AbstractStartCriteria()
+    case class WhenNumOfConnectedPlayersCriteria(num:Int) extends AbstractStartCriteria()
+    case class AlwaysOn() extends AbstractStartCriteria()
+
+    sealed abstract class RoundEndCriteria()
+    //case class KillsReached(value:Int) extends RoundEndCriteria()
+    case class ScoreReached(value:Int) extends RoundEndCriteria()
+    case class TimeLimitReached(value:Long) extends RoundEndCriteria()
+
+    sealed abstract class GameEndCriteria()
+    case class NumOfRoundsPlayed(value:Int) extends GameEndCriteria()
+  }
+
+  class GameMatchSettings(val startCriteria:AbstractStartCriteria,val roundEndCriteria:RoundEndCriteria,val gameEndCriteria:GameEndCriteria) {  }
+
+
+  val log = LoggerFactory.getLogger(classOf[Server])
+
+  var server:Server = _
 
   var occassionIdOpt = Option.empty[Int]
   var gameServerFacade:GameServerFacade = _
+
+  var settings:Settings = _
+
+
+  def clock() = System.currentTimeMillis()
+
+
 
   def initMasterServerConnection(mss:MasterServerSettings) = {
     if (System.getSecurityManager() == null) {
@@ -383,40 +384,6 @@ object Server {
     }
   }
 
-  def clock() = System.currentTimeMillis()
-
-  val log = LoggerFactory.getLogger(classOf[Server])
-
-  object GameMatchSettings {
-
-    sealed abstract class AbstractStartCriteria()
-
-    case class WhenNumOfConnectedPlayersCriteria(num:Int) extends AbstractStartCriteria()
-    case class AlwaysOn() extends AbstractStartCriteria()
-
-    sealed abstract class RoundEndCriteria()
-    //case class KillsReached(value:Int) extends RoundEndCriteria()
-    case class ScoreReached(value:Int) extends RoundEndCriteria()
-    case class TimeLimitReached(value:Long) extends RoundEndCriteria()
-
-    sealed abstract class GameEndCriteria()
-    case class NumOfRoundsPlayed(value:Int) extends GameEndCriteria()
-
-  }
-
-  class GameMatchSettings(val startCriteria:AbstractStartCriteria,val roundEndCriteria:RoundEndCriteria,val gameEndCriteria:GameEndCriteria) {
-
-  }
-
-  var server:Server = _
-
-  case class PortSettings(var tcpPort:Int, var udpPort:Int)
-  case class MasterServerSettings(var host:String, var port:Int, var gameSessionIdOpt:Option[Long])
-  class Settings(var ports:PortSettings, var masterServer:MasterServerSettings, var log:Option[File], var gameSetup:AbstractGameDescription)
-  sealed abstract class AbstractGameDescription()
-  case class FreeForAll(val numOfPlayers:Int) extends AbstractGameDescription()
-  case class TeamDeathmatch(val numOfTeams:Int, val numOfPlayersPerTeam:Int) extends AbstractGameDescription()
-
   def createDefaultSettings = new Settings(new PortSettings(54555, 54777), new MasterServerSettings("localhost", 1199, None), None, FreeForAll(2))
 
   val usage = """
@@ -427,7 +394,7 @@ object Server {
          --master-host <host>
          --master-port <port>
          --log <path>
-         --occassion-id <id>
+         --game-sessiond-id <id>
          --game-setup <name>
               """
 
@@ -461,26 +428,22 @@ object Server {
           map.log = Some(new File(value))
           nextOption(map, tail)
 
-        case "--occassion-id" :: value :: tail =>
+        case "--game-session-id" :: value :: tail =>
           map.masterServer.gameSessionIdOpt = Some(value.toLong)
           nextOption(map, tail)
         case "--game-setup" :: value :: tail =>
           val setup = value match {
             case "ffa2" => FreeForAll(2)
             case "2vs2" => TeamDeathmatch(2,2)
-
+            case "1vs1" => TeamDeathmatch(1,1) // REMOVE ME
             case _ => println("Unknown game setup "+value)
               sys.exit(1)
               throw new RuntimeException("bad option")
-
           }
 
           map.gameSetup = setup
           nextOption(map, tail)
 
-        /*case string :: opt2 :: tail if isSwitch(opt2) =>
-          nextOption(map ++ Map('infile -> string), list.tail)
-        case string :: Nil =>  nextOption(map ++ Map('infile -> string), list.tail)*/
         case option :: tail => println("Unknown option "+option)
         exit(1)
       }
@@ -488,8 +451,6 @@ object Server {
     val options = nextOption(defaultSettings,arglist)
     options
   }
-
-  var settings:Settings = _
 
   def main(args: Array[String]) {
 
@@ -506,10 +467,6 @@ object Server {
       // TODO: Remvoe me - RAndom wait to fix some error?
       Thread.sleep(new Random().nextInt(2000))
     } catch { case e:InterruptedException =>  }
-
-
-
-
 
     settings = handleCommandLine(args)
     settings.log.foreach(
@@ -550,7 +507,6 @@ object Server {
             // done, let's check it right away!!!
 
      */
-
 
     server = new Server(settings.ports)
     server.start(JmeContext.Type.Headless)

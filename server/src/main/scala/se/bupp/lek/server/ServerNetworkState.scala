@@ -160,11 +160,17 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
     server.sendToAllUDP(me)
   }
 
+  def sendGameOver(signalShutdown:Boolean) {
+    worldSeqId = worldSeqId + 1
+    val me = new GameOverRequest(worldSeqId,signalShutdown)
+    server.sendToAllUDP(me)
+  }
 
-  def createSimple(m:OrderedMessage) = {
+
+  def sendToAllClients(m:OrderedMessage) = {
     worldSeqId = worldSeqId + 1
     val me = m match {
-      case go:GameOverRequest => new GameOverRequest(worldSeqId)
+      //case go:GameOverRequest => new GameOverRequest(worldSeqId)
       case go:StartGameRequest => new StartGameRequest(worldSeqId)
       case go:StartRoundRequest => new StartRoundRequest(worldSeqId)
     }
@@ -175,6 +181,8 @@ abstract class ServerNetworkState(portSettings:PortSettings) {
     */
     server.sendToAllUDP(me)
   }
+
+
 
   /*def run() {
     while(true) {

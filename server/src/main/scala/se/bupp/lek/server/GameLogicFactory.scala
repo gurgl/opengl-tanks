@@ -1,14 +1,21 @@
 package se.bupp.lek.server
 
-import se.bupp.lek.server.Server.GameMatchSettings
-import se.bupp.lek.common.Model.PlayerJoinRequest
+import se.bupp.lek.server.Server._
+import se.bupp.lek.common.Model.{ScoreMessage, StartRoundRequest, PlayerJoinRequest}
 import se.bupp.lek.common.model.Competitor
 import se.bupp.lek.common.model.Model._
-import se.bupp.lek.server.Server.GameMatchSettings.ScoreReached
+import se.bupp.lek.server.Server.GameMatchSettings.{NumOfRoundsPlayed, WhenNumOfConnectedPlayersCriteria, ScoreReached}
 import se.bupp.lek.server.GameLogic.Kill
 import se.bupp.lek.server.GameLogicFactory.KillBasedStrategy.PlayerKill
 import se.bupp.cs3k.example.ExampleScoreScheme.{JavaTuple2, ExContestScore}
 import collection.mutable.ArrayBuffer
+import org.slf4j.LoggerFactory
+import se.bupp.cs3k.example.ExampleScoreScheme.JavaTuple2
+import se.bupp.lek.server.Server.GameMatchSettings.ScoreReached
+import se.bupp.lek.server.Server.FreeForAll
+import se.bupp.lek.server.Server.GameMatchSettings.WhenNumOfConnectedPlayersCriteria
+import se.bupp.lek.server.Server.TeamDeathmatch
+import se.bupp.lek.server.Server.GameMatchSettings.NumOfRoundsPlayed
 
 /**
  * Created with IntelliJ IDEA.
@@ -38,6 +45,7 @@ object GameLogicFactory {
     def init()
     def playerKilledByPlayer(offender:PlayerId,victim:PlayerId)
     def newRound
+    def endRound
     def controllablesChanged(keep:AbstractScoringControllables)
 
     def keepsTic()
@@ -70,8 +78,11 @@ object GameLogicFactory {
       createRound
     }
 
-    def newRound = {
+    def endRound = {
       roundResults = roundResults :+ currentRound
+    }
+
+    def newRound = {
       createRound
     }
 
@@ -105,7 +116,7 @@ object GameLogicFactory {
 
     override def getEndGameResult() = {
 
-      val res = gameLogic.competitors.map( c => c.teamId -> roundResults.foldLeft(new JavaTuple2(0,0)){
+      val res = gameLogic.competitors.map( c => c.teamId -> roundResults.foldLeft(new JavaTuple2(0,0)) {
         case (t,a)=>
           t.a = t.a + a.competitorKills(c.teamId).size
           t
@@ -136,6 +147,10 @@ object GameLogicFactory {
       currentKeeps = keep
     }
 
+    def endRound {
+
+    }
+
     def newRound {
 
     }
@@ -156,6 +171,9 @@ object GameLogicFactory {
 
 
   trait GameLogicListener {
+
+    val log = LoggerFactory.getLogger(classOf[GameLogicListener])
+
     def onGameStart()
 
     def onIntermediateRoundStart()
@@ -181,6 +199,71 @@ object GameLogicFactory {
     scoreStrategy.gameLogic = gl
     //scoreStrategy.init()
     gl
+
+  }
+
+  def createGameLogic(gameType:AbstractGameDescription, server:Server) = {
+
+    val startCriteria = gameType match {
+      case FreeForAll(i) => WhenNumOfConnectedPlayersCriteria(i)
+      case TeamDeathmatch(t,np) => WhenNumOfConnectedPlayersCriteria(t*np)
+    }
+
+    val gameSettings: GameMatchSettings = new GameMatchSettings(
+      startCriteria = startCriteria,
+      roundEndCriteria = ScoreReached(2),
+      gameEndCriteria = NumOfRoundsPlayed(2)
+    )
+
+    var gameLogicListener = createListener(gameType, server, gameSettings)
+    GameLogicFactory.create(gameSettings, gameLogicListener, new KillBasedStrategy())
+  }
+
+
+  def createListener(gameType:AbstractGameDescription, server:Server, gameSettings: GameMatchSettings ) = {
+    var gameLogicListener = new GameLogicListener() {
+      def onGameStart() {
+
+        // send countdown message
+        // add timer to start round
+        // leave lobby mode
+        // enter game mode
+        log.info("onGameStart")
+        server.appendToQueue(GameStarted())
+
+      }
+
+      def onIntermediateRoundStart() {
+        // send round started message
+        log.info("Round Started")
+        server.networkState.sendToAllClients(new StartRoundRequest)
+        server.worldSimulator.spawnAllParticipants()
+      }
+
+      def onCompetetitorScored(scoreDescription: AbstractScoreDescription) {
+
+        log.info("Someone scored")
+        val playState: PlayState = server.getStateManager.getState(classOf[PlayState])
+
+        var kill: PlayerKill = scoreDescription.asInstanceOf[PlayerKill]
+        playState.postMessage(new ScoreMessage(kill.of, kill.vi))
+        // send displayable score modification
+      }
+
+      def onIntermediateRoundEnd(roundResults: RoundResults, standing: AbstractGameResult) {
+        // send countdown message
+        // add timer to start round
+        server.onUpdateSentMessageQueue.enqueue(RoundEnded())
+      }
+
+      def onGameEnd(totals: AbstractGameResult) {
+        log.debug("Scheduling Game End")
+
+        server.onUpdateSentMessageQueue.enqueue(GameEnded(totals))
+      }
+    }
+
+    gameLogicListener
 
   }
 

@@ -77,6 +77,7 @@ class GameLogic(var gameSettings:GameMatchSettings, var listener:GameLogicListen
   def roundEnded() {
     //listener.onIntermediateRoundEnd(null,null)
     roundCount = roundCount + 1
+    scoreStrategy.endRound
     gameSettings.gameEndCriteria match {
       case NumOfRoundsPlayed(r) =>
         if(roundCount >= r) {
