@@ -67,6 +67,8 @@ object GameLogicFactory {
     class RoundScore(competitors:ArrayBuffer[Competitor]) {
       var playerKills = collection.mutable.HashMap[PlayerId,List[Kill]]()
       var competitorKills = competitors.map( c => c.teamId -> List[Kill]()).toMap//collection.mutable.HashMap[Int,List[Kill]]()
+      println("New round created " + competitorKills)
+      println("Competitors" + competitors)
     }
 
 
@@ -75,7 +77,7 @@ object GameLogicFactory {
 
     def init() {
       roundResults = List[RoundScore]()
-      createRound
+      //createRound
     }
 
     def endRound = {
@@ -116,9 +118,12 @@ object GameLogicFactory {
 
     override def getEndGameResult() = {
 
+
       val res = gameLogic.competitors.map( c => c.teamId -> roundResults.foldLeft(new JavaTuple2(0,0)) {
-        case (t,a)=>
-          t.a = t.a + a.competitorKills(c.teamId).size
+        case (t,round)=>
+          println(round.competitorKills)
+          println(c.teamId)
+          t.a = t.a + round.competitorKills(c.teamId).size
           t
       }
       )

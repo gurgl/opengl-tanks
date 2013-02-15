@@ -26,6 +26,7 @@ class GameLogic(var gameSettings:GameMatchSettings, var listener:GameLogicListen
   var competitors = collection.mutable.ArrayBuffer[Competitor]()
 
   private def gameStart() {
+    println("Game Started")
     roundCount = 0
     scoreStrategy.init()
     listener.onGameStart()
@@ -33,27 +34,31 @@ class GameLogic(var gameSettings:GameMatchSettings, var listener:GameLogicListen
   }
 
   def addCompetitor(pjr: Competitor) {
-    competitors += pjr
-
-    queryStartGame()
+    competitors.synchronized {
+      competitors += pjr
+      queryStartGame()
+    }
   }
 
   def queryStartGame() {
-    println("query game start")
-    gameSettings.startCriteria match {
-      case WhenNumOfConnectedPlayersCriteria(s) =>
-        if(competitors.size == s) {
-          gameStart()
-        }
-      case _ =>
+    competitors.synchronized {
+      gameSettings.startCriteria match {
+        case WhenNumOfConnectedPlayersCriteria(s) =>
+          println("query game start" + s + " " + competitors.size)
+          if(competitors.size == s) {
+            gameStart()
+          }
+        case _ =>
+      }
     }
   }
 
   def isGameStarted = false
   def startRound() = {
     println("roundCount roundCount roundCount roundCount " + roundCount)
+    scoreStrategy.newRound
     if(roundCount > 0) {
-      scoreStrategy.newRound
+
       listener.onIntermediateRoundStart()
     }
   }
@@ -71,7 +76,9 @@ class GameLogic(var gameSettings:GameMatchSettings, var listener:GameLogicListen
 
 
   def removePlayer(playerId:Int) {
-    competitors = competitors.filterNot(_.playerId == playerId)
+    competitors.synchronized {
+      competitors = competitors.filterNot(_.playerId == playerId)
+    }
   }
 
   def roundEnded() {

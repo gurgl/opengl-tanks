@@ -18,7 +18,10 @@ object Model {
 import se.bupp.lek.common.Model._
 import Model._
 
-class Competitor(val playerId:PlayerId, val teamId:TeamId)
+class Competitor(val playerId:PlayerId, val teamId:TeamId) {
+
+  override def toString = "(playerId = " + playerId + ", teamId = " + teamId + ")"
+}
 
 sealed abstract class PlayerConnectionState {
 

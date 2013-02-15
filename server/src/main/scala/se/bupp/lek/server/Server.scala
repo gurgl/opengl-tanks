@@ -306,7 +306,9 @@ object Server {
   }
   sealed abstract class AbstractGameDescription()
   case class FreeForAll(val numOfPlayers:Int) extends AbstractGameDescription()
-  case class TeamDeathmatch(val numOfTeams:Int, val numOfPlayersPerTeam:Int) extends AbstractGameDescription()
+  case class TeamDeathmatch(val numOfTeams:Int, val numOfPlayersPerTeam:Int) extends AbstractGameDescription() {
+    if(numOfTeams < 2) throw new IllegalArgumentException("Gah")
+  }
 
   case class ServerMode(val restartOnIdle:Boolean, val quitOnGameOver:Boolean)
 
@@ -435,7 +437,7 @@ object Server {
           val setup = value match {
             case "ffa2" => FreeForAll(2)
             case "2vs2" => TeamDeathmatch(2,2)
-            case "1vs1" => TeamDeathmatch(1,1) // REMOVE ME
+            case "1vs1" => TeamDeathmatch(2,1) // REMOVE ME
             case _ => println("Unknown game setup "+value)
               sys.exit(1)
               throw new RuntimeException("bad option")
