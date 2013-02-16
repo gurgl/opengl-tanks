@@ -119,13 +119,14 @@ object GamePhaseOrchestratorFactory {
     override def getEndGameResult() = {
 
 
-      val res = gameLogic.competitors.map( c => c.teamId -> roundResults.foldLeft(new JavaTuple2(0,0)) {
-        case (t,round)=>
-          println(round.competitorKills)
-          println(c.teamId)
-          t.a = t.a + round.competitorKills(c.teamId).size
-          t
-      }
+      val res = gameLogic.competitors.map( c =>
+        c.teamId -> roundResults.foldLeft(new JavaTuple2(0,0)) {
+          case (t,round)=>
+            println(round.competitorKills)
+            println(c.teamId)
+            t.setA(t.a + round.competitorKills(c.teamId).size)
+            t
+        }
       )
 
 

@@ -1,3 +1,5 @@
+* shutdown server after game ends
+
 * Servertid oberoende av klient. Dvs Server.clock() - Client.clock() = bad
 
     - prediciton bör beräknas som LAST_SERVER_UPDATE.time_stamp + (CurrentTime - client_time_upon_receive_if(LAST_SERVER_UPDATE))
