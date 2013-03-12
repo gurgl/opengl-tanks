@@ -118,7 +118,7 @@ object MyBuild extends Build {
       splashName = None,
       offlineAllowed  = true,
       allPermissions  = true,
-      j2seVersion     = "1.6",
+      j2seVersion     = "1.7",
       maxHeapSize     = 192
     ))
   )

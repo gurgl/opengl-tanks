@@ -105,7 +105,6 @@ class Server(portSettings:PortSettings) extends SimpleApplication with PlayState
     //val (ws, gl) = createWorldSimulator()
     //worldSimulator = ws
     gameLogic = GamePhaseOrchestratorFactory.createGameLogic(Server.settings.gameSetup,this)
-    Server.settings.serverMode
 
     networkState = new ServerNetworkState(portSettings) {
       def addPlayerAction(pa: PlayerActionRequest) {
@@ -298,9 +297,14 @@ object Server {
 
   case class PortSettings(var tcpPort:Int, var udpPort:Int)
   case class MasterServerSettings(var host:String, var port:Int, var gameSessionIdOpt:Option[Long])
+
+  trait IsContinous {
+    self : AbstractGameDescription =>
+  }
+
   class Settings(var ports:PortSettings, var masterServer:MasterServerSettings, var log:Option[File], var gameSetup:AbstractGameDescription)  {
     def serverMode = gameSetup match {
-      case FreeForAll(_) => ServerMode(true,false)
+      case s:IsContinous => ServerMode(true,false)
       case _ => ServerMode(false, true)
     }
   }
@@ -309,6 +313,8 @@ object Server {
   case class TeamDeathmatch(val numOfTeams:Int, val numOfPlayersPerTeam:Int) extends AbstractGameDescription() {
     if(numOfTeams < 2) throw new IllegalArgumentException("Gah")
   }
+
+
 
   case class ServerMode(val restartOnIdle:Boolean, val quitOnGameOver:Boolean)
 
@@ -435,6 +441,7 @@ object Server {
           nextOption(map, tail)
         case "--game-setup" :: value :: tail =>
           val setup = value match {
+            case "ffa2cont" => new FreeForAll(2) with IsContinous
             case "ffa2" => FreeForAll(2)
             case "2vs2" => TeamDeathmatch(2,2)
             case "1vs1" => TeamDeathmatch(2,1) // REMOVE ME
