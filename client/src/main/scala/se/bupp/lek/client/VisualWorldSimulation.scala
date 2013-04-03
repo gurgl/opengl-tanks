@@ -523,7 +523,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
       }
     }
 
-    def cloneForSpatial(p1: Spatial) = null
+    override def cloneForSpatial(p1: Spatial) = null
 
     def controlRender(p1: RenderManager, p2: ViewPort) {}
   }

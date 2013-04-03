@@ -144,6 +144,9 @@ class Client(var clientSettings:Client.Settings) extends SimpleApplication {
     rootNode.attachChild(audio_spawn);
     audio_score = new AudioNode(assetManager, "score.wav", false);
     audio_score.setLooping(false);
+    audio_score.setPositional(false);
+    audio_score.setDirectional(false);
+
     audio_score.setVolume(10);
     rootNode.attachChild(audio_score);
 
@@ -154,6 +157,8 @@ class Client(var clientSettings:Client.Settings) extends SimpleApplication {
     //audio_nature.setPositional(true);
     //audio_nature.setLocalTranslation(Vector3f.ZERO.clone());
     audio_nature.setVolume(1);
+    audio_nature.setPositional(false);
+    audio_nature.setDirectional(false);
     rootNode.attachChild(audio_nature);
     audio_nature.play(); // play continuously!
 
@@ -193,7 +198,7 @@ class Client(var clientSettings:Client.Settings) extends SimpleApplication {
     val bulletAppState = createBulletAppState
     stateManager.attach(bulletAppState);
 
-    stateManager.attach(new MessageState("COMMODORE 64 press play on tape"))
+    stateManager.attach(new MessageState("Waiting for other players..."))
     //val playState: PlayState = new PlayState()
     //stateManager.attach(playState)
 

@@ -17,8 +17,8 @@ import WebStartPlugin._
 
 object MyBuild extends Build {
 
-  val JME_VERSION = "3.0.0.20120512-SNAPSHOT"
-
+  //val JME_VERSION = "3.0.0.20120512-SNAPSHOT"
+  val JME_VERSION = "3.0.0.20121220-SNAPSHOT"
   /**
    * println(evalTask(fullClasspath in Runtime, currentState).map(_.data).mkString(";"))
    */
