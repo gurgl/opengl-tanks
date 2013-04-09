@@ -6,7 +6,7 @@ import collection.{immutable, mutable, JavaConversions}
 import JavaConversions.asScalaBuffer
 import se.bupp.lek.common.SceneGraphWorld
 import com.jme3.asset.AssetManager
-import com.jme3.bullet.control.{GhostControl, RigidBodyControl, CharacterControl}
+import com.jme3.bullet.control.{BetterCharacterControl, GhostControl, RigidBodyControl, CharacterControl}
 import se.bupp.lek.common.SceneGraphWorld.{SceneGraphNodeKeys, SceneGraphUserDataKeys}
 import com.jme3.bullet.collision.shapes.{CollisionShape, SphereCollisionShape, CapsuleCollisionShape}
 import util.Random
@@ -265,8 +265,10 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
       val players = world.getPlayers
       players.foreach {
         case (ps,s) =>
-          ps.gameState.position = s.getControl(classOf[CharacterControl]).getPhysicsLocation.clone()
-          ps.gameState.direction = s.getLocalRotation
+          //if(ps.playerId % 2 == 0) println("" + s.getWorldTranslation + " " + s.getLocalTranslation)
+          ps.gameState.position = s.getLocalTranslation.clone()
+          ps.gameState.direction = s.getLocalRotation.clone()
+          println("ggwc " + ps.gameState.direction)
       }
 
 

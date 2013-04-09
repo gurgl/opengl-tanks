@@ -4,13 +4,13 @@ import se.bupp.lek.common.Model.{AbstractOwnedGameObject, MotionGO, GameParticip
 import com.jme3.scene.{Spatial, Node}
 
 import scalaz.NonEmptyList
-import com.jme3.math.Vector3f
-import com.jme3.bullet.control.CharacterControl
+import com.jme3.math.{Quaternion, Vector3f}
+import com.jme3.bullet.control.{BetterCharacterControl, CharacterControl}
 import collection.mutable
 import com.jme3.bullet.PhysicsSpace
 import scala.collection.JavaConversions.asScalaBuffer
 import se.bupp.lek.common.SceneGraphWorld.SceneGraphNodeKeys
-import se.bupp.lek.common.{SceneGraphWorld, SceneGraphAccessors}
+import se.bupp.lek.common.{MathUtil, SceneGraphWorld, SceneGraphAccessors}
 import se.bupp.lek.common.model.Model._
 
 trait PhysicsSpaceSimAdapter extends SceneGraphAccessors {
@@ -62,16 +62,26 @@ trait PhysicsSpaceSimAdapter extends SceneGraphAccessors {
         val anyUpdates = Seq(pi.updates:_*)
         pi.updates = Nil
 
-        val control = s.getControl(classOf[CharacterControl])
-        val movement = anyUpdates match {
-          case Nil => Vector3f.ZERO.clone()
+        val control = s.getControl(classOf[BetterCharacterControl]).ensuring(_ != null)
+        println("vd " + control.getViewDirection)
+        val (movement,rot) = anyUpdates match {
+          case Nil => (Vector3f.ZERO.clone(),MathUtil.noRotation)
           case updates =>
-            updates.foreach { u => s.setLocalRotation(u.rotation.mult(s.getLocalRotation)) }
-            updates.foldLeft(Vector3f.ZERO.clone()) { case (a,u) => (u.translation.add(a)) }
+
+            val rot = updates.foldLeft(MathUtil.noRotation) { case (a,u) => u.rotation.mult(a) }
+            val move = updates.foldLeft(Vector3f.ZERO.clone()) { case (a,u) => (u.translation.add(a)) }
+            (move, rot)
 
         }
+        val movementPerStep: Vector3f = movement.divide(simSteps.toFloat)
+        if(pi.playerId % 2 == 0) {
+          println("++++ " + pi.playerId + " " + rot + " " + s.getLocalRotation + " " + movementPerStep + " " + s.getWorldRotation)
+        }
 
-        control.setWalkDirection(movement.divide(simSteps.toFloat))
+        var local: Vector3f = rot.mult(control.getViewDirection)
+
+        control.setViewDirection(local)
+        control.setWalkDirection(movementPerStep)
         pi.lastSimulationServerTime = simTime
 
 
@@ -141,7 +151,7 @@ trait PhysicsSpaceSimAdapter extends SceneGraphAccessors {
 
         playerSpatials.foreach {
           s =>
-            val control = s.getControl(classOf[CharacterControl])
+            val control = s.getControl(classOf[BetterCharacterControl])
             control.setWalkDirection(Vector3f.ZERO.clone())
         }
 
@@ -196,13 +206,13 @@ trait PhysicsSpaceSimAdapter extends SceneGraphAccessors {
     var preMap = mutable.Map.empty[Int,Vector3f]
     updates.foreach {
       case (s, u) =>
-        val ctrl: CharacterControl = s.getControl(classOf[CharacterControl])
+        val ctrl = s.getControl(classOf[BetterCharacterControl])
 
         ctrl.setWalkDirection(u.translation.divide(simSteps.toFloat))
         s.setLocalRotation(u.rotation.mult(s.getLocalRotation))
         if (isTest) {
           val status: GameParticipant = s.getUserData[GameParticipant](SceneGraphWorld.SceneGraphUserDataKeys.Player)
-          preMap = preMap + (status.gameState.playerId -> ctrl.getPhysicsLocation.clone())
+          preMap = preMap + (status.gameState.playerId -> s.getLocalTranslation.clone())
           val ss = "Setting trans " + u.translation + " p " + status.gameState.playerId + " " + duration + " time " + simCurrentTime + ctrl.getWalkDirection + " " + simSteps
           str  = str + (status.gameState.playerId ->  ss)
         }
@@ -216,10 +226,10 @@ trait PhysicsSpaceSimAdapter extends SceneGraphAccessors {
     updates.foreach {
       case (s, u) =>
 
-        val ctrl: CharacterControl = s.getControl(classOf[CharacterControl])
+        val ctrl = s.getControl(classOf[BetterCharacterControl])
 
         val status: GameParticipant = s.getUserData[GameParticipant](SceneGraphWorld.SceneGraphUserDataKeys.Player)
-        var post = ctrl.getPhysicsLocation
+        var post = s.getLocalTranslation
         var pre = preMap(status.gameState.playerId)
         var actual = post.subtract(pre).length()
         val ss = str(status.gameState.playerId) + ( " " + actual + " " + u.translation.length() + " " + timeBank + " " + (if (math.abs(u.translation.length() - actual) > 0.001) "***" else "---"))

@@ -5,13 +5,13 @@ import common.{SceneGraphWorld, MathUtil}
 import server.PhysicsSpaceSimAdapter
 import common.Model.{Orientation, MotionGO, PlayerGO, GameParticipant}
 import com.jme3.math.{Quaternion, Vector3f}
-import com.jme3.bullet.control.CharacterControl
 import com.jme3.system.{JmeContext, JmeSystem, AppSettings}
 import com.jme3.scene.Node
 import com.jme3.bullet.PhysicsSpace
 import com.jme3.asset.{ModelKey, AssetManager}
 import com.jme3.bullet.collision.shapes.CapsuleCollisionShape
 import org.specs2.mutable.Specification
+import com.jme3.bullet.control.CharacterControl
 
 
 /**

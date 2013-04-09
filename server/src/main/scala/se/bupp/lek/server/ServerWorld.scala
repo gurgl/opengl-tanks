@@ -6,7 +6,7 @@ import com.jme3.bullet.PhysicsSpace
 import se.bupp.lek.common.SceneGraphWorld
 import se.bupp.lek.common.Model.{GameParticipant, ProjectileGO}
 import com.jme3.bullet.collision.shapes.{CapsuleCollisionShape, SphereCollisionShape}
-import com.jme3.bullet.control.{GhostControl, CharacterControl, RigidBodyControl}
+import com.jme3.bullet.control.{BetterCharacterControl, GhostControl, CharacterControl, RigidBodyControl}
 import com.jme3.bounding.BoundingSphere
 import com.jme3.math.Vector3f
 import se.bupp.lek.common.SceneGraphWorld.SceneGraphUserDataKeys
@@ -72,7 +72,7 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
   def unspawnPlayer(s: Spatial, p:GameParticipant) = {
     log.info("Unspawning player " + p.playerId)
 
-    val characterControl = s.getControl(classOf[CharacterControl])
+    val characterControl = s.getControl(classOf[BetterCharacterControl])
     getPhysicsSpace.remove(characterControl)
     val ghostControl= s.getControl(classOf[GhostControl])
     getPhysicsSpace.remove(ghostControl)
@@ -90,42 +90,42 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
 
   def spawnPlayer(ps:GameParticipant) {
     log.info("Spawn player")
-    val tankGeo = materializeTankServer(ps.gameState)
+    val tank = materializeTank(ps.gameState)
     //tankGeo.setMaterial(if(ps.playerId % 2 == 0 ) mat_default_blue else mat_default_red)
     //enemy.setModelBound(new BoundingSphere())
     //enemy.updateModelBound()
     //val tank = new Node("Bupp")
-    val tank = new Node("Tank")
-
-
-    tank.attachChild(tankGeo)
-    //tankGeo.setLocalTranslation(Vector3f.ZERO.setY(0.5f))
+    if(ps.playerId % 2 == 0)
+      tank.setLocalTranslation(new Vector3f(0, 2.5f, 1))
+    else
+      tank.setLocalTranslation(new Vector3f(0, 2.5f, -1))
     tank.setUserData(SceneGraphUserDataKeys.Player, ps)
 
 
     //tank.attachChild(tankModel)
-    val capsuleShape = tankCollisionShape
-
     val capsuleShapeGhost = new CapsuleCollisionShape(0.4f, 0.4f, 1)
 
-    val playerControl = new CharacterControl(capsuleShape, 0.1f)
+    val playerControl = new BetterCharacterControl(tankCollisionShape.getRadius,tankCollisionShape.getHeight, 5f)
+    //val playerControl = new BetterCharacterControl(0.3f, 2.5f, 8f);
     tank.addControl(playerControl)
-
+    //playerControl.setViewDirection(ps.gameState.direction.getRotationColumn(0))
+    //playerControl.setViewDirection(tankForward)
+    playerControl.setGravity(gravity.clone());
     getPhysicsSpace.add(playerControl)
 
 
-    playerControl.setUseViewDirection(false)
+    //playerControl.setUseViewDirection(false)
 
-    playerControl.setJumpSpeed(0);
-    playerControl.setFallSpeed(0.3f);
-    playerControl.setGravity(0.3f);
-    playerControl.setPhysicsLocation(new Vector3f(0, 2.5f, 0));
+    //playerControl.setJumpSpeed(0);
+    //playerControl.setFallSpeed(0.3f);
+    //playerControl.setGravity(0.3f);
+    //playerControl.setPhysicsLocation(new Vector3f(0, 2.5f, 0));
 
-    val ghost: GhostControl = new GhostControl(capsuleShapeGhost)
+   /* val ghost: GhostControl = new GhostControl(capsuleShapeGhost)
     ghost.setCollisionGroup(PhysicsCollisionObject.COLLISION_GROUP_02)
     ghost.setCollideWithGroups(PhysicsCollisionObject.COLLISION_GROUP_01)
-    //ghost.addCollideWithGroup(PhysicsCollisionObject.COLLISION_GROUP_03)
-
+    ghost.addCollideWithGroup(PhysicsCollisionObject.COLLISION_GROUP_03)
+    tank.addControl(ghost);*/
     //ghost.setUserObject(ps)
    /*{
 
@@ -153,7 +153,7 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
     }*/
 
     //ghost.setApplyPhysicsLocal(true)
-    tank.addControl(ghost);
+
 
     //getPhysicsSpace.add(ghost)
 

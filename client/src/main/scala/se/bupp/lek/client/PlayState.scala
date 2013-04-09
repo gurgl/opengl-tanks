@@ -89,7 +89,7 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
 
     var input = playerInput.pollInput()
 
-    worldUpdater.processInput(input,lastUpdate)
+    worldUpdater.processInput(input,lastUpdate,simTime)
 
     val worldToPaintOpt = worldUpdater.generateGameWorldToRender(simTime)
 
@@ -200,12 +200,12 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
         case "Forward" =>
 
           val v = visualWorldSimulation.player.getLocalRotation.toRotationMatrix;
-          playerInput.translation = v.getColumn(0).mult(gameApp.getSpeed *tpf * 2.0f)
+          playerInput.translation = v.getColumn(0).mult(gameApp.getSpeed * 2.0f)
 
         case "Back" =>
 
           val v = visualWorldSimulation.player.getLocalRotation.toRotationMatrix;
-          playerInput.translation = v.getColumn(0).mult(-gameApp.getSpeed *tpf * 2.0f)
+          playerInput.translation = v.getColumn(0).mult(-gameApp.getSpeed * 2.0f)
         case _ =>
 
 

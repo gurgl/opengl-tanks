@@ -20,7 +20,7 @@ import se.bupp.lek.common.model.Model._
 import com.jme3.bullet.util.CollisionShapeFactory
 import com.jme3.bullet.{PhysicsSpace, BulletAppState}
 import com.jme3.bullet.collision.shapes.{SphereCollisionShape, CapsuleCollisionShape}
-import com.jme3.bullet.control.{CharacterControl, RigidBodyControl}
+import com.jme3.bullet.control.{BetterCharacterControl, RigidBodyControl}
 import com.jme3.asset.plugins.ZipLocator
 import com.jme3.math.{FastMath, ColorRGBA, Quaternion, Vector3f}
 import collection.immutable.Queue._
@@ -35,7 +35,7 @@ import com.jme3.texture.Texture
 import se.bupp.lek.client.VisualWorldSimulation.ServerStateChanges
 import se.bupp.lek.common.{SceneGraphWorld, SceneGraphAccessors}
 import se.bupp.lek.client.Model._
-
+import scala.concurrent.duration.Duration
 
 
 /**
@@ -100,7 +100,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
 
   val LocalInputLogSize = 300
 
-  var playerMovementLog = Queue.empty[(Long, Orientation, Reorientation)] //:+ ((Client.clock(),startPosition, MathUtil.noMotion))
+  var playerMovementLog = Queue.empty[(Long, Long, Orientation, Reorientation)] //:+ ((Client.clock(),startPosition, MathUtil.noMotion))
 
 
   var sun:DirectionalLight = _
@@ -110,21 +110,21 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
   var mat_red:Material = _
 
 
-  def storePlayerLastInputAndOutput(simTime:Long, input:Reorientation) = {
+  def storePlayerLastInputAndOutput(simTime:Long, delta:Long, input:Reorientation) = {
 
-    val physicalPosition = player.getLocalTranslation
-    val physicalRotation = player.getLocalRotation //.subtract(gameApp.playerInput.saved.last._2.position)
-    saveReorientation(simTime, new Orientation(physicalPosition, physicalRotation), input)
+    val physicalPosition = player.getLocalTranslation.clone()
+    val physicalRotation = player.getLocalRotation.clone() // getControl(classOf[BetterCharacterControl]).getViewDirection //.subtract(gameApp.playerInput.saved.last._2.position)
+    saveReorientation(simTime,delta, new Orientation(physicalPosition, physicalRotation), input)
   }
 
-  private def saveReorientation(timeStamp:Long, orientation: Orientation, reorientation:Reorientation) {
+  private def saveReorientation(timeStamp:Long, delta:Long, orientation: Orientation, reorientation:Reorientation) {
     lock.synchronized {
       while(playerMovementLog.size >= LocalInputLogSize) {
         playerMovementLog = playerMovementLog.dequeue._2
       }
 
       //val orientation = saved.last._2.reorientate(input)
-      playerMovementLog =  playerMovementLog :+ (timeStamp, orientation, reorientation)
+      playerMovementLog =  playerMovementLog :+ (timeStamp,delta, orientation, reorientation)
     }
   }
 
@@ -191,7 +191,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
   }
 
   def fireProjectile() {
-    val p = localObjectFactory.createProjectile(player.getControl(classOf[CharacterControl]).getPhysicsLocation.clone(),player.getLocalRotation)
+    val p = localObjectFactory.createProjectile(player.getLocalTranslation.clone(),player.getLocalRotation.clone())
     PlayerActionQueue.accumulateProjectile(p)
   }
 
@@ -360,13 +360,13 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
 
             if(pi.playerId == playerIdOpt().get) {
 
-
-            playState.visualWorldSimulation.respawnLocalPlayer(p,pi)
-            playState.gameApp.audio_spawn.play()
-          }  else {
-            var enemy: Spatial = materializeEnemy(p)
-            enemy.setMaterial(if(pi.teamId % 2 == 0) mat_default_blue else mat_default_red)
-          }
+              log.info("respawn local player")
+              playState.visualWorldSimulation.respawnLocalPlayer(p,pi)
+              playState.gameApp.audio_spawn.play()
+            }  else {
+              var enemy: Spatial = materializeEnemy(p)
+              enemy.setMaterial(if(pi.teamId % 2 == 0) mat_default_blue else mat_default_red)
+            }
 
         }
 
@@ -382,7 +382,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
     if (!playerDead) {
       applyPlayerInput(lastGameWorldUpdate,reorientation)
 
-      val dbgPlayerPos = player.getControl(classOf[CharacterControl]).getPhysicsLocation.clone()
+      val dbgPlayerPos = player.getLocalTranslation.clone()
 
       /*
       if (dbgLastPlayerPos != null) {
@@ -406,6 +406,8 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
     //math.sqrt(client.direction.dot(server.direction))
     val deltaQ: Quaternion = client.direction.subtract(server.direction)
     val sqrt = math.sqrt(deltaQ.dot(deltaQ))
+    //println(client.direction + " " + server.direction)
+
     (transDiff.length(),math.abs(sqrt))
   }
 
@@ -422,22 +424,30 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
 
       } else {
 
-        val diffHeur = diff(playerMovementLog.head._2,server)
+        val diffHeur = diff(playerMovementLog.head._3,server)
         //val newPos =
         if(diffHeur._1 > 0.2 || diffHeur._2 > FastMath.PI / 90) {
 
+
           val newSavedPos = playerMovementLog.foldLeft(Queue(server)) {
-            case (recalculatedPositions,(time,orientationBeforeReorientation, reorient)) =>
-              recalculatedPositions :+ recalculatedPositions.last.reorientate(reorient)
+            case (recalculatedPositions,(time,delta, orientationBeforeReorientation, reorient)) =>
+              val reorientPerDelta = new Reorientation(reorient._1.mult(delta.toFloat/1000f),reorient._2)
+              recalculatedPositions :+ recalculatedPositions.last.reorientate(reorientPerDelta)
           }
-          log.warn("Bad " + playerMovementLog.head._2.position + " " + server.position + " " + serverSimTime + " " + diffHeur + " " + serverSnapshotSentByPlayerTime)
-          playerMovementLog = newSavedPos.tail.zip(playerMovementLog).map {case (np, (ts, _ , reor)) => (ts, np, reor) }
+          log.warn("Bad " + playerMovementLog.head._3.position + " " + server.position + " " + serverSimTime + " " + diffHeur + " " + serverSnapshotSentByPlayerTime)
+
+          playerMovementLog = newSavedPos.tail.zip(playerMovementLog).map {case (np, (ts,d,  _ , reor)) => (ts,d, np, reor) }
           //println("Bad " + saved.head._2.position+ " " + server.position + " " + diffHeur._1) // + " " + newSavedPos.last)
           //println("Bad " + diffHeur)
           //newSavedPos.last
-          val control: CharacterControl = player.getControl(classOf[CharacterControl])
-          control.setPhysicsLocation(playerMovementLog.last._2.position)
-          player.setLocalRotation(playerMovementLog.last._2.direction)
+          val control: BetterCharacterControl = player.getControl(classOf[BetterCharacterControl])
+          println(control.getViewDirection)
+          //player.setLocalTranslation(playerMovementLog.last._3.position)
+          control.warp(playerMovementLog.last._3.position)
+          //control.resetForward(tankForward)
+          control.setViewDirection(playerMovementLog.last._3.direction.getRotationColumn(2))
+
+          //player.setLocalRotation(playerMovementLog.last._3.direction)
           //Client.spel.gameWorld.player.setLocalRotation(saved.last._2.direction)
           //control.setViewDirection(saved.last._2.direction.getRotationColumn(0))
         } /*else {
@@ -482,14 +492,41 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
     /*lastGameWorldUpdate.alivePlayers.find(_.playerId == playerIdOpt().get).foreach {
       x =>*/
 
-    val control = player.getControl(classOf[CharacterControl])
+    val control = player.getControl(classOf[BetterCharacterControl])
 
     //println(direction + " " + bulletAppState.getSpeed + " " + bulletAppState.getPhysicsSpace.getAccuracy)
+    //println("*** " + input._1)
     control.setWalkDirection(input._1)
+
     //control.setviewdirection(player.setlocalrotation(p.direction))
     //control.setViewDirection(p.direction.getRotationColumn(0))
-    player.rotate(input._2)
+    //log.info("app loc rot " + input._2 + " " + control.getViewDirection + " " + player.getLocalRotation + player.getLocalRotation.getRotationColumn(2))
+    control.setViewDirection(input._2.mult(player.getLocalRotation.getRotationColumn(2)))
+    //player.rotate(input._2)
 
+    /*
+    1075 [LWJGL Renderer Thread] INFO  se.bupp.lek.client.VisualWorldSimulation  - Y
+ou respawned (rep + 2)
+1076 [LWJGL Renderer Thread] DEBUG se.bupp.lek.common.SceneGraphWorld  - creatin
+g tank
+1077 [LWJGL Renderer Thread] INFO  se.bupp.lek.common.SceneGraphWorld  - materia
+lzie enemy1
+1079 [LWJGL Renderer Thread] DEBUG se.bupp.lek.client.VisualWorldSimulation  - I
+nga
+1079 [LWJGL Renderer Thread] INFO  se.bupp.lek.client.VisualWorldSimulation  - a
+pp loc rot (0.0, 0.0, 0.0, 1.0) (0.0, 0.0, 1.0)
+(0.0, 0.0, 0.0, 1.0) (0.0, 0.0, 0.0, 1.0)
+1237 [LWJGL Renderer Thread] WARN  se.bupp.lek.client.VisualWorldSimulation  - B
+ad (0.0, 2.5, 0.0) (0.0, 0.26550007, 1.0) 1365463676807 (2.4480584,0.0) -1
+(0.0, 0.0, 1.0)
+1239 [LWJGL Renderer Thread] INFO  se.bupp.lek.client.VisualWorldSimulation  - a
+pp loc rot (0.0, 0.0, 0.0, 1.0) (1.0, 0.0, 0.0)
+1249 [LWJGL Renderer Thread] INFO  se.bupp.lek.client.VisualWorldSimulation  - a
+pp loc rot (0.0, 0.0, 0.0, 1.0) (1.0, 0.0, 0.0)
+1254 [LWJGL Renderer Thread] INFO  se.bupp.lek.client.VisualWorldSimulation  - a
+pp loc rot (0.0, 0.0, 0.0, 1.0) (1.0, 0.0, 0.0)
+
+     */
 
     //player.setlocaltranslation(p.position)
     //player.setLocalRotation(p.direction)

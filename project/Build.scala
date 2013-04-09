@@ -18,14 +18,17 @@ import WebStartPlugin._
 object MyBuild extends Build {
 
   //val JME_VERSION = "3.0.0.20120512-SNAPSHOT"
-  val JME_VERSION = "3.0.0.20121220-SNAPSHOT"
+  //val JME_VERSION = "3.0.0.20121220-SNAPSHOT"
+  val JME_VERSION = "1.0-SNAPSHOT"
   /**
    * println(evalTask(fullClasspath in Runtime, currentState).map(_.data).mkString(";"))
    */
 
+  def m2Local = "Local Maven" at Path.userHome.asFile.toURI.toURL + ".m2/repository"
+
   override def settings = super.settings ++ Seq(scalaVersion := "2.10.0")
 
-  lazy val moduleDefaultSettings = Defaults.defaultSettings ++ Seq(scalaVersion := "2.10.0")
+  lazy val moduleDefaultSettings = Defaults.defaultSettings ++ Seq(scalaVersion := "2.10.0", resolvers += m2Local)
 
   lazy val rootProject = Project(id = "root",
     base = file("."),
@@ -124,36 +127,36 @@ object MyBuild extends Build {
   )
 
   val jmeClient = Seq(
-    "com.jme3" % "jME3-effects" % JME_VERSION,
-    "com.jme3" % "j-ogg-oggd" % JME_VERSION,
-    "com.jme3" % "j-ogg-vorbisd" % JME_VERSION,
-    "com.jme3" % "lwjgl" % JME_VERSION,
-    "com.jme3" % "jME3-lwjgl" % JME_VERSION,
-    "com.jme3" % "jME3-lwjgl-natives" % JME_VERSION,
-    "com.jme3" % "jME3-jogg" % JME_VERSION,
-    "com.jme3" % "jinput" % JME_VERSION
+    "com.jme3" % "addjar-jME3-effects.jar" % JME_VERSION,
+    "com.jme3" % "addjar-j-ogg-oggd.jar" % JME_VERSION,
+    "com.jme3" % "addjar-j-ogg-vorbisd.jar" % JME_VERSION,
+    "com.jme3" % "addjar-lwjgl.jar" % JME_VERSION,
+    "com.jme3" % "addjar-jME3-lwjgl.jar" % JME_VERSION,
+    "com.jme3" % "addjar-jME3-lwjgl-natives.jar" % JME_VERSION,
+    "com.jme3" % "addjar-jME3-jogg.jar" % JME_VERSION,
+    "com.jme3" % "addjar-jinput.jar" % JME_VERSION
   )
 
   val jmeClientAndServer = Seq(
-    "com.jme3" % "jME3-desktop" % JME_VERSION,
-    "com.jme3" % "eventbus" % JME_VERSION,
-    "com.jme3" % "jbullet" % JME_VERSION,
-    "com.jme3" % "jME3-blender" % JME_VERSION,
-    "com.jme3" % "jME3-core" % JME_VERSION,
-    "com.jme3" % "jME3-jbullet" % JME_VERSION,
+    "com.jme3" % "addjar-jME3-desktop.jar" % JME_VERSION,
+    "com.jme3" % "addjar-eventbus.jar" % JME_VERSION,
+    "com.jme3" % "addjar-jbullet.jar" % JME_VERSION,
+    "com.jme3" % "addjar-jME3-blender.jar" % JME_VERSION,
+    "com.jme3" % "addjar-jME3-core.jar" % JME_VERSION,
+    "com.jme3" % "addjar-jME3-jbullet.jar" % JME_VERSION,
 
-    //"com.jme3" % "jME3-networking" % JME_VERSION,
-    //"com.jme3" % "jME3-niftygui" % JME_VERSION,
-    "com.jme3" % "jME3-plugins" % JME_VERSION,
-    "com.jme3" % "jME3-terrain" % JME_VERSION,
-    "com.jme3" % "jME3-testdata" % JME_VERSION,
-    //"com.jme3" % "nifty" % JME_VERSION,
-    //"com.jme3" % "nifty-default-controls" % JME_VERSION,
-    //"com.jme3" % "nifty-examples" % JME_VERSION,
-    //"com.jme3" % "nifty-style-black" % JME_VERSION,
-    "com.jme3" % "stack-alloc" % JME_VERSION,
-    "com.jme3" % "vecmath" % JME_VERSION,
-    "com.jme3" % "xmlpull-xpp3" % JME_VERSION)
+    //"com.jme3" % "addjar-jME3-networking.jar" % JME_VERSION,
+    //"com.jme3" % "addjar-jME3-niftygui.jar" % JME_VERSION,
+    "com.jme3" % "addjar-jME3-plugins.jar" % JME_VERSION,
+    "com.jme3" % "addjar-jME3-terrain.jar" % JME_VERSION,
+    "com.jme3" % "addjar-jME3-testdata.jar" % JME_VERSION,
+    //"com.jme3" % "addjar-nifty.jar" % JME_VERSION,
+    //"com.jme3" % "addjar-nifty-default-controls.jar" % JME_VERSION,
+    //"com.jme3" % "addjar-nifty-examples.jar" % JME_VERSION,
+    //"com.jme3" % "addjar-nifty-style-black.jar" % JME_VERSION,
+    "com.jme3" % "addjar-stack-alloc.jar" % JME_VERSION,
+    "com.jme3" % "addjar-vecmath.jar" % JME_VERSION,
+    "com.jme3" % "addjar-xmlpull-xpp3.jar" % JME_VERSION)
 
   val allDependsOn = Seq(
     "org.objenesis" % "objenesis" % "1.2",

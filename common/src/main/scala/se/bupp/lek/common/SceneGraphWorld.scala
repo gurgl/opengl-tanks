@@ -3,7 +3,7 @@ package se.bupp.lek.common
 import com.jme3.asset.{ModelKey, AssetManager}
 import com.jme3.scene.{Geometry, Spatial, Node}
 import com.jme3.bullet.PhysicsSpace
-import com.jme3.bullet.control.{RigidBodyControl, CharacterControl}
+import com.jme3.bullet.control.{BetterCharacterControl, RigidBodyControl, CharacterControl}
 import com.jme3.material.Material
 import com.jme3.scene.shape.{Cylinder, Box}
 import com.jme3.math.{ColorRGBA, Vector3f}
@@ -41,6 +41,8 @@ object SceneGraphWorld {
     val Gui = "Gui"
   }
 
+
+
   def setMatch[A,B](left:Set[A],right:Set[B],comp:Function2[A,B,Boolean]) : Tuple3[Set[A],Set[B],Set[(A,B)]] = {
     var leftLeft = new HashSet[A]()
     var rightLeft = new HashSet[B]() ++ right
@@ -69,7 +71,9 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
   private val log = LoggerFactory.getLogger(classOf[SceneGraphWorld])
   def getPhysicsSpace : PhysicsSpace
 
-  var playerControl:CharacterControl = _
+  var gravity: Vector3f = new Vector3f(0, -9.8f, 0)
+
+  var playerControl:BetterCharacterControl = _
   var player:Spatial = _
 
   var mat_default : Material = _
@@ -80,6 +84,8 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
 
   var projectileGeometry:Box = _
   var flagGeometry : Cylinder = _
+
+  def tankForward = new Vector3f(1.0f,0,0)
 
   import SceneGraphWorld._
 
@@ -163,7 +169,7 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
     //assetManager.registerLocator("town.zip", classOf[ZipLocator]);
     //val level = assetManager.loadModel("main.scene");
     //level.setLocalScale(0.2f)
-    val sceneCollisionShape = CollisionShapeFactory.createMeshShape(level.asInstanceOf[Node])
+    val sceneCollisionShape = CollisionShapeFactory.createMeshShape(level) //.asInstanceOf[Spatial]
     val landscape = new RigidBodyControl(sceneCollisionShape, 0)
     landscape.setCollisionGroup(PhysicsCollisionObject.COLLISION_GROUP_01)
     landscape.setCollideWithGroups(0)
@@ -172,7 +178,7 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
 
     getPhysicsSpace.add(landscape)
 
-    getPhysicsSpace.setGravity(Vector3f.ZERO.clone());
+    //getPhysicsSpace.setGravity(new Vector3f(0,-0.00001f,0))
 
     //val wall = new Geometry("Box", box);
     //val matLevel = new MaterialList()
@@ -188,7 +194,7 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
     /*mat_brick.setTexture("ColorMap",
       assetManager.loadTexture("level.mtl"));*/
     //wall.asInstanceOf[Geometry].
-    level.setLocalTranslation(0.0f, 0.0f, 0.0f);
+    level.setLocalTranslation(0.0f, -0.5f, 0.0f);
     if(!isHeadLess) {
       level.setShadowMode(ShadowMode.Receive)
     }
@@ -197,10 +203,16 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
 
   def materializeTank(pd: Orientation): Spatial = {
     log.debug("creating tank")
-    val tank = assetManager.loadModel(new ModelKey("tank2.blend"))
+    val tank = new Node("Tank")
+    var model: Spatial = assetManager.loadModel(new ModelKey("tank2.blend"))
+    model.setLocalScale(0.5f)
+    //val model = assetManager.loadModel("Models/Jaime/Jaime.j3o");
+    //model.setLocalScale(1.5f)
+
+    tank.attachChild(model)
+    model.setLocalTranslation(new Vector3f(0,0.4f,0))
     //enemy.setMaterial(mat_default)
 
-    tank.setLocalScale(0.5f)
     //tank.setLocalTranslation(pd.position)
     tank.setLocalRotation(pd.direction)
     if(!isHeadLess) {
@@ -208,6 +220,24 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
     }
     tank
   }
+
+  /*def materializeTankServer(pd: Orientation): Spatial = {
+    val tank = new Node("Tank")
+
+    var model: Spatial = assetManager.loadModel(new ModelKey("tank2.blend"))
+    tank.setLocalScale(0.5f)
+    //val model = assetManager.loadModel("Models/Jaime/Jaime.j3o");
+    //model.setLocalScale(1.5f)
+    tank.attachChild(model)
+
+
+    if(!isHeadLess) {
+      tank.setShadowMode(ShadowMode.Off)
+    }
+    tank
+  }*/
+
+
 
   def materializeFlag(pd: Orientation): Spatial = {
     val instance = new Geometry("flag", flagGeometry)
@@ -223,19 +253,7 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
     instance
   }
 
-  def tankCollisionShape = new CapsuleCollisionShape(0.35f, 0.45f, 0)
-
-  def materializeTankServer(pd: Orientation): Spatial = {
-    val tank = assetManager.loadModel(new ModelKey("tank2.blend"))
-
-
-    tank.setLocalScale(0.5f)
-    if(!isHeadLess) {
-      tank.setShadowMode(ShadowMode.Off)
-    }
-    tank
-  }
-
+  def tankCollisionShape = new CapsuleCollisionShape(0.35f, 0.8f, 0) // below 0.6 = woobly, 0.15 = jumpy
 
   def materializeEnemy(pd:PlayerGO) = {
     val tank = materializeTank(pd)
@@ -255,19 +273,23 @@ abstract class SceneGraphWorld(val isHeadLess:Boolean, assetManager:AssetManager
     //player = assetManager.loadModel("Models/Teapot/Teapot.obj")
     player = materializeTank(orientation)
     //player.setMaterial(if(teamId % 2 == 0) mat_default_blue else mat_default_red)
+    player.setLocalTranslation(new Vector3f(0, 2.5f, 0))
 
     val capsuleShape = tankCollisionShape
-    val playerControl = new CharacterControl(capsuleShape, 0.1f)
-    playerControl.setUseViewDirection(false)
+    //val playerControl = new BetterCharacterControl(capsuleShape.getRadius,capsuleShape.getHeight, 8f)
+    val playerControl = new BetterCharacterControl(tankCollisionShape.getRadius,tankCollisionShape.getHeight, 8f)
+    //playerControl.setUseViewDirection(false)
     player.addControl(playerControl)
+
+    //playerControl.setViewDirection(orientation.direction.getRotationColumn(0))
+    playerControl.setGravity(gravity.clone());
 
     getPhysicsSpace.add(playerControl)
 
 
-    playerControl.setJumpSpeed(0);
-    playerControl.setFallSpeed(0.3f);
-    playerControl.setGravity(0.3f);
-    playerControl.setPhysicsLocation(new Vector3f(0, 2.5f, 0));
+    //playerControl.setJumpSpeed(0);
+    //playerControl.setFallSpeed(0.3f);
+    //playerControl.setPhysicsLocation(new Vector3f(0, 2.5f, 0));
 
 
 

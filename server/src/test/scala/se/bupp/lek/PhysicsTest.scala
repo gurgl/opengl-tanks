@@ -10,7 +10,7 @@ import com.jme3.renderer.queue.RenderQueue.ShadowMode
 import com.jme3.scene.{Spatial, Node}
 import org.specs2.mutable.Specification
 import com.jme3.system.{JmeContext, AppSettings, JmeSystem}
-import com.jme3.bullet.control.CharacterControl
+import com.jme3.bullet.control.{BetterCharacterControl, CharacterControl}
 import com.jme3.bullet.collision.shapes.CapsuleCollisionShape
 import common.Model._
 import server.{PhysicsSpaceSimAdapter, WorldSimulator}
@@ -38,21 +38,21 @@ object Physics {
 
 
     player.setLocalScale(0.5f)
-    //tank.setLocalTranslation(pd.position)
+    player.setLocalTranslation(pd.position)
     player.setLocalRotation(pd.direction)
 
     val capsuleShape = new CapsuleCollisionShape(0.05f, 0.05f, 1)
-    val playerControl = new CharacterControl(capsuleShape, 0.1f)
-    playerControl.setUseViewDirection(false)
+    val playerControl = new BetterCharacterControl(capsuleShape.getRadius, capsuleShape.getHeight,  0.1f)
+    //playerControl.setUseViewDirection(false)
     player.addControl(playerControl)
 
     pSpace.add(playerControl)
 
 
-    playerControl.setJumpSpeed(0);
-    playerControl.setFallSpeed(0.0f);
-    playerControl.setGravity(0.0f);
-    playerControl.setPhysicsLocation(pd.position.clone());
+    //playerControl.setJumpSpeed(0);
+    //playerControl.setFallSpeed(0.0f);
+    //playerControl.setGravity(0.0f);
+    //playerControl.setPhysicsLocation(pd.position.clone());
 
 
     node.attachChild(player)

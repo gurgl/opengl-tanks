@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory
 import se.bupp.lek.common.Model._
 import se.bupp.lek.common.model.Model._
 import java.io.File
+import com.jme3.bullet.debug.BulletDebugAppState
 
 
 object PlayerInput {
@@ -51,7 +52,6 @@ class PlayerInput(startPosition:Orientation) {
     translation = noPlayerInput._1
     rotation = noPlayerInput._2
   }
-
 
   def pollInput() = {
     val r = lastInput
@@ -129,25 +129,25 @@ class Client(var clientSettings:Client.Settings) extends SimpleApplication {
 
   def initAudio() {
     /* gun shot sound is to be triggered by a mouse click. */
-    audio_gun = new AudioNode(assetManager, "gun.wav", false);
-    audio_gun.setLooping(false);
-    audio_gun.setVolume(2);
-    rootNode.attachChild(audio_gun);
-    audio_explosion = new AudioNode(assetManager, "explosion.wav", false);
-    audio_explosion.setLooping(false);
-    audio_explosion.setVolume(0.3f);
-    rootNode.attachChild(audio_explosion);
+    audio_gun = new AudioNode(assetManager, "gun.wav", false)
+    audio_gun.setLooping(false)
+    audio_gun.setVolume(2)
+    rootNode.attachChild(audio_gun)
+    audio_explosion = new AudioNode(assetManager, "explosion.wav", false)
+    audio_explosion.setLooping(false)
+    audio_explosion.setVolume(0.3f)
+    rootNode.attachChild(audio_explosion)
 
-    audio_spawn = new AudioNode(assetManager, "spawn.wav", false);
-    audio_spawn.setLooping(false);
-    audio_spawn.setVolume(2);
-    rootNode.attachChild(audio_spawn);
-    audio_score = new AudioNode(assetManager, "score.wav", false);
-    audio_score.setLooping(false);
-    audio_score.setPositional(false);
-    audio_score.setDirectional(false);
+    audio_spawn = new AudioNode(assetManager, "spawn.wav", false)
+    audio_spawn.setLooping(false)
+    audio_spawn.setVolume(2)
+    rootNode.attachChild(audio_spawn)
+    audio_score = new AudioNode(assetManager, "score.wav", false)
+    audio_score.setLooping(false)
+    audio_score.setPositional(false)
+    audio_score.setDirectional(false)
 
-    audio_score.setVolume(10);
+    audio_score.setVolume(10)
     rootNode.attachChild(audio_score);
 
 
@@ -161,8 +161,6 @@ class Client(var clientSettings:Client.Settings) extends SimpleApplication {
     audio_nature.setDirectional(false);
     rootNode.attachChild(audio_nature);
     audio_nature.play(); // play continuously!
-
-
   }
 
   var gameFont:BitmapFont = _
@@ -196,8 +194,10 @@ class Client(var clientSettings:Client.Settings) extends SimpleApplication {
 
 
     val bulletAppState = createBulletAppState
-    stateManager.attach(bulletAppState);
 
+    //bulletAppState.getPhysicsSpace().enableDebug(assetManager);
+    stateManager.attach(bulletAppState);
+    bulletAppState.setDebugEnabled(true)
     stateManager.attach(new MessageState("Waiting for other players..."))
     //val playState: PlayState = new PlayState()
     //stateManager.attach(playState)
@@ -212,7 +212,7 @@ class Client(var clientSettings:Client.Settings) extends SimpleApplication {
 
 
   def createBulletAppState: BulletAppState {def render(rm: RenderManager): Unit} = {
-    new BulletAppState() {
+    val r = new BulletAppState() {
       override
       def render(rm: RenderManager) {
         if (!active) {
@@ -225,6 +225,7 @@ class Client(var clientSettings:Client.Settings) extends SimpleApplication {
         }
       }
     }
+    r
   }
   class DoRoundOver()
   class PostGameOver()

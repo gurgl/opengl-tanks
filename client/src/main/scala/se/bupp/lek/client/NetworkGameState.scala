@@ -66,7 +66,7 @@ case class ClientConnectSettings(var host:String, var tcpPort: Int, var udpPort:
 
 trait WorldUpdater {
   def postUpdate(simTime: Long)
-  def processInput(input: PlayerInput.Reorientation,lastUpdate:Option[(Long,Reorientation)])
+  def processInput(input: PlayerInput.Reorientation,lastUpdate:Option[(Long,Reorientation)], simTime:Long)
   def generateGameWorldToRender(simTime: Long) : Option[VisualGameWorld]
 }
 class NetworkGameState(val clientSettings:Client.Settings) extends AbstractAppState {
@@ -301,6 +301,7 @@ def bupp(l:SortedSet[Int], i:Int) : SortedSet[Int] = SortedSet.empty[Int] ++ {
     val projectiles = PlayerActionQueue.flushProjectiles()
     val reorientation = PlayerActionQueue.flushMotion()
 
+
     /*if (lastReorDebug != null && lastReorDebug._1 != reorientation._1) {
       log.debug(if(reorientation._1 == Vector3f.ZERO) "stop" else "move")
     }
@@ -369,10 +370,10 @@ def bupp(l:SortedSet[Int], i:Int) : SortedSet[Int] = SortedSet.empty[Int] ++ {
       }
     }
 
-    def processInput(input: PlayerInput.Reorientation,lastUpdate:Option[(Long,Reorientation)]) {
+    def processInput(input: PlayerInput.Reorientation,lastUpdate:Option[(Long,Reorientation)], simTime:Long) {
       lastUpdate.foreach {
         case (lastSimTime, lastInput) =>
-          visualWorldSimulation.storePlayerLastInputAndOutput(lastSimTime, lastInput)
+          visualWorldSimulation.storePlayerLastInputAndOutput(lastSimTime,simTime - lastSimTime, lastInput)
       }
 
       PlayerActionQueue.accumulateMotion(input)
