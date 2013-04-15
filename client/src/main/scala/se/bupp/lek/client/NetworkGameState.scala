@@ -4,14 +4,14 @@ import com.esotericsoftware.kryonet.{Connection, Listener, Client => KryoClient}
 import se.bupp.lek.common.Model._
 import management.ManagementFactory
 import com.jme3.app.state.{AbstractAppState, AppStateManager}
-import collection.immutable.{TreeSet, SortedSet, Queue}
+import scala.collection.immutable.{Stack, TreeSet, SortedSet, Queue}
 import com.jme3.app.Application
 import VisualWorldSimulation._
 
 import collection.{mutable, JavaConversions}
 import JavaConversions.asScalaBuffer
 import scala.{None, Some}
-import com.jme3.math.Vector3f
+import com.jme3.math.{Quaternion, Vector3f}
 import org.slf4j.LoggerFactory
 import se.bupp.lek.common.FuncUtil.RateProbe
 import com.jme3.export.Savable
@@ -29,20 +29,20 @@ import se.bupp.lek.common.{MathUtil, Tmp}
 
 object PlayerActionQueue {
 
-  var accTranslation = Vector3f.ZERO.clone()
-  var accRotation = MathUtil.noRotation
-
+  var motion = Stack.empty[(Vector3f, Quaternion, Float)]
   var fired = mutable.Stack[ProjectileFireGO]()
 
-  def accumulateMotion(reorientation:Reorientation) {
-    accTranslation = accTranslation.add(reorientation._1)
-    accRotation = reorientation._2.mult(accRotation)
+  def accumulateMotion(reorientation:Reorientation, tpf:Float) {
+
+    motion = motion.push((reorientation._1, reorientation._2,tpf))
   }
 
   def flushMotion() : Reorientation = {
-    val r = (accTranslation,accRotation)
-    accTranslation = Vector3f.ZERO.clone()
-    accRotation = MathUtil.noRotation
+    val tot: (Vector3f, Quaternion) = motion.foldLeft(Vector3f.ZERO.clone(), Quaternion.IDENTITY.clone()) {
+      case ((at, ar), (t, r, tpf)) => (at.add(t), r.mult(ar))
+    }
+    val r = if(motion.size > 0) (tot._1.divide(motion.size.toFloat),tot._2) else tot
+    motion = Stack.empty
     r
   }
 
@@ -66,7 +66,7 @@ case class ClientConnectSettings(var host:String, var tcpPort: Int, var udpPort:
 
 trait WorldUpdater {
   def postUpdate(simTime: Long)
-  def processInput(input: PlayerInput.Reorientation,lastUpdate:Option[(Long,Reorientation)], simTime:Long)
+  def processInput(input: PlayerInput.Reorientation,lastUpdate:Option[(Long,Reorientation)], tpf:Float)
   def generateGameWorldToRender(simTime: Long) : Option[VisualGameWorld]
 }
 class NetworkGameState(val clientSettings:Client.Settings) extends AbstractAppState {
@@ -370,13 +370,13 @@ def bupp(l:SortedSet[Int], i:Int) : SortedSet[Int] = SortedSet.empty[Int] ++ {
       }
     }
 
-    def processInput(input: PlayerInput.Reorientation,lastUpdate:Option[(Long,Reorientation)], simTime:Long) {
+    def processInput(input: PlayerInput.Reorientation,lastUpdate:Option[(Long,Reorientation)], tpf:Float) {
       lastUpdate.foreach {
         case (lastSimTime, lastInput) =>
-          visualWorldSimulation.storePlayerLastInputAndOutput(lastSimTime,simTime - lastSimTime, lastInput)
+          visualWorldSimulation.storePlayerLastInputAndOutput(lastSimTime, tpf, lastInput)
       }
 
-      PlayerActionQueue.accumulateMotion(input)
+      PlayerActionQueue.accumulateMotion(input, tpf)
     }
 
 

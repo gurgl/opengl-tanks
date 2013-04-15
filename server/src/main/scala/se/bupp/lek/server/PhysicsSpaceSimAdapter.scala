@@ -60,30 +60,32 @@ trait PhysicsSpaceSimAdapter extends SceneGraphAccessors {
     players.foreach {
       case (pi,s) =>
         val anyUpdates = Seq(pi.updates:_*)
-        pi.updates = Nil
+        if(anyUpdates.size > 0) {
+          pi.updates = Nil
 
         val control = s.getControl(classOf[BetterCharacterControl]).ensuring(_ != null)
-        println("vd " + control.getViewDirection)
+
         val (movement,rot) = anyUpdates match {
           case Nil => (Vector3f.ZERO.clone(),MathUtil.noRotation)
           case updates =>
 
             val rot = updates.foldLeft(MathUtil.noRotation) { case (a,u) => u.rotation.mult(a) }
             val move = updates.foldLeft(Vector3f.ZERO.clone()) { case (a,u) => (u.translation.add(a)) }
-            (move, rot)
+            (move.divide(updates.size.toFloat), rot)
 
         }
-        val movementPerStep: Vector3f = movement.divide(simSteps.toFloat)
+        //
         if(pi.playerId % 2 == 0) {
-          println("++++ " + pi.playerId + " " + rot + " " + s.getLocalRotation + " " + movementPerStep + " " + s.getWorldRotation)
+          println("++++ " + pi.playerId + " " + rot + " " + s.getLocalRotation + " " + movement + " " + s.getWorldRotation)
         }
 
         var local: Vector3f = rot.mult(control.getViewDirection)
 
         control.setViewDirection(local)
-        control.setWalkDirection(movementPerStep)
+        control.setWalkDirection(movement)
         pi.lastSimulationServerTime = simTime
 
+      }
 
       case _ =>
     }

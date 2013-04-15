@@ -268,7 +268,7 @@ abstract class WorldSimulator(val world:ServerWorld) extends PhysicsCollisionLis
           //if(ps.playerId % 2 == 0) println("" + s.getWorldTranslation + " " + s.getLocalTranslation)
           ps.gameState.position = s.getLocalTranslation.clone()
           ps.gameState.direction = s.getLocalRotation.clone()
-          println("ggwc " + ps.gameState.direction)
+          //println("ggwc " + ps.gameState.direction)
       }
 
 

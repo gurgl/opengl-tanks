@@ -100,7 +100,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
 
   val LocalInputLogSize = 300
 
-  var playerMovementLog = Queue.empty[(Long, Long, Orientation, Reorientation)] //:+ ((Client.clock(),startPosition, MathUtil.noMotion))
+  var playerMovementLog = Queue.empty[(Long, Float, Orientation, Reorientation)] //:+ ((Client.clock(),startPosition, MathUtil.noMotion))
 
 
   var sun:DirectionalLight = _
@@ -110,21 +110,21 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
   var mat_red:Material = _
 
 
-  def storePlayerLastInputAndOutput(simTime:Long, delta:Long, input:Reorientation) = {
+  def storePlayerLastInputAndOutput(simTime:Long, delta:Float, input:Reorientation) = {
 
     val physicalPosition = player.getLocalTranslation.clone()
     val physicalRotation = player.getLocalRotation.clone() // getControl(classOf[BetterCharacterControl]).getViewDirection //.subtract(gameApp.playerInput.saved.last._2.position)
     saveReorientation(simTime,delta, new Orientation(physicalPosition, physicalRotation), input)
   }
 
-  private def saveReorientation(timeStamp:Long, delta:Long, orientation: Orientation, reorientation:Reorientation) {
+  private def saveReorientation(timeStamp:Long, delta:Float, orientation: Orientation, reorientation:Reorientation) {
     lock.synchronized {
       while(playerMovementLog.size >= LocalInputLogSize) {
         playerMovementLog = playerMovementLog.dequeue._2
       }
 
       //val orientation = saved.last._2.reorientate(input)
-      playerMovementLog =  playerMovementLog :+ (timeStamp,delta, orientation, reorientation)
+      playerMovementLog =  playerMovementLog :+ (timeStamp, delta, orientation, reorientation)
     }
   }
 
@@ -431,7 +431,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
 
           val newSavedPos = playerMovementLog.foldLeft(Queue(server)) {
             case (recalculatedPositions,(time,delta, orientationBeforeReorientation, reorient)) =>
-              val reorientPerDelta = new Reorientation(reorient._1.mult(delta.toFloat/1000f),reorient._2)
+              val reorientPerDelta = new Reorientation(reorient._1.mult(delta),reorient._2)
               recalculatedPositions :+ recalculatedPositions.last.reorientate(reorientPerDelta)
           }
           log.warn("Bad " + playerMovementLog.head._3.position + " " + server.position + " " + serverSimTime + " " + diffHeur + " " + serverSnapshotSentByPlayerTime)
@@ -441,7 +441,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
           //println("Bad " + diffHeur)
           //newSavedPos.last
           val control: BetterCharacterControl = player.getControl(classOf[BetterCharacterControl])
-          println(control.getViewDirection)
+          //println(control.getViewDirection)
           //player.setLocalTranslation(playerMovementLog.last._3.position)
           control.warp(playerMovementLog.last._3.position)
           //control.resetForward(tankForward)
