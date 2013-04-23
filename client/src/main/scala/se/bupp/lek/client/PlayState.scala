@@ -88,7 +88,7 @@ class PlayState() extends AbstractAppState with PhysicsTickListener {
     val simTime = Client.clock()
 
     var input = playerInput.pollInput()
-    //println(input._1)
+    //println(input._2  + " ************* " + visualWorldSimulation.player.getLocalRotation)
 
     worldUpdater.processInput(input,lastUpdate, tpf)
 

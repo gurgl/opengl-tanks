@@ -54,5 +54,15 @@ class MathTest extends Specification with Mockito {
 
       Quaternion.IDENTITY.clone() === MathUtil.noRotation
     }
+
+    "oth" in {
+      var axis: Quaternion = new Quaternion().fromAngleNormalAxis(Math.PI.toFloat / 6.0f, Vector3f.UNIT_Y)
+      var mult: Vector3f = axis.mult(new Vector3f(1, 0, 0))
+      mult.y === 0.0f
+      var column: Vector3f = axis.getRotationColumn(0)
+      column === new Vector3f(0.8660254f, 0.0f, -0.5f)
+
+
+    }
   }
 }

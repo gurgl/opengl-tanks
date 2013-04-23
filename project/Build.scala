@@ -19,7 +19,7 @@ object MyBuild extends Build {
 
   //val JME_VERSION = "3.0.0.20120512-SNAPSHOT"
   //val JME_VERSION = "3.0.0.20121220-SNAPSHOT"
-  val JME_VERSION = "1.0-SNAPSHOT"
+  val JME_VERSION = "1.0-SNAPSHOT-130415"
   /**
    * println(evalTask(fullClasspath in Runtime, currentState).map(_.data).mkString(";"))
    */

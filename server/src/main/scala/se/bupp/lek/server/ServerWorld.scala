@@ -61,6 +61,8 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
     //control.setUserObject(pr)
     getPhysicsSpace.add(control)
 
+    control.setGravity(Vector3f.ZERO.clone())
+
 
     //getPhysicsSpace.addCollisionListener(control)
   }
@@ -74,8 +76,8 @@ class ServerWorld(rootNode: Node, assetManager:AssetManager, physicsSpace:Physic
 
     val characterControl = s.getControl(classOf[BetterCharacterControl])
     getPhysicsSpace.remove(characterControl)
-    val ghostControl= s.getControl(classOf[GhostControl])
-    getPhysicsSpace.remove(ghostControl)
+    //val ghostControl= s.getControl(classOf[GhostControl])
+    //getPhysicsSpace.remove(ghostControl)
     getNode(SceneGraphWorld.SceneGraphNodeKeys.Enemies).detachChild(s)
   }
 

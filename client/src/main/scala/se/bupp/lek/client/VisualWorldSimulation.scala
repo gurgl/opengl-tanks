@@ -73,7 +73,7 @@ class LocalObjectFactory {
 
   def createProjectile(pos:Vector3f, dir:Quaternion) = {
     val p = new ProjectileFireGO(
-      new OrientationGO(pos.add(0f,0.33f,0.0f).add(dir.getRotationColumn(0).mult(0.7f)),dir.clone()),
+      new OrientationGO(pos.add(0f,0.53f,0.0f).add(dir.getRotationColumn(0).mult(0.8f)),dir.clone()),
       4.5f,
       projectileSeqId
     )
@@ -404,11 +404,16 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
     //val rotDiff = Quaternion.IDENTITY.clone().slerp(client.direction,server.direction,1.0f)
     //transDiff.length() < 0.1 && rotDiff.getW < FastMath.PI / 80
     //math.sqrt(client.direction.dot(server.direction))
-    val deltaQ: Quaternion = client.direction.subtract(server.direction)
-    val sqrt = math.sqrt(deltaQ.dot(deltaQ))
+    //val deltaQ: Quaternion = client.direction.subtract(server.direction)
+    //val deltaQ: Quaternion = client.direction.inverse().mult(server.direction)
+
+
+    //val sqrt = math.sqrt(deltaQ.dot(deltaQ))
+    var deltaQ: Double = math.acos(client.direction.dot(server.direction))
+    val absDeltaQ = if(deltaQ > math.Pi/2.0f) math.Pi - deltaQ else deltaQ
     //println(client.direction + " " + server.direction)
 
-    (transDiff.length(),math.abs(sqrt))
+    (transDiff.length(),math.abs(absDeltaQ))
   }
 
   def applyCorrectionIfDiffers(serverSnapshotSentByPlayerTime:Long,serverSimTime:Long, server:Orientation) {
@@ -426,15 +431,15 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
 
         val diffHeur = diff(playerMovementLog.head._3,server)
         //val newPos =
-        if(diffHeur._1 > 0.2 || diffHeur._2 > FastMath.PI / 90) {
-
+        if(diffHeur._1 > 0.2 || diffHeur._2 > (FastMath.PI / 180 * 5)) {
 
           val newSavedPos = playerMovementLog.foldLeft(Queue(server)) {
             case (recalculatedPositions,(time,delta, orientationBeforeReorientation, reorient)) =>
               val reorientPerDelta = new Reorientation(reorient._1.mult(delta),reorient._2)
               recalculatedPositions :+ recalculatedPositions.last.reorientate(reorientPerDelta)
           }
-          log.warn("Bad " + playerMovementLog.head._3.position + " " + server.position + " " + serverSimTime + " " + diffHeur + " " + serverSnapshotSentByPlayerTime)
+          log.warn("Bad " + playerMovementLog.head._3.direction + " " + server.direction + " "  + diffHeur + " " + serverSimTime + " " + serverSnapshotSentByPlayerTime + " " + playerMovementLog.last._4._2)
+          //log.warn("Bad " + playerMovementLog.head._3.position + " " + server.position + " " + serverSimTime + " " + diffHeur + " " + serverSnapshotSentByPlayerTime)
 
           playerMovementLog = newSavedPos.tail.zip(playerMovementLog).map {case (np, (ts,d,  _ , reor)) => (ts,d, np, reor) }
           //println("Bad " + saved.head._2.position+ " " + server.position + " " + diffHeur._1) // + " " + newSavedPos.last)
@@ -501,7 +506,7 @@ class VisualWorldSimulation(val rootNode:Node,val assetManager:AssetManager, val
     //control.setviewdirection(player.setlocalrotation(p.direction))
     //control.setViewDirection(p.direction.getRotationColumn(0))
     //log.info("app loc rot " + input._2 + " " + control.getViewDirection + " " + player.getLocalRotation + player.getLocalRotation.getRotationColumn(2))
-    control.setViewDirection(input._2.mult(player.getLocalRotation.getRotationColumn(2)))
+    control.setViewDirection(input._2.mult(control.getViewDirection))
     //player.rotate(input._2)
 
     /*
